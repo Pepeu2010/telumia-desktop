@@ -56,7 +56,7 @@ actual object AppUpdaterPlatform {
         owner = "Pepeu2010",
         repo = "telumia-desktop",
         channelBranch = null,
-        includePrereleases = true,
+        includePrereleases = false,
         userAgent = "TelumiaDesktop",
     )
 
