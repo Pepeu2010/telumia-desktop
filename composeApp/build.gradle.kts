@@ -528,7 +528,16 @@ val desktopReleaseVersionCode = (
     ?.takeIf { it.isNotBlank() }
     ?.toIntOrNull()
     ?: 1
-val desktopReleasePackageVersion = jpackageCompatibleVersion(desktopReleaseVersionName)
+val desktopReleasePackageVersion = if (System.getProperty("os.name").contains("win", ignoreCase = true)) {
+    desktopVersionProps.getProperty("WINDOWS_PACKAGE_VERSION")?.trim()?.let { version ->
+        require(version.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+"))) {
+            "WINDOWS_PACKAGE_VERSION must have three numeric components."
+        }
+        jpackageCompatibleVersion(version)
+    } ?: jpackageCompatibleVersion(desktopReleaseVersionName)
+} else {
+    jpackageCompatibleVersion(desktopReleaseVersionName)
+}
 val windowsMsiUpgradeUuid = "1c69d968-d0e0-4b0f-b5c0-615b8ea92f90"
 val iosDistribution = (
     providers.gradleProperty("nuvio.ios.distribution").orNull
