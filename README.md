@@ -6,7 +6,7 @@
 
 ## Versão 1.0.0
 
-A versão atual do código é **1.0.0**, sem sufixo alpha; os testes e a preparação dos novos pacotes estão em andamento. [Downloads e registro da publicação](https://github.com/Pepeu2010/telumia/releases). O instalador Windows x64 usa a numeração interna MSI 2.0.0 para permitir atualização sobre as alphas, mantendo a identidade do aplicativo. Linux/macOS permanecem no código multiplataforma, sem novos instaladores ou execução comprovada nesta entrega.
+A **versão 1.0.0 está publicada**, sem sufixo alpha, como release regular e Latest. Passaram 279 testes selecionados e 1.092 verificações do renderer controlado. [Downloads e registro da publicação](https://github.com/Pepeu2010/telumia/releases). O instalador Windows x64 usa a numeração interna MSI 2.0.0 para permitir atualização sobre as alphas, mantendo a identidade do aplicativo. Linux/macOS permanecem no código multiplataforma, sem novos instaladores ou execução comprovada nesta entrega.
 
 As melhorias incluem Home e detalhes cinematográficos, seleção de perfis, menu lateral com motion configurável, cache Auto/Manual, momentos salvos, miniaturas e filmstrip reais no player Windows e capítulos nomeados do arquivo. Coleções e addons têm mesclagem durável nos contratos de conta existentes. [Alcance da versão e pendências](https://github.com/Pepeu2010/telumia/blob/main/docs/VERSION_100.md).
 
