@@ -1,0 +1,124 @@
+name: Telumia Desktop portability
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: telumia-portability-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: ${{ matrix.platform }} compilation and package
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            runner: ubuntu-24.04
+            task: packageReleaseDeb
+            arch: x86_64
+          - platform: macos-arm64
+            runner: macos-15
+            task: packageReleaseDmg
+            arch: arm64
+          - platform: macos-x64
+            runner: macos-15-intel
+            task: packageReleaseDmg
+            arch: x86_64
+    env:
+      SENTRY_AUTH_TOKEN: ''
+      SENTRY_DSN: ''
+      SENTRY_DESKTOP_DSN: ''
+      NUVIO_MACOS_SIGNING_IDENTITY: ''
+      NUVIO_MACOS_NOTARY_KEYCHAIN_PROFILE: ''
+      NUVIO_MACOS_ARCH: ${{ matrix.arch }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          lfs: true
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Linux native dependencies
+        if: runner.os == 'Linux'
+        run: bash ./scripts/linux/install-desktop-build-dependencies.sh fakeroot
+
+      - name: Record source and runtime objects
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p portability-evidence
+          git rev-parse HEAD > portability-evidence/source-commit.txt
+          git lfs ls-files > portability-evidence/lfs-objects.txt
+          if git lfs ls-files | grep -Eq '^[0-9a-f]+ - '; then
+            echo 'Unexpanded LFS objects found.' >&2
+            exit 1
+          fi
+          java -version 2> portability-evidence/java-version.txt
+
+      - name: Test shared behavior and build native package
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :composeApp:desktopTest \
+            --tests '*TimedMetadata*' \
+            --tests '*SceneBookmarkStoreTest' \
+            --tests '*MediaCachePolicyTest' \
+            --tests '*BrazilianCatalogTest' \
+            --tests '*VersionUtilsTest' \
+            :composeApp:${{ matrix.task }} \
+            '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' \
+            -Pkotlin.compiler.execution.strategy=in-process \
+            -Pcompose.desktop.packaging.checkJdkVendor=false \
+            --max-workers=2 --no-configuration-cache --no-daemon --stacktrace \
+            2>&1 | tee portability-evidence/build.log
+
+      - name: Verify source and hash packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          base = pathlib.Path('composeApp/build/compose/binaries/main-release')
+          packages = sorted(p for p in base.rglob('*') if p.suffix in ('.deb', '.dmg'))
+          if not packages:
+              raise SystemExit('No native package was produced')
+          records = []
+          for path in packages:
+              digest = hashlib.sha256()
+              with path.open('rb') as stream:
+                  for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                      digest.update(chunk)
+              records.append(dict(path=str(path), bytes=path.stat().st_size, sha256=digest.hexdigest()))
+          pathlib.Path('portability-evidence/packages.json').write_text(json.dumps(dict(
+              sourceCommit=os.environ['GITHUB_SHA'], packages=records,
+              scope='Native compilation, selected shared tests and unsigned packaging; no authenticated runtime or physical-device proof.'
+          ), indent=2) + '\n')
+          PY
+
+      - name: Preserve reports and packages
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: telumia-portability-${{ matrix.platform }}-${{ github.sha }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            portability-evidence/
+            composeApp/build/test-results/desktopTest/
+            composeApp/build/reports/tests/desktopTest/
+            composeApp/build/compose/binaries/main-release/deb/*.deb
+            composeApp/build/compose/binaries/main-release/dmg/*.dmg
