@@ -42,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          lfs: true
+          lfs: false
           persist-credentials: false
 
       - uses: actions/setup-java@v5
@@ -53,6 +53,17 @@ jobs:
       - name: Install Linux native dependencies
         if: runner.os == 'Linux'
         run: bash ./scripts/linux/install-desktop-build-dependencies.sh fakeroot
+
+      - name: Restore exact LFS objects from published source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p portability-evidence
+          curl --fail --location --retry 3 \
+            https://github.com/Pepeu2010/telumia-desktop/releases/download/v1.0.0/Telumia-desktop-source.zip \
+            --output "${RUNNER_TEMP}/telumia-source.zip"
+          python3 scripts/restore-release-lfs.py "${RUNNER_TEMP}/telumia-source.zip" \
+            | tee portability-evidence/lfs-hydration.json
 
       - name: Record source and runtime objects
         shell: bash
