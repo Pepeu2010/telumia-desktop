@@ -22,12 +22,12 @@ cleanup() {
 trap cleanup EXIT
 
 package_root="$work_dir/package root"
-mkdir -p "$package_root/DEBIAN" "$package_root/usr/share/nuvio-test"
+mkdir -p "$package_root/DEBIAN" "$package_root/usr/share/nuvio-test" "$package_root/opt/telumia/bin" "$package_root/opt/telumia/lib"
 cat > "$package_root/DEBIAN/control" <<'CONTROL'
 Package: nuvio-test
 Version: 1.0-1
 Architecture: all
-Maintainer: Nuvio Media <contact@nuvio.tv>
+Maintainer: Telumia contributors <140022384+Pepeu2010@users.noreply.github.com>
 Depends: libmpv2 (>= 0.35),
  libwebkit2gtk-4.1-0 | nuvio-webkit-fallback,
  libxcomposite1,
@@ -35,6 +35,9 @@ Depends: libmpv2 (>= 0.35),
 Description: Linux DEB tooling fixture
 CONTROL
 printf 'fixture\n' > "$package_root/usr/share/nuvio-test/data file.txt"
+printf '#!/bin/sh\nexit 0\n' > "$package_root/opt/telumia/bin/Telumia"
+chmod +x "$package_root/opt/telumia/bin/Telumia"
+printf 'fixture icon\n' > "$package_root/opt/telumia/lib/Telumia.png"
 
 fixture="$work_dir/Nuvio fixture package.deb"
 dpkg-deb --root-owner-group -b "$package_root" "$fixture" >/dev/null
@@ -42,6 +45,14 @@ dpkg-deb --root-owner-group -b "$package_root" "$fixture" >/dev/null
 "$patch_script" "$fixture"
 "$patch_script" "$fixture"
 "$verify_script" "$fixture"
+
+desktop_entry="$(dpkg-deb --fsys-tarfile "$fixture" | tar -xOf - ./usr/share/applications/telumia.desktop)"
+for expected_line in 'Name=Telumia' 'Exec=/opt/telumia/bin/Telumia %u' 'Icon=/opt/telumia/lib/Telumia.png'; do
+    if ! grep -Fxq "$expected_line" <<< "$desktop_entry"; then
+        echo "Launcher metadata missing: $expected_line" >&2
+        exit 1
+    fi
+done
 
 depends="$(dpkg-deb -f "$fixture" Depends)"
 for dependency in libmpv2 libwebkit2gtk-4.1-0 libxcomposite1 libxext6; do

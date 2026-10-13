@@ -54,6 +54,10 @@ jobs:
         if: runner.os == 'Linux'
         run: bash ./scripts/linux/install-desktop-build-dependencies.sh fakeroot
 
+      - name: Test Linux package metadata and launcher
+        if: runner.os == 'Linux'
+        run: bash ./scripts/linux/test-linux-deb-tools.sh
+
       - name: Restore exact LFS objects from published source archive
         shell: bash
         run: |

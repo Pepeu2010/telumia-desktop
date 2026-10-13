@@ -26,7 +26,7 @@ if [[ ! -f "$deb" ]]; then
     exit 1
 fi
 
-expected_maintainer="Nuvio Media <contact@nuvio.tv>"
+expected_maintainer="Telumia contributors <140022384+Pepeu2010@users.noreply.github.com>"
 maintainer="$(dpkg-deb -f "$deb" Maintainer)"
 if [[ "$maintainer" != "$expected_maintainer" ]]; then
     echo "Unexpected Maintainer: '$maintainer'" >&2
@@ -54,11 +54,18 @@ if ! dpkg-deb --contents "$deb" > "$contents_file"; then
     exit 1
 fi
 
-if ! awk '{print $6}' "$contents_file" | grep -Eq '^\./usr/share/applications/.+\.desktop$'; then
+if ! awk '{print $6}' "$contents_file" | grep -Fxq './usr/share/applications/telumia.desktop'; then
     echo "DEB does not install a desktop launcher under /usr/share/applications." >&2
     awk '{print $6}' "$contents_file" | grep -E '\.desktop$|^\./opt/' >&2 || true
     exit 1
 fi
+
+for expected_path in './opt/telumia/bin/Telumia' './opt/telumia/lib/Telumia.png'; do
+    if ! awk '{print $6}' "$contents_file" | grep -Fxq "$expected_path"; then
+        echo "Missing Telumia launcher target: $expected_path" >&2
+        exit 1
+    fi
+done
 
 non_root_entry=""
 while read -r _mode owner_group _size _date _time path; do

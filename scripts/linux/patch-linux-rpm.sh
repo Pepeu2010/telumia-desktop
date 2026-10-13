@@ -78,13 +78,13 @@ url="$(rpm -qp --qf '%{URL}\n' "$rpm_path")"
 description="$(rpm -qp --qf '%{DESCRIPTION}\n' "$rpm_path")"
 
 if [[ "$license" == "(none)" || -z "$license" ]]; then
-    license="Proprietary"
+    license="GPL-3.0-or-later"
 fi
 if [[ "$vendor" == "(none)" || -z "$vendor" ]]; then
-    vendor="Nuvio Media"
+    vendor="Telumia contributors"
 fi
 if [[ "$summary" == "(none)" || -z "$summary" ]]; then
-    summary="Nuvio"
+    summary="Telumia"
 fi
 if [[ "$url" == "(none)" ]]; then
     url=""
