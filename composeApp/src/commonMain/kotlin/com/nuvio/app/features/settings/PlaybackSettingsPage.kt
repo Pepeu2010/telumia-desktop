@@ -3,6 +3,8 @@ package com.nuvio.app.features.settings
 import com.nuvio.app.core.build.AppFeaturePolicy
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -2174,6 +2176,9 @@ private fun StreamAutoPlayModeDialog(
             Res.string.settings_playback_stream_selection_mode_manual,
             Res.string.settings_playback_stream_selection_mode_manual_description,
         ),
+        Triple(StreamAutoPlayMode.BEST_QUALITY, Res.string.source_mode_quality, Res.string.source_mode_quality_desc),
+        Triple(StreamAutoPlayMode.BALANCED, Res.string.source_mode_balanced, Res.string.source_mode_balanced_desc),
+        Triple(StreamAutoPlayMode.DATA_SAVER, Res.string.source_mode_saver, Res.string.source_mode_saver_desc),
         Triple(
             StreamAutoPlayMode.FIRST_STREAM,
             Res.string.settings_playback_stream_selection_mode_first_stream,
@@ -2191,7 +2196,7 @@ private fun StreamAutoPlayModeDialog(
         title = stringResource(Res.string.settings_playback_stream_selection_mode),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             options.forEach { (mode, titleRes, descriptionRes) ->
@@ -2678,6 +2683,9 @@ private val StreamAutoPlayMode.labelRes: StringResource
         StreamAutoPlayMode.MANUAL -> Res.string.settings_playback_stream_selection_mode_manual
         StreamAutoPlayMode.FIRST_STREAM -> Res.string.settings_playback_stream_selection_mode_first_stream
         StreamAutoPlayMode.REGEX_MATCH -> Res.string.settings_playback_stream_selection_mode_regex
+        StreamAutoPlayMode.BEST_QUALITY -> Res.string.source_mode_quality
+        StreamAutoPlayMode.BALANCED -> Res.string.source_mode_balanced
+        StreamAutoPlayMode.DATA_SAVER -> Res.string.source_mode_saver
     }
 
 private val com.nuvio.app.features.player.skip.NextEpisodeThresholdMode.labelRes: StringResource

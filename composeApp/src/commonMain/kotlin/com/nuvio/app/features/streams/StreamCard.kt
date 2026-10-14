@@ -51,6 +51,11 @@ import com.nuvio.app.core.ui.nuvioDesktopDragScroll
 import com.nuvio.app.core.ui.SkeletonBlock
 import com.nuvio.app.features.debrid.DebridProviders
 import com.nuvio.app.isDesktop
+import com.nuvio.app.features.player.PlayerSettingsRepository
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.source_score_explanation
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun StreamCard(
@@ -67,6 +72,7 @@ internal fun StreamCard(
     isCurrent: Boolean = false,
     currentLabel: String? = null,
 ) {
+    val playerSettings by PlayerSettingsRepository.uiState.collectAsStateWithLifecycle()
     val cardShape = RoundedCornerShape(12.dp)
     val badgeImages = stream.badges.filter { it.imageURL.isNotBlank() }
     val hasBadges = badgeImages.isNotEmpty() || (showFileSizeBadges && stream.behaviorHints.videoSize != null)
@@ -163,6 +169,16 @@ internal fun StreamCard(
                     badgeImages = badgeImages,
                     stream = stream,
                     showFileSizeBadges = showFileSizeBadges,
+                )
+            }
+            if (playerSettings.streamAutoPlayMode.usesSourceScore) {
+                val score = remember(stream, playerSettings.streamAutoPlayMode) {
+                    StreamAutoPlaySelector.scoreSource(stream, playerSettings.streamAutoPlayMode)
+                }
+                Text(
+                    text = stringResource(Res.string.source_score_explanation, score.total, score.resolutionPoints, score.sizePoints, score.cachedPoints),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

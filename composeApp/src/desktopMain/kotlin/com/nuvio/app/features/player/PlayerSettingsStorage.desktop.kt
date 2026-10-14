@@ -61,6 +61,7 @@ internal actual object PlayerSettingsStorage {
     private const val mapDV7ToHevcKey = "map_dv7_to_hevc"
     private const val tunnelingEnabledKey = "tunneling_enabled"
     private const val streamAutoPlayModeKey = "stream_auto_play_mode"
+    private const val telumiaSourceModeKey = "telumia_source_mode_v1"
     private const val streamAutoPlaySourceKey = "stream_auto_play_source"
     private const val streamAutoPlaySelectedAddonsKey = "stream_auto_play_selected_addons"
     private const val streamAutoPlaySelectedPluginsKey = "stream_auto_play_selected_plugins"
@@ -264,8 +265,17 @@ internal actual object PlayerSettingsStorage {
     actual fun saveMapDV7ToHevc(enabled: Boolean) = saveBoolean(mapDV7ToHevcKey, enabled)
     actual fun loadTunnelingEnabled(): Boolean? = loadBoolean(tunnelingEnabledKey)
     actual fun saveTunnelingEnabled(enabled: Boolean) = saveBoolean(tunnelingEnabledKey, enabled)
-    actual fun loadStreamAutoPlayMode(): String? = loadString(streamAutoPlayModeKey)
-    actual fun saveStreamAutoPlayMode(mode: String) = saveString(streamAutoPlayModeKey, mode)
+    actual fun loadStreamAutoPlayMode(): String? = loadString(telumiaSourceModeKey)
+        ?.takeIf { it in setOf("BEST_QUALITY", "BALANCED", "DATA_SAVER") }
+        ?: loadString(streamAutoPlayModeKey)
+    actual fun saveStreamAutoPlayMode(mode: String) {
+        if (mode in setOf("BEST_QUALITY", "BALANCED", "DATA_SAVER")) {
+            saveString(telumiaSourceModeKey, mode)
+        } else {
+            store.remove(scoped(telumiaSourceModeKey))
+            saveString(streamAutoPlayModeKey, mode)
+        }
+    }
     actual fun loadStreamAutoPlaySource(): String? = loadString(streamAutoPlaySourceKey)
     actual fun saveStreamAutoPlaySource(source: String) = saveString(streamAutoPlaySourceKey, source)
     actual fun loadStreamAutoPlaySelectedAddons(): Set<String>? = loadStringSet(streamAutoPlaySelectedAddonsKey)
@@ -395,7 +405,7 @@ internal actual object PlayerSettingsStorage {
         loadDecoderPriority()?.let { put(decoderPriorityKey, encodeSyncInt(it)) }
         loadMapDV7ToHevc()?.let { put(mapDV7ToHevcKey, encodeSyncBoolean(it)) }
         loadTunnelingEnabled()?.let { put(tunnelingEnabledKey, encodeSyncBoolean(it)) }
-        loadStreamAutoPlayMode()?.let { put(streamAutoPlayModeKey, encodeSyncString(it)) }
+        loadString(streamAutoPlayModeKey)?.let { put(streamAutoPlayModeKey, encodeSyncString(it)) }
         loadStreamAutoPlaySource()?.let { put(streamAutoPlaySourceKey, encodeSyncString(it)) }
         loadStreamAutoPlaySelectedAddons()?.let { put(streamAutoPlaySelectedAddonsKey, encodeSyncStringSet(it)) }
         loadStreamAutoPlaySelectedPlugins()?.let { put(streamAutoPlaySelectedPluginsKey, encodeSyncStringSet(it)) }
@@ -477,7 +487,7 @@ internal actual object PlayerSettingsStorage {
         payload.decodeSyncInt(decoderPriorityKey)?.let(::saveDecoderPriority)
         payload.decodeSyncBoolean(mapDV7ToHevcKey)?.let(::saveMapDV7ToHevc)
         payload.decodeSyncBoolean(tunnelingEnabledKey)?.let(::saveTunnelingEnabled)
-        payload.decodeSyncString(streamAutoPlayModeKey)?.let(::saveStreamAutoPlayMode)
+        payload.decodeSyncString(streamAutoPlayModeKey)?.let { saveString(streamAutoPlayModeKey, it) }
         payload.decodeSyncString(streamAutoPlaySourceKey)?.let(::saveStreamAutoPlaySource)
         payload.decodeSyncStringSet(streamAutoPlaySelectedAddonsKey)?.let(::saveStreamAutoPlaySelectedAddons)
         payload.decodeSyncStringSet(streamAutoPlaySelectedPluginsKey)?.let(::saveStreamAutoPlaySelectedPlugins)

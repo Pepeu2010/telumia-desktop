@@ -57,6 +57,7 @@ actual object PlayerSettingsStorage {
     private const val mapDV7ToHevcKey = "map_dv7_to_hevc"
     private const val tunnelingEnabledKey = "tunneling_enabled"
     private const val streamAutoPlayModeKey = "stream_auto_play_mode"
+    private const val telumiaSourceModeKey = "telumia_source_mode_v1"
     private const val streamAutoPlaySourceKey = "stream_auto_play_source"
     private const val streamAutoPlaySelectedAddonsKey = "stream_auto_play_selected_addons"
     private const val streamAutoPlaySelectedPluginsKey = "stream_auto_play_selected_plugins"
@@ -646,11 +647,19 @@ actual object PlayerSettingsStorage {
     actual fun loadStreamAutoPlayMode(): String? {
         val defaults = NSUserDefaults.standardUserDefaults
         val key = ProfileScopedKey.of(streamAutoPlayModeKey)
-        return defaults.stringForKey(key)
+        return defaults.stringForKey(ProfileScopedKey.of(telumiaSourceModeKey))
+            ?.takeIf { it in setOf("BEST_QUALITY", "BALANCED", "DATA_SAVER") }
+            ?: defaults.stringForKey(key)
     }
 
     actual fun saveStreamAutoPlayMode(mode: String) {
-        NSUserDefaults.standardUserDefaults.setObject(mode, forKey = ProfileScopedKey.of(streamAutoPlayModeKey))
+        val defaults = NSUserDefaults.standardUserDefaults
+        if (mode in setOf("BEST_QUALITY", "BALANCED", "DATA_SAVER")) {
+            defaults.setObject(mode, forKey = ProfileScopedKey.of(telumiaSourceModeKey))
+        } else {
+            defaults.removeObjectForKey(ProfileScopedKey.of(telumiaSourceModeKey))
+            defaults.setObject(mode, forKey = ProfileScopedKey.of(streamAutoPlayModeKey))
+        }
     }
 
     actual fun loadStreamAutoPlaySource(): String? {
@@ -1067,7 +1076,7 @@ actual object PlayerSettingsStorage {
         loadDecoderPriority()?.let { put(decoderPriorityKey, encodeSyncInt(it)) }
         loadMapDV7ToHevc()?.let { put(mapDV7ToHevcKey, encodeSyncBoolean(it)) }
         loadTunnelingEnabled()?.let { put(tunnelingEnabledKey, encodeSyncBoolean(it)) }
-        loadStreamAutoPlayMode()?.let { put(streamAutoPlayModeKey, encodeSyncString(it)) }
+        NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(streamAutoPlayModeKey))?.let { put(streamAutoPlayModeKey, encodeSyncString(it)) }
         loadStreamAutoPlaySource()?.let { put(streamAutoPlaySourceKey, encodeSyncString(it)) }
         loadStreamAutoPlaySelectedAddons()?.let { put(streamAutoPlaySelectedAddonsKey, encodeSyncStringSet(it)) }
         loadStreamAutoPlaySelectedPlugins()?.let { put(streamAutoPlaySelectedPluginsKey, encodeSyncStringSet(it)) }
@@ -1148,7 +1157,7 @@ actual object PlayerSettingsStorage {
         payload.decodeSyncInt(decoderPriorityKey)?.let(::saveDecoderPriority)
         payload.decodeSyncBoolean(mapDV7ToHevcKey)?.let(::saveMapDV7ToHevc)
         payload.decodeSyncBoolean(tunnelingEnabledKey)?.let(::saveTunnelingEnabled)
-        payload.decodeSyncString(streamAutoPlayModeKey)?.let(::saveStreamAutoPlayMode)
+        payload.decodeSyncString(streamAutoPlayModeKey)?.let { NSUserDefaults.standardUserDefaults.setObject(it, forKey = ProfileScopedKey.of(streamAutoPlayModeKey)) }
         payload.decodeSyncString(streamAutoPlaySourceKey)?.let(::saveStreamAutoPlaySource)
         payload.decodeSyncStringSet(streamAutoPlaySelectedAddonsKey)?.let(::saveStreamAutoPlaySelectedAddons)
         payload.decodeSyncStringSet(streamAutoPlaySelectedPluginsKey)?.let(::saveStreamAutoPlaySelectedPlugins)

@@ -4,6 +4,12 @@ enum class StreamAutoPlayMode {
     MANUAL,
     FIRST_STREAM,
     REGEX_MATCH,
+    BEST_QUALITY,
+    BALANCED,
+    DATA_SAVER;
+
+    val usesSourceScore: Boolean
+        get() = this == BEST_QUALITY || this == BALANCED || this == DATA_SAVER
 }
 
 enum class StreamAutoPlaySource {

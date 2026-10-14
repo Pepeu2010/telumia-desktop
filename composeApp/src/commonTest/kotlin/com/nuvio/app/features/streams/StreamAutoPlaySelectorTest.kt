@@ -8,6 +8,49 @@ import kotlin.test.assertTrue
 
 class StreamAutoPlaySelectorTest {
 
+    private fun ranked(resolution: String?, bytes: Long? = null) = StreamItem(
+        addonName = "AddonA", addonId = "addon-a", url = "https://example.com/${resolution ?: "unknown"}",
+        behaviorHints = StreamBehaviorHints(videoSize = bytes),
+        clientResolve = resolution?.let { StreamClientResolve(stream = StreamClientResolveStream(
+            raw = StreamClientResolveRaw(parsed = StreamClientResolveParsed(resolution = it)))) }
+    )
+
+    private fun chooseRanked(streams: List<StreamItem>, mode: StreamAutoPlayMode) = StreamAutoPlaySelector.selectAutoPlayStream(
+        streams, mode, "", StreamAutoPlaySource.ALL_SOURCES, setOf("AddonA"), emptySet(), emptySet()
+    )
+
+    @Test fun `declarative modes choose quality balanced and smaller known file`() {
+        val hd = ranked("1080p")
+        val uhd = ranked("4k")
+        for (sources in listOf(listOf(hd, uhd), listOf(uhd, hd))) {
+            assertEquals(uhd, chooseRanked(sources, StreamAutoPlayMode.BEST_QUALITY))
+            assertEquals(hd, chooseRanked(sources, StreamAutoPlayMode.BALANCED))
+        }
+        val unknown = ranked("720p")
+        val large = ranked("720p", 8L * 1024 * 1024 * 1024)
+        val small = ranked("720p", 512L * 1024 * 1024)
+        assertEquals(small, chooseRanked(listOf(unknown, large, small), StreamAutoPlayMode.DATA_SAVER))
+    }
+
+    @Test fun `rank ties and unknown marketing metadata preserve order and manual choice`() {
+        val first = ranked(null).copy(name = "4K HDR HEVC fast", url = "https://example.com/a?token=private")
+        val second = first.copy(url = "https://example.com/b")
+        assertEquals(0, StreamAutoPlaySelector.scoreSource(first, StreamAutoPlayMode.BEST_QUALITY).total)
+        assertEquals(first, chooseRanked(listOf(first, second), StreamAutoPlayMode.BEST_QUALITY))
+        assertEquals(second, chooseRanked(listOf(second, first), StreamAutoPlayMode.BEST_QUALITY))
+        assertNull(chooseRanked(listOf(first, second), StreamAutoPlayMode.MANUAL))
+    }
+
+    @Test fun `high score cannot bypass external source and addon scope guards`() {
+        val external = ranked("4k").copy(url = null, externalUrl = "https://example.com/error")
+        val excluded = ranked("4k").copy(addonName = "Other")
+        val allowed = ranked("720p")
+        val result = StreamAutoPlaySelector.selectAutoPlayStream(listOf(external, excluded, allowed),
+            StreamAutoPlayMode.BEST_QUALITY, "", StreamAutoPlaySource.INSTALLED_ADDONS_ONLY,
+            setOf("AddonA"), emptySet(), emptySet())
+        assertEquals(allowed, result)
+    }
+
     @Test
     fun `bingeGroup-first selects matching stream before first stream mode`() {
         val first = stream(
