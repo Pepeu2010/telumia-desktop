@@ -4,11 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Build artifacts, validate a release, create a draft, or publish
+        description: Build artifacts, run focused tests, validate a release, create a draft, or publish
         required: true
         type: choice
         options:
           - build-only
+          - test-only
           - dry-run
           - draft
           - publish
@@ -77,12 +78,12 @@ jobs:
             exit 1
           fi
 
-          if [[ "${RELEASE_MODE}" != "build-only" && "${RELEASE_TARGET}" != "all" ]]; then
+          if [[ "${RELEASE_MODE}" != "build-only" && "${RELEASE_MODE}" != "test-only" && "${RELEASE_TARGET}" != "all" ]]; then
             echo "Release validation, draft, and publish modes require target=all." >&2
             exit 1
           fi
 
-          if [[ "${RELEASE_MODE}" != "build-only" ]]; then
+          if [[ "${RELEASE_MODE}" != "build-only" && "${RELEASE_MODE}" != "test-only" ]]; then
             if git rev-parse --verify --quiet "refs/tags/${RELEASE_TAG}"; then
               echo "Tag ${RELEASE_TAG} already exists." >&2
               exit 1
@@ -106,7 +107,7 @@ jobs:
           fi
 
       - name: Generate repository release notes
-        if: inputs.mode != 'build-only'
+        if: inputs.mode != 'build-only' && inputs.mode != 'test-only'
         env:
           PREVIOUS_BUMP: ${{ steps.release.outputs.previous_bump }}
           CURRENT_BUMP: ${{ steps.release.outputs.current_bump }}
@@ -132,7 +133,7 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload release notes
-        if: inputs.mode != 'build-only'
+        if: inputs.mode != 'build-only' && inputs.mode != 'test-only'
         uses: actions/upload-artifact@v7
         with:
           name: nuvio-desktop-${{ steps.release.outputs.version }}-release-notes
@@ -142,7 +143,7 @@ jobs:
 
   macos:
     name: macOS ${{ matrix.arch }}
-    if: inputs.mode != 'dry-run' && (inputs.target == 'all' || inputs.target == 'macos')
+    if: inputs.mode != 'dry-run' && inputs.mode != 'test-only' && (inputs.target == 'all' || inputs.target == 'macos')
     needs: metadata
     runs-on: ${{ matrix.runner }}
     environment: desktop-release
@@ -366,9 +367,66 @@ jobs:
           fi
           rm -f "${RUNNER_TEMP}/nuvio-release.p12"
 
+  source-ranking-tests:
+    name: Windows source ranking regression tests
+    if: inputs.mode == 'test-only' && inputs.target == 'windows'
+    needs: metadata
+    runs-on: windows-2022
+    timeout-minutes: 45
+    env:
+      SENTRY_AUTH_TOKEN: ''
+      SENTRY_DESKTOP_DSN: ''
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Install WebView2 SDK
+        shell: pwsh
+        env:
+          WEBVIEW2_VERSION: 1.0.4078.44
+        run: |
+          nuget install Microsoft.Web.WebView2 `
+            -Version $env:WEBVIEW2_VERSION `
+            -OutputDirectory "$env:RUNNER_TEMP\nuget" `
+            -DirectDownload `
+            -NonInteractive `
+            -NoCache
+          $webView2Root = Join-Path $env:RUNNER_TEMP "nuget\Microsoft.Web.WebView2.$env:WEBVIEW2_VERSION"
+          "WEBVIEW2_ROOT=$webView2Root" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Run focused Desktop tests
+        shell: pwsh
+        run: |
+          & .\gradlew.bat `
+            :composeApp:desktopTest `
+            --tests '*StreamAutoPlaySelectorTest' `
+            --tests '*PlayerSourceSelectionStorageTest' `
+            "-Pnuvio.webview2.dir=$env:WEBVIEW2_ROOT" `
+            "-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" `
+            -Pkotlin.compiler.execution.strategy=in-process `
+            --max-workers=2 `
+            --no-configuration-cache `
+            --no-daemon `
+            --stacktrace
+          if ($LASTEXITCODE -ne 0) {
+            throw "Source ranking regression tests failed with exit code $LASTEXITCODE."
+          }
+
   windows:
     name: Windows x64
-    if: inputs.mode != 'dry-run' && (inputs.target == 'all' || inputs.target == 'windows')
+    if: inputs.mode != 'dry-run' && inputs.mode != 'test-only' && (inputs.target == 'all' || inputs.target == 'windows')
     needs: metadata
     runs-on: windows-2022
     environment: desktop-release
@@ -607,7 +665,7 @@ jobs:
 
   linux_flatpak:
     name: Linux x64 - Flatpak
-    if: inputs.mode != 'dry-run' && (inputs.target == 'all' || inputs.target == 'linux')
+    if: inputs.mode != 'dry-run' && inputs.mode != 'test-only' && (inputs.target == 'all' || inputs.target == 'linux')
     needs: metadata
     runs-on: ubuntu-latest
     environment: desktop-release
@@ -740,7 +798,7 @@ jobs:
 
   linux_deb:
     name: Linux x64 - DEB
-    if: inputs.mode != 'dry-run' && (inputs.target == 'all' || inputs.target == 'linux')
+    if: inputs.mode != 'dry-run' && inputs.mode != 'test-only' && (inputs.target == 'all' || inputs.target == 'linux')
     needs:
       - metadata
     runs-on: ubuntu-latest
@@ -823,7 +881,7 @@ jobs:
 
   linux_rpm:
     name: Linux x64 - RPM
-    if: inputs.mode != 'dry-run' && (inputs.target == 'all' || inputs.target == 'linux')
+    if: inputs.mode != 'dry-run' && inputs.mode != 'test-only' && (inputs.target == 'all' || inputs.target == 'linux')
     needs:
       - metadata
     runs-on: ubuntu-latest
@@ -906,7 +964,7 @@ jobs:
 
   linux_appimage:
     name: Linux x64 - AppImage
-    if: inputs.mode != 'dry-run' && (inputs.target == 'all' || inputs.target == 'linux')
+    if: inputs.mode != 'dry-run' && inputs.mode != 'test-only' && (inputs.target == 'all' || inputs.target == 'linux')
     needs:
       - metadata
     runs-on: ubuntu-latest
@@ -1043,7 +1101,7 @@ jobs:
 
   release:
     name: Create ${{ inputs.mode }} release
-    if: inputs.mode != 'build-only' && inputs.mode != 'dry-run' && inputs.target == 'all'
+    if: inputs.mode != 'build-only' && inputs.mode != 'test-only' && inputs.mode != 'dry-run' && inputs.target == 'all'
     needs:
       - metadata
       - macos
