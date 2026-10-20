@@ -424,6 +424,36 @@ jobs:
             throw "Source ranking regression tests failed with exit code $LASTEXITCODE."
           }
 
+      - name: Verify focused test reports
+        shell: pwsh
+        run: |
+          $reportDirectory = Join-Path $env:GITHUB_WORKSPACE 'composeApp\build\test-results\desktopTest'
+          $reports = Get-ChildItem -Path $reportDirectory -Filter 'TEST-*.xml' -ErrorAction Stop |
+            Where-Object { $_.Name -match 'StreamAutoPlaySelectorTest|PlayerSourceSelectionStorageTest' }
+          if ($reports.Count -ne 2) {
+            throw "Expected both source ranking test reports; found $($reports.Count)."
+          }
+
+          $totals = [ordered]@{ tests = 0; failures = 0; errors = 0; skipped = 0 }
+          foreach ($report in $reports) {
+            [xml]$xml = Get-Content -Raw -LiteralPath $report.FullName
+            $suite = $xml.testsuite
+            if ([int]$suite.tests -lt 1) {
+              throw "Test report contains no executed tests: $($report.Name)"
+            }
+            foreach ($key in $totals.Keys) {
+              $totals[$key] += [int]$suite.GetAttribute($key)
+            }
+            "{0}: tests={1}, failures={2}, errors={3}, skipped={4}" -f `
+              $report.Name, $suite.tests, $suite.failures, $suite.errors, $suite.skipped |
+              Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          }
+          if ($totals['tests'] -lt 1 -or $totals['failures'] -ne 0 -or $totals['errors'] -ne 0) {
+            throw "Focused test report totals do not pass: $($totals | ConvertTo-Json -Compress)"
+          }
+          "TOTAL: $($totals | ConvertTo-Json -Compress)" |
+            Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
   windows:
     name: Windows x64
     if: inputs.mode != 'dry-run' && inputs.mode != 'test-only' && (inputs.target == 'all' || inputs.target == 'windows')
