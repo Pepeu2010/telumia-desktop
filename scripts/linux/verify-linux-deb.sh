@@ -63,6 +63,8 @@ fi
 for expected_path in './opt/telumia/bin/Telumia' './opt/telumia/lib/Telumia.png'; do
     if ! awk '{print $6}' "$contents_file" | grep -Fxq "$expected_path"; then
         echo "Missing Telumia launcher target: $expected_path" >&2
+        echo "Available package paths related to Telumia:" >&2
+        awk '{print $6}' "$contents_file" | grep -Ei '(^\./opt/|telumia|launcher)' >&2 || true
         exit 1
     fi
 done
