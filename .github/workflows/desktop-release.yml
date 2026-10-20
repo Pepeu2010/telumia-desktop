@@ -441,7 +441,7 @@ jobs:
             if ([int]$suite.tests -lt 1) {
               throw "Test report contains no executed tests: $($report.Name)"
             }
-            foreach ($key in $totals.Keys) {
+            foreach ($key in @('tests', 'failures', 'errors', 'skipped')) {
               $totals[$key] += [int]$suite.GetAttribute($key)
             }
             "{0}: tests={1}, failures={2}, errors={3}, skipped={4}" -f `
