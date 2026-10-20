@@ -92,6 +92,8 @@ jobs:
             --tests '*SceneBookmarkStoreTest' \
             --tests '*MediaCachePolicyTest' \
             --tests '*BrazilianCatalogTest' \
+            --tests '*StreamAutoPlaySelectorTest' \
+            --tests '*PlayerSourceSelectionStorageTest' \
             --tests '*VersionUtilsTest' \
             :composeApp:${{ matrix.task }} \
             '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' \
