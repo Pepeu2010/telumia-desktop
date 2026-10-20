@@ -415,7 +415,7 @@ jobs:
             --tests '*PlayerSourceSelectionStorageTest' `
             "-Pnuvio.webview2.dir=$env:WEBVIEW2_ROOT" `
             "-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" `
-            -Pkotlin.compiler.execution.strategy=in-process `
+            '-Pkotlin.compiler.execution.strategy=in-process' `
             --max-workers=2 `
             --no-configuration-cache `
             --no-daemon `
@@ -536,7 +536,7 @@ jobs:
             --tests '*PlayerSourceSelectionStorageTest' `
             "-Pnuvio.webview2.dir=$env:WEBVIEW2_ROOT" `
             "-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" `
-            -Pkotlin.compiler.execution.strategy=in-process `
+            '-Pkotlin.compiler.execution.strategy=in-process' `
             --max-workers=2 `
             --no-configuration-cache `
             --no-daemon `
