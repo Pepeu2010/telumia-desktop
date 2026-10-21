@@ -58,6 +58,7 @@ internal class NativePlayerController(
     private val createWaitTimeoutMs: Long = 5_000L,
     private val releaseTimeoutMs: Long = 10_000L,
     private val onCreateWaitCompleted: () -> Unit = {},
+    private val nativeControlsEnabled: Boolean = true,
 ) : PlayerEngineController {
     private companion object {
         val json = Json { ignoreUnknownKeys = true }
@@ -309,7 +310,7 @@ internal class NativePlayerController(
                         pending.headerLines.toTypedArray(),
                         pending.playWhenReady,
                         pending.initialPositionMs,
-                        NativePlayerBridge.controlsPageUrl,
+                        if (nativeControlsEnabled) NativePlayerBridge.controlsPageUrl else "",
                         pending.decoderPriority,
                         pending.nvidiaRtxSuperResolutionEnabled,
                         eventSink,
@@ -348,8 +349,8 @@ internal class NativePlayerController(
                                 "initialPositionMs=${pending.initialPositionMs}"
                         }
                         applyRememberedVolume()
+                        applyResizeMode(rememberedResizeMode, remember = false)
                         updateControls(controlsState)
-                        setResizeMode(rememberedResizeMode)
                         if (currentNowPlayingTitle.isNotEmpty() || currentArtworkUrl.isNotEmpty()) {
                             setNowPlayingMetadata(currentNowPlayingTitle, currentNowPlayingSubtitle, currentArtworkUrl)
                         }
@@ -425,6 +426,7 @@ internal class NativePlayerController(
 
     @Synchronized
     fun updateControls(state: PlayerControlsState) {
+        if (!nativeControlsEnabled) return
         host.setControlsVisible(state.controlsVisible)
         val currentHandle = handle
         val current = currentHandle.takeIf { it != 0L } ?: run {
@@ -528,7 +530,15 @@ internal class NativePlayerController(
     }
 
     fun setResizeMode(mode: PlayerResizeMode) {
-        rememberedResizeMode = mode
+        applyResizeMode(mode, remember = true)
+    }
+
+    fun setTransientResizeMode(mode: PlayerResizeMode) {
+        applyResizeMode(mode, remember = false)
+    }
+
+    private fun applyResizeMode(mode: PlayerResizeMode, remember: Boolean) {
+        if (remember) rememberedResizeMode = mode
         handle.takeIf { it != 0L }?.let { current ->
             NativePlayerBridge.setResizeMode(
                 handle = current,
@@ -982,6 +992,13 @@ internal class NativePlayerController(
     override fun pause() {
         log.d { "pause handle=$handle" }
         handle.takeIf { it != 0L }?.let { NativePlayerBridge.setPaused(it, true) }
+    }
+
+    override fun setMuted(muted: Boolean) {
+        val current = handle
+        if (current == 0L) return
+        val level = if (muted) 0f else currentVolumeLevel.coerceDesktopPlayerVolumeLevel()
+        NativePlayerBridge.setVolume(current, level)
     }
 
     override fun seekTo(positionMs: Long) {

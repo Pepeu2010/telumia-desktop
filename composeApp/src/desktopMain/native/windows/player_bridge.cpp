@@ -1502,7 +1502,11 @@ private:
             throw std::runtime_error("Unable to create native player container window.");
         }
 
-        startWebView(controlsUrl);
+        // Hero previews use the same libmpv renderer without the full playback
+        // controls surface. An empty URL is an explicit request to omit WebView2.
+        if (!controlsUrl.empty()) {
+            startWebView(controlsUrl);
+        }
         startMpv(sourceUrl, headerLines, playWhenReady, initialPositionMs, decoderPriority, nvidiaRtxSuperResolutionEnabled);
         layoutNativeSubviews();
         if (!SetTimer(messageHwnd, NUVIO_TIMER_ID, 500, nullptr)) {

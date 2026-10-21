@@ -20,6 +20,49 @@ private val failNativeCreate: NativePlayerCreate = { _, _, _, _, _, _, _, _, _ -
 
 class NativePlayerControllerTeardownTest {
     @Test
+    fun heroPreviewCanCreateNativePlayerWithoutThePlaybackControlsWebView() {
+        val createStarted = CountDownLatch(1)
+        val allowCreate = CountDownLatch(1)
+        val disposed = CountDownLatch(1)
+        var controlsPageUrl: String? = null
+        val controller = NativePlayerController(
+            host = NativePlayerHost(),
+            nativeCreate = { _, _, _, _, _, controlsUrl, _, _, _ ->
+                controlsPageUrl = controlsUrl
+                createStarted.countDown()
+                allowCreate.await()
+                73L
+            },
+            nativeDispose = { handle ->
+                assertEquals(73L, handle)
+                disposed.countDown()
+            },
+            isHostDisplayable = { true },
+            resolveHostView = { 1L },
+            nativeControlsEnabled = false,
+        )
+
+        controller.attach(
+            sourceUrl = "https://example.invalid/trailer.mp4",
+            sourceHeaders = emptyMap(),
+            playWhenReady = false,
+            initialPositionMs = 0L,
+            decoderPriority = 0,
+            nvidiaRtxSuperResolutionEnabled = false,
+            onError = {},
+        )
+
+        assertTrue(createStarted.await(2, TimeUnit.SECONDS))
+        assertEquals("", controlsPageUrl)
+        controller.dispose()
+        allowCreate.countDown()
+
+        assertTrue(disposed.await(2, TimeUnit.SECONDS))
+        SwingUtilities.invokeAndWait {}
+        assertNull(controller.pendingSourceForTest())
+    }
+
+    @Test
     fun completesNavigationOnlyAfterNativeHandleIsDisposed() {
         val events = Collections.synchronizedList(mutableListOf<String>())
         val released = CountDownLatch(1)

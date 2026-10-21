@@ -15,4 +15,17 @@ actual fun HeroTrailerPlayerSurface(
     onReady: () -> Unit,
     onEnded: () -> Unit,
     onError: () -> Unit,
-) = Unit
+) {
+    WindowsHeroTrailerPlayerSurface(
+        sourceUrl = sourceUrl,
+        sourceAudioUrl = sourceAudioUrl,
+        playWhenReady = playWhenReady,
+        muted = muted,
+        startPositionMillis = startPositionMillis,
+        fillFrame = fillFrame,
+        modifier = modifier,
+        onReady = onReady,
+        onEnded = onEnded,
+        onError = onError,
+    )
+}
