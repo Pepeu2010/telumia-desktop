@@ -65,7 +65,7 @@ class NativeTimelineFramesTest {
 
     @Test fun actualWindowsPrimaryPlayerPreservesHttpHeadersAndPreviewDoesNotSeekPlayback() {
         org.junit.Assume.assumeTrue("Windows native player integration gate", DesktopHostOs.current == DesktopHostOs.WINDOWS)
-        val bytes = originalAvi()
+        val bytes = originalAviFixture()
         val header = "alpha,beta\\tail"
         val accepted = AtomicInteger()
         val requests = AtomicInteger()
@@ -153,7 +153,7 @@ class NativeTimelineFramesTest {
     }
 
     @Test fun authenticatedHttpFixturePreservesCommaAndBackslashHeaderValues() {
-        val bytes=originalAvi();val requests=AtomicInteger();val header="alpha,beta\\tail"
+        val bytes=originalAviFixture();val requests=AtomicInteger();val header="alpha,beta\\tail"
         val observedHeaders=java.util.concurrent.CopyOnWriteArrayList<String>()
         val server=HttpServer.create(InetSocketAddress("127.0.0.1",0),0)
         server.createContext("/original.avi") { exchange ->
@@ -190,7 +190,7 @@ class NativeTimelineFramesTest {
         val server=HttpServer.create(InetSocketAddress("127.0.0.1",0),0)
         server.createContext("/delayed.avi") { exchange ->
             try {
-                val bytes=originalAvi();exchange.sendResponseHeaders(200,bytes.size.toLong());entered.countDown()
+                val bytes=originalAviFixture();exchange.sendResponseHeaders(200,bytes.size.toLong());entered.countDown()
                 release.await(5,TimeUnit.SECONDS)
                 runCatching {exchange.responseBody.write(bytes)}
             } finally {exchange.close()}
@@ -211,7 +211,7 @@ class NativeTimelineFramesTest {
 
     @Test fun actualWorkerFilmstripContainsDistinctAvailableNeighborFrames() {
         val directory=Files.createTempDirectory("telumia-native-filmstrip")
-        val fixture=directory.resolve("original.avi");Files.write(fixture,originalAvi())
+        val fixture=directory.resolve("original.avi");Files.write(fixture,originalAviFixture())
         val cache=BoundedFileCache(directory.resolve("thumbnails"),{1048576L})
         val strip=BoundedFileCache(directory.resolve("filmstrip"),{1048576L})
         val completed=CountDownLatch(1);val released=CountDownLatch(1)
@@ -236,7 +236,7 @@ class NativeTimelineFramesTest {
     @Test fun actualJniExtractsDistinctFramesWithBoundedDimensionsAndReleasesHandles() {
         val directory = Files.createTempDirectory("telumia-frames-á-")
         val fixture = directory.resolve("cenas originais.avi")
-        Files.write(fixture, originalAvi())
+        Files.write(fixture, originalAviFixture())
         val first = NativePlayerBridge.createTimelineWorker(fixture.toString(), emptyArray())
         val second = NativePlayerBridge.createTimelineWorker(fixture.toString(), emptyArray())
         try {
@@ -261,27 +261,61 @@ class NativeTimelineFramesTest {
         Files.delete(fixture); Files.delete(directory)
     }
 
-    private fun originalAvi(): ByteArray {
-        fun ints(vararg values: Int) = ByteBuffer.allocate(values.size * 4).order(ByteOrder.LITTLE_ENDIAN).apply { values.forEach(::putInt) }.array()
-        fun chunk(kind: String, bytes: ByteArray) = kind.toByteArray() + ints(bytes.size) + bytes + if (bytes.size % 2 == 1) byteArrayOf(0) else byteArrayOf()
-        val width = 96; val height = 54; val size = width * height * 3
-        val avih = ints(500000, size * 2, 0, 16, 12, 0, 1, size, width, height, 0, 0, 0, 0)
-        val strh = ByteBuffer.allocate(56).order(ByteOrder.LITTLE_ENDIAN).apply {
-            put("vidsDIB ".toByteArray()); putInt(0); putShort(0); putShort(0)
-            listOf(0,1,2,0,12,size,-1,0).forEach(::putInt)
-            putShort(0); putShort(0); putShort(width.toShort()); putShort(height.toShort())
-        }.array()
-        val strf = ByteBuffer.allocate(40).order(ByteOrder.LITTLE_ENDIAN).apply {
-            putInt(40); putInt(width); putInt(height); putShort(1); putShort(24)
-            listOf(0,size,0,0,0,0).forEach(::putInt)
-        }.array()
-        val headers = chunk("LIST", "hdrl".toByteArray() + chunk("avih", avih) + chunk("LIST", "strl".toByteArray() + chunk("strh", strh) + chunk("strf", strf)))
-        var frames = byteArrayOf(); var index = byteArrayOf(); var offset = 4
-        for (frame in 0 until 12) {
-            val colors = ByteArray(3) { (frame + 2).toByte() }; colors[2 - frame / 4] = -1
-            val pixels = ByteArray(size) { colors[it % 3] }; val encoded = chunk("00db", pixels)
-            frames += encoded; index += "00db".toByteArray() + ints(16, offset, size); offset += encoded.size
-        }
-        return chunk("RIFF", "AVI ".toByteArray() + headers + chunk("LIST", "movi".toByteArray() + frames) + chunk("idx1", index))
+}
+
+internal fun originalAviFixture(): ByteArray {
+    fun ints(vararg values: Int) = ByteBuffer.allocate(values.size * 4)
+        .order(ByteOrder.LITTLE_ENDIAN)
+        .apply { values.forEach(::putInt) }
+        .array()
+
+    fun chunk(kind: String, bytes: ByteArray) =
+        kind.toByteArray() + ints(bytes.size) + bytes + if (bytes.size % 2 == 1) byteArrayOf(0) else byteArrayOf()
+
+    val width = 96
+    val height = 54
+    val size = width * height * 3
+    val avih = ints(500000, size * 2, 0, 16, 12, 0, 1, size, width, height, 0, 0, 0, 0)
+    val strh = ByteBuffer.allocate(56).order(ByteOrder.LITTLE_ENDIAN).apply {
+        put("vidsDIB ".toByteArray())
+        putInt(0)
+        putShort(0)
+        putShort(0)
+        listOf(0, 1, 2, 0, 12, size, -1, 0).forEach(::putInt)
+        putShort(0)
+        putShort(0)
+        putShort(width.toShort())
+        putShort(height.toShort())
+    }.array()
+    val strf = ByteBuffer.allocate(40).order(ByteOrder.LITTLE_ENDIAN).apply {
+        putInt(40)
+        putInt(width)
+        putInt(height)
+        putShort(1)
+        putShort(24)
+        listOf(0, size, 0, 0, 0, 0).forEach(::putInt)
+    }.array()
+    val headers = chunk(
+        "LIST",
+        "hdrl".toByteArray() + chunk(
+            "avih",
+            avih,
+        ) + chunk(
+            "LIST",
+            "strl".toByteArray() + chunk("strh", strh) + chunk("strf", strf),
+        ),
+    )
+    var frames = byteArrayOf()
+    var index = byteArrayOf()
+    var offset = 4
+    for (frame in 0 until 12) {
+        val colors = ByteArray(3) { (frame + 2).toByte() }
+        colors[2 - frame / 4] = -1
+        val pixels = ByteArray(size) { colors[it % 3] }
+        val encoded = chunk("00db", pixels)
+        frames += encoded
+        index += "00db".toByteArray() + ints(16, offset, size)
+        offset += encoded.size
     }
+    return chunk("RIFF", "AVI ".toByteArray() + headers + chunk("LIST", "movi".toByteArray() + frames) + chunk("idx1", index))
 }

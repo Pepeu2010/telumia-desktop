@@ -5,6 +5,9 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
+import java.nio.file.Files
+import javax.swing.JFrame
 import javax.swing.SwingUtilities
 import kotlin.concurrent.thread
 import kotlin.test.Test
@@ -13,12 +16,77 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import org.junit.Assume.assumeTrue
 
 private val failNativeCreate: NativePlayerCreate = { _, _, _, _, _, _, _, _, _ ->
     error("native create must not run in lifecycle unit tests")
 }
 
 class NativePlayerControllerTeardownTest {
+    @Test
+    fun windowsNativeInlinePlayerDecodesAndPlaysLocalVideoWithoutControlsWebView() {
+        assumeTrue("the packaged libmpv playback gate is Windows-specific", DesktopHostOs.current == DesktopHostOs.WINDOWS)
+        val fixture = Files.createTempFile("telumia-preview-", ".avi")
+        Files.write(fixture, originalAviFixture())
+        val host = NativePlayerHost()
+        val window = JFrame("Telumia preview decoder smoke")
+        val nativeError = AtomicReference<String?>(null)
+        val released = CountDownLatch(1)
+        val releaseError = AtomicReference<String?>(null)
+        val controller = NativePlayerController(host = host, nativeControlsEnabled = false)
+        try {
+            SwingUtilities.invokeAndWait {
+                window.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
+                window.contentPane.add(host)
+                window.setSize(640, 360)
+                window.addNotify()
+                window.validate()
+            }
+
+            controller.attach(
+                sourceUrl = fixture.toAbsolutePath().toString(),
+                sourceHeaders = emptyMap(),
+                playWhenReady = false,
+                initialPositionMs = 0L,
+                decoderPriority = 0,
+                nvidiaRtxSuperResolutionEnabled = false,
+                onError = nativeError::set,
+            )
+
+            val loadDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(12)
+            var snapshot = controller.snapshot()
+            while ((snapshot.isLoading || snapshot.durationMs <= 0L) &&
+                System.nanoTime() < loadDeadline && nativeError.get() == null
+            ) {
+                Thread.sleep(50L)
+                snapshot = controller.snapshot()
+            }
+            assertTrue(
+                snapshot.durationMs == 6_000L,
+                "libmpv did not load the local AVI fixture (error=${nativeError.get()})",
+            )
+
+            controller.setTransientResizeMode(com.nuvio.app.features.player.PlayerResizeMode.Fit)
+            controller.setMuted(true)
+            controller.play()
+            val playDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(4)
+            while (!snapshot.isPlaying && !snapshot.isEnded && System.nanoTime() < playDeadline) {
+                Thread.sleep(50L)
+                snapshot = controller.snapshot()
+            }
+            assertTrue(snapshot.isPlaying || snapshot.isEnded, "libmpv opened the source but never entered playback")
+        } finally {
+            controller.releaseBeforeNavigation(
+                onReleased = { released.countDown() },
+                onReleaseFailed = { message -> releaseError.set(message); released.countDown() },
+            )
+            assertTrue(released.await(20, TimeUnit.SECONDS), "native preview session did not release")
+            assertNull(releaseError.get(), "native preview teardown failed")
+            SwingUtilities.invokeAndWait { window.dispose() }
+            Files.deleteIfExists(fixture)
+        }
+    }
+
     @Test
     fun heroPreviewCanCreateNativePlayerWithoutThePlaybackControlsWebView() {
         val createStarted = CountDownLatch(1)
