@@ -1,5 +1,12 @@
 package com.nuvio.app.features.player.metadata
 
+data class SceneInfoLoadResult(
+    val scope: TimedMetadataScope,
+    val positionMs: Long,
+    val entries: List<SceneInfoEntry>,
+    val failures: List<TimedMetadataProviderFailure>,
+)
+
 /** UI-safe scene facts projected only from trusted, edition-specific timed events. */
 data class SceneInfoEntry(
     val id: String,
@@ -41,4 +48,30 @@ fun TimedMetadataTimeline.sceneInfoAt(
         )
         is TimedMetadataBody.Segment, is TimedMetadataBody.Bookmark -> null
     }
+}
+
+/** Loads scene facts through the registered-provider policy before projecting a playback instant. */
+suspend fun loadSceneInfoAt(
+    scope: TimedMetadataScope,
+    positionMs: Long,
+    providers: List<TimedMetadataProvider>,
+    trustedSceneProviderIds: Set<String>,
+    durationMs: Long? = null,
+    minimumConfidence: Double = 0.8,
+): SceneInfoLoadResult {
+    if (scope.editionId.isNullOrBlank() || positionMs < 0) {
+        return SceneInfoLoadResult(scope, positionMs, emptyList(), emptyList())
+    }
+    val loaded = loadTimedMetadata(
+        scope = scope,
+        providers = providers,
+        durationMs = durationMs,
+        trustedSceneProviderIds = trustedSceneProviderIds,
+    )
+    return SceneInfoLoadResult(
+        scope = scope,
+        positionMs = positionMs,
+        entries = loaded.timeline.sceneInfoAt(positionMs, minimumConfidence),
+        failures = loaded.failures,
+    )
 }
