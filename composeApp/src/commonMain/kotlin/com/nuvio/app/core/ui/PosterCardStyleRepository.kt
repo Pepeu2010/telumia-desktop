@@ -1,5 +1,6 @@
 package com.nuvio.app.core.ui
 
+import com.nuvio.app.core.build.AppFeaturePolicy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +31,7 @@ private data class StoredPosterCardStylePreferences(
     val hideLabelsEnabled: Boolean = false,
     val hoverPreviewEnabled: Boolean = true,
     val hoverPreviewOpenDelayMillis: Int = DefaultHoverPreviewOpenDelayMillis,
-    val hoverPreviewTrailerEnabled: Boolean = false,
+    val hoverPreviewTrailerEnabled: Boolean = AppFeaturePolicy.hoverTrailerPlaybackSupported,
     val hoverPreviewTrailerSoundEnabled: Boolean = false,
     val hoverPreviewTrailerStartSeconds: Int = DefaultHoverPreviewTrailerStartSeconds,
     val alwaysShowLandscapeClearlogo: Boolean = false,
@@ -44,7 +45,7 @@ data class PosterCardStyleUiState(
     val hideLabelsEnabled: Boolean = false,
     val hoverPreviewEnabled: Boolean = true,
     val hoverPreviewOpenDelayMillis: Int = DefaultHoverPreviewOpenDelayMillis,
-    val hoverPreviewTrailerEnabled: Boolean = false,
+    val hoverPreviewTrailerEnabled: Boolean = AppFeaturePolicy.hoverTrailerPlaybackSupported,
     val hoverPreviewTrailerSoundEnabled: Boolean = false,
     val hoverPreviewTrailerStartSeconds: Int = DefaultHoverPreviewTrailerStartSeconds,
     val alwaysShowLandscapeClearlogo: Boolean = false,

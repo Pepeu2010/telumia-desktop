@@ -1499,7 +1499,23 @@ private:
             this
         );
         if (!containerHwnd) {
-            throw std::runtime_error("Unable to create native player container window.");
+            const DWORD errorCode = GetLastError();
+            const HWND parentWindow = GetParent(hostHwnd);
+            const HWND rootWindow = GetAncestor(hostHwnd, GA_ROOT);
+            throw std::runtime_error(
+                "Unable to create native player container window (Win32 error " +
+                std::to_string(errorCode) + ", host=" +
+                std::to_string(reinterpret_cast<intptr_t>(hostHwnd)) +
+                ", hostValid=" + (IsWindow(hostHwnd) ? "true" : "false") +
+                ", hostParent=" +
+                std::to_string(reinterpret_cast<intptr_t>(parentWindow)) +
+                ", hostRoot=" +
+                std::to_string(reinterpret_cast<intptr_t>(rootWindow)) +
+                ", hostStyle=" +
+                std::to_string(GetWindowLongPtrW(hostHwnd, GWL_STYLE)) +
+                ", hostExStyle=" +
+                std::to_string(GetWindowLongPtrW(hostHwnd, GWL_EXSTYLE)) + ")."
+            );
         }
 
         // Hero previews use the same libmpv renderer without the full playback

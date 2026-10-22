@@ -71,7 +71,6 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import com.nuvio.app.core.build.AppFeaturePolicy
-import com.nuvio.app.core.build.TrailerPlaybackMode
 import com.nuvio.app.core.format.formatReleaseDateForDisplay
 import com.nuvio.app.core.ui.NuvioAsyncImage
 import com.nuvio.app.core.ui.NuvioPosterWatchedOverlay
@@ -124,8 +123,10 @@ internal fun HomePosterHoverPreview(
     onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     previewSettings: PosterCardStyleUiState? = null,
-    trailerPreviewSupported: Boolean = AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP,
+    trailerPreviewSupported: Boolean = AppFeaturePolicy.hoverTrailerPlaybackSupported,
     trailerResolver: suspend (MetaPreview) -> TrailerPlaybackSource? = ::resolveHomePosterHoverTrailerPlaybackSource,
+    onTrailerReady: () -> Unit = {},
+    onTrailerError: () -> Unit = {},
     content: @Composable (Modifier) -> Unit,
 ) {
     if (!isDesktop) {
@@ -329,6 +330,8 @@ internal fun HomePosterHoverPreview(
                         trailerSoundEnabled = posterCardStyle.hoverPreviewTrailerSoundEnabled,
                         trailerStartSeconds = posterCardStyle.hoverPreviewTrailerStartSeconds,
                         trailerPlaybackSource = trailerPlaybackSource.takeIf { ownsPreview && hoverHeld },
+                        onTrailerReady = onTrailerReady,
+                        onTrailerError = onTrailerError,
                         modifier = Modifier
                             .testTag("home-hover-preview")
                             .hoverable(previewInteractionSource)
@@ -365,6 +368,8 @@ private fun HomePosterPreviewCard(
     trailerSoundEnabled: Boolean,
     trailerStartSeconds: Int,
     trailerPlaybackSource: TrailerPlaybackSource?,
+    onTrailerReady: () -> Unit,
+    onTrailerError: () -> Unit,
     modifier: Modifier,
     onClick: (() -> Unit)?,
     onLongClick: (() -> Unit)?,
@@ -415,6 +420,8 @@ private fun HomePosterPreviewCard(
                     playbackSource = trailerPlaybackSource,
                     soundEnabled = trailerSoundEnabled,
                     startPositionSeconds = trailerStartSeconds,
+                    onReady = onTrailerReady,
+                    onError = onTrailerError,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

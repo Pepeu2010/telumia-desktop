@@ -18,6 +18,7 @@ expect object AppFeaturePolicy {
     val externalPlayerSupported: Boolean
     val trailerPlaybackMode: TrailerPlaybackMode
     val heroTrailerPlaybackSupported: Boolean
+    val hoverTrailerPlaybackSupported: Boolean
     val inAppUpdaterEnabled: Boolean
     val imdbRatingLogoEnabled: Boolean
     val mediaPlaybackForegroundServiceEnabled: Boolean

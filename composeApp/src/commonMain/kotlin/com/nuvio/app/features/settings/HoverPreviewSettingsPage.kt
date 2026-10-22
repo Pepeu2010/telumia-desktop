@@ -21,7 +21,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.build.AppFeaturePolicy
-import com.nuvio.app.core.build.TrailerPlaybackMode
 import com.nuvio.app.core.ui.HoverPreviewOpenDelayStepMillis
 import com.nuvio.app.core.ui.HoverPreviewTrailerStartStepSeconds
 import com.nuvio.app.core.ui.MaxHoverPreviewOpenDelayMillis
@@ -74,7 +73,7 @@ internal fun LazyListScope.hoverPreviewSettingsContent(
             }
         }
     }
-    if (AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP) {
+    if (AppFeaturePolicy.hoverTrailerPlaybackSupported) {
         item {
             SettingsSection(
                 title = stringResource(Res.string.settings_hover_preview_section_trailer),

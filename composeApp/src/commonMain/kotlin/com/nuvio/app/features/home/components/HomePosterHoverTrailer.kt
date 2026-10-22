@@ -7,6 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -28,9 +29,12 @@ internal fun HomePosterHoverTrailer(
     playbackSource: TrailerPlaybackSource?,
     soundEnabled: Boolean,
     startPositionSeconds: Int,
+    onReady: () -> Unit = {},
+    onError: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val motion = LocalUiMotion.current
+    val latestOnReady = rememberUpdatedState(onReady)
     var trailerReady by remember(playbackSource?.videoUrl, playbackSource?.audioUrl) { mutableStateOf(false) }
     var trailerFinished by remember(playbackSource?.videoUrl, playbackSource?.audioUrl) { mutableStateOf(false) }
     var playerMounted by remember(playbackSource?.videoUrl, playbackSource?.audioUrl) {
@@ -61,6 +65,7 @@ internal fun HomePosterHoverTrailer(
             onReady = {
                 if (!trailerFinished) {
                     trailerReady = true
+                    latestOnReady.value()
                 }
             },
             onEnded = {
@@ -70,6 +75,7 @@ internal fun HomePosterHoverTrailer(
             onError = {
                 trailerReady = false
                 trailerFinished = true
+                onError()
             },
         )
     }

@@ -99,6 +99,7 @@ private fun WindowsHeroTrailerPlayerSession(
         // the extractor returned a separate audio track, fall back to artwork instead of
         // playing a misleading, video-only preview on Windows.
         if (!muted && !sourceAudioUrl.isNullOrBlank()) {
+            System.err.println("[TelumiaPreview] unsupported audio-combined preview muted=$muted separateAudio=true")
             controller.pause()
             controller.dispose()
             mediaReady = false
@@ -119,6 +120,7 @@ private fun WindowsHeroTrailerPlayerSession(
             decoderPriority = 0,
             nvidiaRtxSuperResolutionEnabled = false,
             onError = {
+                System.err.println("[TelumiaPreview] native player error detail=${it ?: "unknown"}")
                 if (!terminalReported) {
                     terminalReported = true
                     latestOnError.value()
@@ -136,6 +138,7 @@ private fun WindowsHeroTrailerPlayerSession(
         } ?: false
 
         if (!ready) {
+            System.err.println("[TelumiaPreview] media readiness timeout snapshot=${controller.snapshot()}")
             if (!terminalReported) {
                 terminalReported = true
                 controller.dispose()
