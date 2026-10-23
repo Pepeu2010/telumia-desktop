@@ -144,6 +144,7 @@ private fun NativePlayerSurface(
     val bookmarkJobs = rememberCoroutineScope()
     val bookmarkScopes = remember { MutableStateFlow<SceneBookmarkScope?>(null) }
     val bookmarkDialogOpen = remember { mutableStateOf(false) }
+    val sceneInfoDialogOpen = remember { mutableStateOf(false) }
     val bookmarkPosition = remember { mutableStateOf(PlayerPlaybackSnapshot()) }
     val profileState by ProfileRepository.state.collectAsState()
     val authState by AuthRepository.state.collectAsState()
@@ -164,7 +165,10 @@ private fun NativePlayerSurface(
         bookmarkScopes.value = requestedBookmarkScope
         controller.configureTimelineFrames(requestedBookmarkScope, sourceUrl, playbackHeaders)
     }
-    LaunchedEffect(requestedBookmarkScope) { bookmarkDialogOpen.value = false }
+    LaunchedEffect(requestedBookmarkScope) {
+        bookmarkDialogOpen.value = false
+        sceneInfoDialogOpen.value = false
+    }
     val mergedControls = playerControlsState.copy(
         showSceneBookmarks = requestedBookmarkScope != null,
         timedMarkers = (playerControlsState.timedMarkers +
@@ -212,6 +216,10 @@ private fun NativePlayerSurface(
                 if (type == "sceneBookmarks" && latestBookmarkScope.value != null &&
                     bookmarkScopes.value == latestBookmarkScope.value && !DesktopPlayerPictureInPicture.isEnabled) {
                     bookmarkDialogOpen.value = true
+                    true
+                } else if (type == "sceneInfo" && latestMergedControls.value.sceneInfoEntries.isNotEmpty() &&
+                    !DesktopPlayerPictureInPicture.isEnabled) {
+                    sceneInfoDialogOpen.value = true
                     true
                 } else latestOnPlayerControlsEvent.value(type, value)
             },
@@ -326,6 +334,17 @@ private fun NativePlayerSurface(
             DesktopSceneBookmarksPanel(visibleBookmarkState, bookmarkPosition.value.positionMs,
                 bookmarks.canSave(bookmarkPosition.value), onSave = bookmarks::save, onRename = bookmarks::rename,
                 onRemove = bookmarks::remove, onJump = bookmarks::jump, onRetry = bookmarks::retry, onDismiss = closeBookmarks)
+        }
+    }
+
+    if (sceneInfoDialogOpen.value && !isInPip) {
+        val closeSceneInfo = {
+            sceneInfoDialogOpen.value = false
+            controller.requestKeyboardFocus()
+        }
+        DialogWindow(onCloseRequest = closeSceneInfo, title = playerControlsState.sceneInfoLabel,
+            state = rememberDialogState(width = 620.dp, height = 520.dp)) {
+            DesktopSceneInfoPanel(playerControlsState.sceneInfoEntries, onDismiss = closeSceneInfo)
         }
     }
 

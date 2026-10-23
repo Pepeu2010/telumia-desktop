@@ -1459,4 +1459,11 @@
     <string name="profile_mutation_failed">Não foi possível confirmar a alteração do perfil. O editor continua aberto; verifique a conexão e tente novamente.</string>
     <string name="telumia_profile_selection_hint">Escolha um perfil para continuar.</string>
     <string name="telumia_profile_selection_empty">Crie seu primeiro perfil para começar.</string>
+    <string name="scene_info_title">Informações da cena</string>
+    <string name="scene_info_actor">Em cena</string>
+    <string name="scene_info_music">Música</string>
+    <string name="scene_info_chapter">Capítulo</string>
+    <string name="scene_info_trivia">Sobre este momento</string>
+    <string name="scene_info_close">Fechar</string>
+    <string name="scene_info_empty">Não há informações verificadas disponíveis para este momento.</string>
 </resources>

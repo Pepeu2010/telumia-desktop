@@ -345,6 +345,8 @@ let state = {
   motionPanelMillis: 220,
   showSceneBookmarks: false,
   sceneBookmarksLabel: "Saved moments",
+  showSceneInfo: false,
+  sceneInfoLabel: "Scene Info",
   themeAccentGradientColors: [],
   themeAccentStrongColor: "#3c7bff",
   themeOnAccentColor: "#fff",
@@ -2433,6 +2435,13 @@ const renderChrome = () => {
     if (text) text.textContent = state.sceneBookmarksLabel || "Saved moments";
   }
   setActionButtonLabel("sceneBookmarks", state.sceneBookmarksLabel || "Saved moments");
+  const sceneInfoButton = document.querySelector('[data-command="sceneInfo"]');
+  if (sceneInfoButton) {
+    sceneInfoButton.hidden = !state.showSceneInfo;
+    const text = sceneInfoButton.querySelector('span');
+    if (text) text.textContent = state.sceneInfoLabel || "Scene Info";
+  }
+  setActionButtonLabel("sceneInfo", state.sceneInfoLabel || "Scene Info");
   setActionButtonLabel("sources", state.sourcesLabel || "Sources");
   setActionButtonLabel("episodes", state.episodesLabel || "Episodes");
   if (pipButton) {
@@ -2843,6 +2852,10 @@ document.querySelectorAll("[data-command]").forEach(button => {
     }
     if (command === "sceneBookmarks") {
       if (state.showSceneBookmarks && !state.isInPip) send("sceneBookmarks", 0);
+      return;
+    }
+    if (command === "sceneInfo") {
+      if (state.showSceneInfo && !state.isInPip) send("sceneInfo", 0);
       return;
     }
     if (command === "sources") {

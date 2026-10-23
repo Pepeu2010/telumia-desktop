@@ -2561,4 +2561,11 @@
     <string name="profile_mutation_failed">Could not confirm this profile change. Your editor remains open; check your connection and try again.</string>
     <string name="telumia_profile_selection_hint">Choose a profile to continue.</string>
     <string name="telumia_profile_selection_empty">Create your first profile to get started.</string>
+    <string name="scene_info_title">Scene Info</string>
+    <string name="scene_info_actor">On screen</string>
+    <string name="scene_info_music">Music</string>
+    <string name="scene_info_chapter">Chapter</string>
+    <string name="scene_info_trivia">More about this moment</string>
+    <string name="scene_info_close">Close</string>
+    <string name="scene_info_empty">No verified scene details are available at this moment.</string>
 </resources>

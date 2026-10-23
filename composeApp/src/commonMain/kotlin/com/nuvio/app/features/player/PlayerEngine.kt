@@ -260,6 +260,8 @@ data class PlayerControlsState(
     val metadataScope: com.nuvio.app.features.player.metadata.TimedMetadataScope? = null,
     val showSceneBookmarks: Boolean = false,
     val sceneBookmarksLabel: String = "Saved moments",
+    val sceneInfoEntries: List<com.nuvio.app.features.player.metadata.SceneInfoEntry> = emptyList(),
+    val sceneInfoLabel: String = "Scene Info",
 )
 
 data class PlayerControlFilterItem(
