@@ -183,6 +183,20 @@ object ThemeColors {
         backgroundCard = Color(0xFF222222),
     )
 
+    val Telumia = ThemeColorPalette(
+        secondary = Color(0xFFF3A652),
+        secondaryVariant = Color(0xFFEC7460),
+        accentGradient = listOf(Color(0xFFFFF0D6), Color(0xFFF3A652), Color(0xFFEC7460)),
+        nativeAccentHex = "#F3A652",
+        onSecondary = Color(0xFF151819),
+        onSecondaryVariant = Color(0xFF151819),
+        focusRing = Color(0xFFFFD295),
+        focusBackground = Color(0xFF3A2721),
+        background = Color(0xFF0C1418),
+        backgroundElevated = Color(0xFF142127),
+        backgroundCard = Color(0xFF1A2A30),
+    )
+
     fun getColorPalette(
         theme: AppTheme,
         customColors: CustomThemeColors = CustomThemeColors.Default,
@@ -199,6 +213,7 @@ object ThemeColors {
         AppTheme.EMERALD -> Emerald
         AppTheme.AMBER -> Amber
         AppTheme.ROSE -> Rose
+        AppTheme.TELUMIA -> Telumia
         AppTheme.WHITE -> White
     }
 }

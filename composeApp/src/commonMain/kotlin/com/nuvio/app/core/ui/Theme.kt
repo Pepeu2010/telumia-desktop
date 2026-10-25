@@ -27,10 +27,10 @@ import nuvio.composeapp.generated.resources.manrope_regular
 import nuvio.composeapp.generated.resources.manrope_semibold
 import org.jetbrains.compose.resources.Font
 
-val LocalAppTheme = staticCompositionLocalOf { AppTheme.WHITE }
+val LocalAppTheme = staticCompositionLocalOf { AppTheme.TELUMIA }
 val LocalNavigationMotion = androidx.compose.runtime.compositionLocalOf { NavigationMotion.FULL }
 val LocalUiMotion = androidx.compose.runtime.compositionLocalOf { UiMotionPolicy() }
-val LocalThemePalette = staticCompositionLocalOf { ThemeColors.White }
+val LocalThemePalette = staticCompositionLocalOf { ThemeColors.Telumia }
 
 val MaterialTheme.themePalette: ThemeColorPalette
     @Composable
@@ -220,7 +220,7 @@ internal fun desktopUiScaleForWindow(widthDp: Float, heightDp: Float): Float {
 @Composable
 fun NuvioTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    appTheme: AppTheme = AppTheme.WHITE,
+    appTheme: AppTheme = AppTheme.TELUMIA,
     amoled: Boolean = false,
     navigationMotion: NavigationMotion = NavigationMotion.FULL,
     animationIntensity: AnimationIntensity = AnimationIntensity.STANDARD,

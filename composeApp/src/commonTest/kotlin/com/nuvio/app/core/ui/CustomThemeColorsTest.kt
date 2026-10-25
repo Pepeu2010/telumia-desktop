@@ -98,6 +98,18 @@ class CustomThemeColorsTest {
     }
 
     @Test
+    fun telumiaDefaultPaletteUsesBrandColorsAndReadableFocusedContent() {
+        val palette = ThemeColors.getColorPalette(AppTheme.TELUMIA)
+
+        assertEquals(Color(0xFFF3A652), palette.secondary)
+        assertEquals(Color(0xFFEC7460), palette.secondaryVariant)
+        assertEquals(Color(0xFF151819), palette.onSecondary)
+        assertEquals(Color(0xFFFFD295), palette.focusRing)
+        assertEquals(Color(0xFF0C1418), palette.background)
+        assertEquals("#F3A652", palette.nativeAccentHex)
+    }
+
+    @Test
     fun solidColorsUseOneBrushColorAndKeepTheExistingStorageFormat() {
         val colors = CustomThemeColors.solid(0x123456)
         val color = Color(0xFF123456)

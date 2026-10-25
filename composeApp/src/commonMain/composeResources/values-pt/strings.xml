@@ -1071,6 +1071,7 @@
     <string name="theme_rose">Rosa</string>
     <string name="theme_violet">Violeta</string>
     <string name="theme_white">Branco</string>
+    <string name="theme_telumia">Telumia</string>
     <string name="player_next_episode">Próximo episódio</string>
     <string name="player_next_episode_finding_source">A procurar fonte…</string>
     <string name="player_next_episode_playing_via_countdown">A reproduzir via %1$s em %2$ds…</string>
