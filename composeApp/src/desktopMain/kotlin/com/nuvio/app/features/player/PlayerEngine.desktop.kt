@@ -153,6 +153,32 @@ private fun NativePlayerSurface(
         val owner = profileState.activeProfile?.let { ProfileStudioAvatars.scope(it, authState) }
         SceneBookmarkScope.fromPlayer(owner, metadata, sourceUrl, sourceAvailable)
     }
+    val sceneInfoScope = remember(metadata, sourceUrl, sourceAvailable) {
+        desktopSceneInfoScope(metadata, sourceUrl, sourceAvailable)
+    }
+    val sceneInfoTimeline = remember { mutableStateOf<TimedMetadataTimeline?>(null) }
+    val embeddedChapterSnapshot = bookmarkPosition.value.embeddedChapters
+    val sceneInfoDurationMs = bookmarkPosition.value.durationMs
+    LaunchedEffect(sceneInfoScope, embeddedChapterSnapshot, sceneInfoDurationMs) {
+        sceneInfoTimeline.value = null
+        val scope = sceneInfoScope ?: return@LaunchedEffect
+        val provider = EmbeddedChapterSceneMetadataProvider(
+            editionScope = scope,
+            snapshot = embeddedChapterSnapshot,
+            durationMs = sceneInfoDurationMs,
+        )
+        sceneInfoTimeline.value = loadTimedMetadata(
+            scope = scope,
+            providers = listOf(provider),
+            durationMs = sceneInfoDurationMs.takeIf { it > 0L },
+            trustedSceneProviderIds = setOf(provider.id),
+        ).timeline
+    }
+    val sceneInfoEntries = desktopSceneInfoEntriesAt(
+        timeline = sceneInfoTimeline.value,
+        expectedScope = sceneInfoScope,
+        positionMs = bookmarkPosition.value.positionMs,
+    )
     val bookmarks = remember(controller) { PlayerSceneBookmarksDesktop(
         SceneBookmarkStore(DesktopStorage.rootDir.resolve("scene-bookmarks-v1")), bookmarkScopes, bookmarkJobs,
         playback = controller::snapshot, seek = controller::seekTo,
@@ -171,6 +197,8 @@ private fun NativePlayerSurface(
     }
     val mergedControls = playerControlsState.copy(
         showSceneBookmarks = requestedBookmarkScope != null,
+        metadataScope = sceneInfoScope ?: playerControlsState.metadataScope,
+        sceneInfoEntries = sceneInfoEntries,
         timedMarkers = (playerControlsState.timedMarkers +
             if (bookmarkState.scope == requestedBookmarkScope && requestedBookmarkScope != null)
                 bookmarks.markers(playerControlsState.durationMs) else emptyList())

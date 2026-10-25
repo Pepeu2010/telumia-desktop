@@ -23,6 +23,7 @@ class DesktopSceneInfoPanelTest {
         val entries = listOf(
             SceneInfoEntry("trusted:actor", TimedMetadataKind.ACTOR, "Atriz de teste", "Personagem"),
             SceneInfoEntry("trusted:music", TimedMetadataKind.MUSIC, "Canção de teste", "Artista de teste"),
+            SceneInfoEntry("embedded-mpv-chapters:0:0", TimedMetadataKind.CHAPTER, "A chegada"),
         )
         compose.setContent {
             NuvioTheme {
@@ -35,6 +36,7 @@ class DesktopSceneInfoPanelTest {
         compose.onNodeWithTag("scene-info-panel").assertExists()
         compose.onNodeWithText("Atriz de teste").assertExists()
         compose.onNodeWithText("Canção de teste").assertExists()
+        compose.onNodeWithText("A chegada").assertExists()
         compose.onNodeWithTag("scene-info-close").performClick()
         compose.onNodeWithTag("scene-info-panel").assertDoesNotExist()
     }
