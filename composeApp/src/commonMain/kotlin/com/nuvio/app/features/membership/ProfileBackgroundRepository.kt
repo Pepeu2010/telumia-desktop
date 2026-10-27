@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -34,6 +36,7 @@ data class ProfileBackgroundCatalogItem(
 
 object ProfileBackgroundRepository {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val backgroundDownloadSemaphore = Semaphore(2)
     private val log = Logger.withTag("ProfileBackgroundRepository")
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val _catalog = MutableStateFlow<List<ProfileBackgroundCatalogItem>>(emptyList())
@@ -216,9 +219,11 @@ object ProfileBackgroundRepository {
 
     private suspend fun loadImage(cacheKey: String, storagePath: String): ByteArray =
         MemberAssetStorage.loadProfileBackground(cacheKey)
-            ?: SupabaseProvider.client.storage[ProfileBackgroundBucket]
-                .downloadAuthenticated(storagePath)
-                .also { MemberAssetStorage.saveProfileBackground(cacheKey, it) }
+            ?: backgroundDownloadSemaphore.withPermit {
+                SupabaseProvider.client.storage[ProfileBackgroundBucket]
+                    .downloadAuthenticated(storagePath)
+                    .also { MemberAssetStorage.saveProfileBackground(cacheKey, it) }
+            }
 }
 
 @Serializable

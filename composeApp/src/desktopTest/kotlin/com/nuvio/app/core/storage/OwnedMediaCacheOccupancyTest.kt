@@ -32,6 +32,25 @@ class OwnedMediaCacheOccupancyTest {
         assertEquals(29L, Files.size(root.resolve("profile-studio/avatar.png")))
         assertEquals(31L, Files.size(root.resolve("downloads/movie")))
     }
+
+    @Test fun remoteMemberAssetsAndTheirBoundedReplacementCacheAreCounted() = fixture { root ->
+        write(root, "member_profile_avatars/legacy-avatar.png", 7)
+        write(root, "member_profile_backgrounds/legacy-background.png", 11)
+        write(root, "media-cache-v1/images/member-backgrounds/item.cache", 13)
+        write(root, "profile-studio/avatar.png", 29)
+        val result = OwnedMediaCacheOccupancy.measure(
+            root,
+            listOf(
+                listOf("member_profile_avatars"),
+                listOf("member_profile_backgrounds"),
+                listOf("media-cache-v1", "images"),
+            ),
+            maxMillis = 10_000,
+        )
+        assertTrue(result.complete)
+        assertEquals(31L, result.bytes)
+        assertEquals(29L, Files.size(root.resolve("profile-studio/avatar.png")))
+    }
     @Test fun missingCachesAreAnEmptyMeasurement() = fixture { root ->
         assertEquals(MediaCacheOccupancy(0, 0, true),
             OwnedMediaCacheOccupancy.measure(root, listOf(listOf("missing")), maxMillis = 10_000))

@@ -28,11 +28,14 @@ internal actual object MemberAssetStorage {
         store.putString(backgroundCatalogPayloadKey, payload)
     }
 
-    actual fun loadProfileBackground(cacheKey: String): ByteArray? =
-        backgroundFile(cacheKey).takeIf { it.isFile && it.length() > 0L }?.readBytes()
+    actual fun loadProfileBackground(cacheKey: String): ByteArray? {
+        DesktopMediaCache.memberBackgroundCache.get(cacheKey)?.let { return it }
+        return loadLegacyProfileBackground(cacheKey)
+    }
 
     actual fun saveProfileBackground(cacheKey: String, bytes: ByteArray) {
-        saveFile(backgroundFile(cacheKey), bytes)
+        if (bytes.isEmpty() || bytes.size.toLong() > MAX_PROFILE_BACKGROUND_BYTES) return
+        DesktopMediaCache.memberBackgroundCache.put(cacheKey, bytes)
     }
 
     actual fun loadProfileAvatar(cacheKey: String): String? {
@@ -72,16 +75,30 @@ internal actual object MemberAssetStorage {
             path.toRealPath().startsWith(directory.toRealPath())
     }.getOrDefault(false)
 
-    private fun saveFile(file: File, bytes: ByteArray) {
-        val directory = file.parentFile ?: return
-        directory.mkdirs()
-        val temporary = directory.resolve(".${file.name}.tmp")
-        temporary.writeBytes(bytes)
-        if (!temporary.renameTo(file)) {
-            temporary.copyTo(file, overwrite = true)
-            temporary.delete()
+    private fun loadLegacyProfileBackground(cacheKey: String): ByteArray? {
+        val legacy = backgroundFile(cacheKey)
+        if (!isValidLegacyProfileBackground(legacy)) return null
+        val bytes = runCatching { legacy.readBytes() }.getOrNull() ?: return null
+        if (DesktopMediaCache.memberBackgroundCache.put(cacheKey, bytes)) {
+            DesktopMediaCache.memberBackgroundCache.get(cacheKey)?.let { migrated ->
+                legacy.delete()
+                return migrated
+            }
         }
+        return bytes
     }
 
+    private fun isValidLegacyProfileBackground(file: File): Boolean = runCatching {
+        val directory = backgroundDirectory.toPath()
+        val path = file.toPath()
+        !java.nio.file.Files.isSymbolicLink(directory) &&
+            java.nio.file.Files.isDirectory(directory, java.nio.file.LinkOption.NOFOLLOW_LINKS) &&
+            java.nio.file.Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS) &&
+            java.nio.file.Files.size(path) in 1..MAX_PROFILE_BACKGROUND_BYTES &&
+            path.toRealPath().startsWith(directory.toRealPath())
+    }.getOrDefault(false)
+
     private fun safeKey(value: String): String = value.replace(Regex("[^A-Za-z0-9._-]"), "_")
+
+    private const val MAX_PROFILE_BACKGROUND_BYTES = 8L * 1024 * 1024
 }
