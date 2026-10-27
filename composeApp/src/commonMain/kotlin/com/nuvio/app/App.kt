@@ -1,5 +1,6 @@
 package com.nuvio.app
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -14,12 +15,14 @@ import coil3.compose.setSingletonImageLoaderFactory
 import coil3.request.CachePolicy
 import coil3.request.crossfade
 import coil3.svg.SvgDecoder
+import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.poster.CustomPosterFallbackInterceptor
 import com.nuvio.app.core.ui.NativeProfileSwitcherController
 import com.nuvio.app.core.ui.NuvioTheme
 import com.nuvio.app.core.ui.configurePlatformImageLoader
 import com.nuvio.app.core.ui.desktopUiScaleForWindow
 import com.nuvio.app.core.ui.platformProvidesImageLoader
+import com.nuvio.app.features.home.components.HomePosterHoverPreviewOverlayHost
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.navigation.AppRoute
 import com.nuvio.app.navigation.TabsRoute
@@ -114,7 +117,14 @@ internal fun AppEnvironment(content: @Composable () -> Unit) {
             customThemeColors = customThemeColors,
             desktopUiScale = desktopUiScaleForWindow(maxWidth.value, maxHeight.value),
         ) {
-            content()
+            if (AppFeaturePolicy.hoverPreviewUsesRootOverlay) {
+                Box(Modifier.fillMaxSize()) {
+                    content()
+                    HomePosterHoverPreviewOverlayHost()
+                }
+            } else {
+                content()
+            }
         }
     }
 }

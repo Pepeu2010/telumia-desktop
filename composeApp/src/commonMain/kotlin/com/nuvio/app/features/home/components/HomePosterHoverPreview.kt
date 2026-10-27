@@ -40,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +59,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -66,7 +70,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
@@ -97,6 +103,7 @@ import com.nuvio.app.isDesktop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ensureActive
+import kotlin.math.roundToInt
 import kotlin.coroutines.coroutineContext
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.hero_add_to_library
@@ -114,6 +121,54 @@ private const val HoverPreviewExitDurationMillis = 170
 private const val HoverTrailerExtractionDebounceMillis = 1_000L
 private val HoverPreviewWidth = 420.dp
 
+private class HomePosterHoverPreviewPortalEntry(
+    val owner: Any,
+    val positionProvider: PopupPositionProvider,
+    anchorBounds: IntRect,
+    content: @Composable () -> Unit,
+) {
+    var anchorBounds by mutableStateOf(anchorBounds)
+    var content by mutableStateOf(content)
+}
+
+private object HomePosterHoverPreviewPortal {
+    var activeEntry by mutableStateOf<HomePosterHoverPreviewPortalEntry?>(null)
+        private set
+
+    fun show(entry: HomePosterHoverPreviewPortalEntry) {
+        activeEntry = entry
+    }
+
+    fun clear(owner: Any) {
+        if (activeEntry?.owner === owner) activeEntry = null
+    }
+}
+
+/** Renders the active Windows hover card in the main window, where SwingPanel has an interop host. */
+@Composable
+internal fun HomePosterHoverPreviewOverlayHost() {
+    val entry = HomePosterHoverPreviewPortal.activeEntry ?: return
+    SubcomposeLayout(Modifier.fillMaxSize().zIndex(1f)) { constraints ->
+        if (!constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
+            return@SubcomposeLayout layout(0, 0) {}
+        }
+        val popup = subcompose(entry.owner) { entry.content() }
+            .single()
+            .measure(Constraints(maxWidth = constraints.maxWidth, maxHeight = constraints.maxHeight))
+        val windowSize = IntSize(constraints.maxWidth, constraints.maxHeight)
+        val popupSize = IntSize(popup.width, popup.height)
+        val position = entry.positionProvider.calculatePosition(
+            anchorBounds = entry.anchorBounds,
+            windowSize = windowSize,
+            layoutDirection = layoutDirection,
+            popupContentSize = popupSize,
+        )
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            popup.place(position.x, position.y)
+        }
+    }
+}
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun HomePosterHoverPreview(
@@ -124,6 +179,7 @@ internal fun HomePosterHoverPreview(
     modifier: Modifier = Modifier,
     previewSettings: PosterCardStyleUiState? = null,
     trailerPreviewSupported: Boolean = AppFeaturePolicy.hoverTrailerPlaybackSupported,
+    anchorInteractionSourceOverride: MutableInteractionSource? = null,
     trailerResolver: suspend (MetaPreview) -> TrailerPlaybackSource? = ::resolveHomePosterHoverTrailerPlaybackSource,
     onTrailerReady: () -> Unit = {},
     onTrailerError: () -> Unit = {},
@@ -147,14 +203,19 @@ internal fun HomePosterHoverPreview(
         return
     }
 
-    val anchorInteractionSource = remember { MutableInteractionSource() }
+    val anchorInteractionSource = remember(anchorInteractionSourceOverride) {
+        anchorInteractionSourceOverride ?: MutableInteractionSource()
+    }
     val previewInteractionSource = remember { MutableInteractionSource() }
     val ownershipToken = remember(item.type, item.id) { Any() }
     val activeOwner by homePosterPreviewOwnership.active.collectAsState()
     val ownsPreview = activeOwner === ownershipToken
     val currentTrailerResolver by rememberUpdatedState(trailerResolver)
     DisposableEffect(ownershipToken) {
-        onDispose { homePosterPreviewOwnership.release(ownershipToken) }
+        onDispose {
+            HomePosterHoverPreviewPortal.clear(ownershipToken)
+            homePosterPreviewOwnership.release(ownershipToken)
+        }
     }
     val anchorHovered by anchorInteractionSource.collectIsHoveredAsState()
     val previewHovered by previewInteractionSource.collectIsHoveredAsState()
@@ -177,6 +238,20 @@ internal fun HomePosterHoverPreview(
             edgeMarginPx = with(density) { NuvioTokens.Space.s16.roundToPx() },
             topOverlapPx = with(density) { NuvioTokens.Space.s24.roundToPx() },
         )
+    }
+    val useRootOverlay = AppFeaturePolicy.hoverPreviewUsesRootOverlay && trailerPlaybackEnabled
+    var anchorBounds by remember(ownershipToken) { mutableStateOf<IntRect?>(null) }
+    val portalEntry = remember(ownershipToken, positionProvider, useRootOverlay) {
+        if (useRootOverlay) {
+            HomePosterHoverPreviewPortalEntry(
+                owner = ownershipToken,
+                positionProvider = positionProvider,
+                anchorBounds = IntRect(0, 0, 0, 0),
+                content = {},
+            )
+        } else {
+            null
+        }
     }
 
     LaunchedEffect(
@@ -284,69 +359,99 @@ internal fun HomePosterHoverPreview(
         }
     }
 
-    Box(modifier = modifier) {
-        content(Modifier.hoverable(anchorInteractionSource))
+    val previewContent: @Composable () -> Unit = {
+        AnimatedVisibility(
+            visible = previewVisible,
+            enter = fadeIn(
+                animationSpec = tween(
+                    durationMillis = motion.durationMillis(HoverPreviewEnterDurationMillis),
+                    easing = NuvioTokens.Motion.decelerate,
+                ),
+            ) + scaleIn(
+                animationSpec = tween(
+                    durationMillis = motion.durationMillis(HoverPreviewEnterDurationMillis),
+                    easing = NuvioTokens.Motion.emphasized,
+                ),
+                initialScale = motion.scale(0.9f),
+            ) + slideInVertically(
+                animationSpec = tween(
+                    durationMillis = motion.durationMillis(HoverPreviewEnterDurationMillis),
+                    easing = NuvioTokens.Motion.decelerate,
+                ),
+                initialOffsetY = { height -> if (motion.allowsSpatialEffects) height / 18 else 0 },
+            ),
+            exit = fadeOut(animationSpec = tween(motion.durationMillis(HoverPreviewExitDurationMillis))) +
+                scaleOut(
+                    animationSpec = tween(motion.durationMillis(HoverPreviewExitDurationMillis)),
+                    targetScale = motion.scale(0.97f),
+                ) + slideOutVertically(
+                    animationSpec = tween(motion.durationMillis(HoverPreviewExitDurationMillis)),
+                    targetOffsetY = { height -> if (motion.allowsSpatialEffects) height / 32 else 0 },
+                ),
+        ) {
+            HomePosterPreviewCard(
+                item = item,
+                isWatched = isWatched,
+                isSaved = previewIsSaved,
+                trailerEnabled = trailerPlaybackEnabled,
+                trailerSoundEnabled = posterCardStyle.hoverPreviewTrailerSoundEnabled,
+                trailerStartSeconds = posterCardStyle.hoverPreviewTrailerStartSeconds,
+                trailerPlaybackSource = trailerPlaybackSource.takeIf { ownsPreview && hoverHeld },
+                onTrailerReady = onTrailerReady,
+                onTrailerError = onTrailerError,
+                modifier = Modifier
+                    .testTag("home-hover-preview")
+                    .hoverable(previewInteractionSource)
+                    .onPointerEvent(PointerEventType.Scroll) {
+                        previewDismissedByScroll = true
+                        previewVisible = false
+                        popupMounted = false
+                        homePosterPreviewOwnership.release(ownershipToken)
+                    },
+                onClick = onClick,
+                onLongClick = onLongClick,
+                onWatchedClick = onWatchedClick,
+                onSaveClick = onSaveClick,
+            )
+        }
+    }
+    val latestPreviewContent = rememberUpdatedState(previewContent)
+    val portalContent: @Composable () -> Unit = remember(ownershipToken) {
+        { latestPreviewContent.value() }
+    }
+    SideEffect {
+        if (portalEntry != null && popupMounted && ownsPreview && anchorBounds != null) {
+            portalEntry.content = portalContent
+            portalEntry.anchorBounds = anchorBounds!!
+            HomePosterHoverPreviewPortal.show(portalEntry)
+        } else {
+            HomePosterHoverPreviewPortal.clear(ownershipToken)
+        }
+    }
 
-        if (popupMounted) {
+    Box(modifier = modifier) {
+        content(
+            Modifier
+                .hoverable(anchorInteractionSource)
+                .onGloballyPositioned { coordinates ->
+                    if (useRootOverlay) {
+                        val bounds = coordinates.boundsInRoot()
+                        anchorBounds = IntRect(
+                            left = bounds.left.roundToInt(),
+                            top = bounds.top.roundToInt(),
+                            right = bounds.right.roundToInt(),
+                            bottom = bounds.bottom.roundToInt(),
+                        )
+                    }
+                },
+        )
+
+        if (popupMounted && !useRootOverlay) {
             Popup(
                 popupPositionProvider = positionProvider,
                 properties = PopupProperties(focusable = false),
             ) {
-                AnimatedVisibility(
-                    visible = previewVisible,
-                    enter = fadeIn(
-                        animationSpec = tween(
-                            durationMillis = motion.durationMillis(HoverPreviewEnterDurationMillis),
-                            easing = NuvioTokens.Motion.decelerate,
-                        ),
-                    ) + scaleIn(
-                        animationSpec = tween(
-                            durationMillis = motion.durationMillis(HoverPreviewEnterDurationMillis),
-                            easing = NuvioTokens.Motion.emphasized,
-                        ),
-                        initialScale = motion.scale(0.9f),
-                    ) + slideInVertically(
-                        animationSpec = tween(
-                            durationMillis = motion.durationMillis(HoverPreviewEnterDurationMillis),
-                            easing = NuvioTokens.Motion.decelerate,
-                        ),
-                        initialOffsetY = { height -> if (motion.allowsSpatialEffects) height / 18 else 0 },
-                    ),
-                    exit = fadeOut(
-                        animationSpec = tween(motion.durationMillis(HoverPreviewExitDurationMillis)),
-                    ) + scaleOut(
-                        animationSpec = tween(motion.durationMillis(HoverPreviewExitDurationMillis)),
-                        targetScale = motion.scale(0.97f),
-                    ) + slideOutVertically(
-                        animationSpec = tween(motion.durationMillis(HoverPreviewExitDurationMillis)),
-                        targetOffsetY = { height -> if (motion.allowsSpatialEffects) height / 32 else 0 },
-                    ),
-                ) {
-                    HomePosterPreviewCard(
-                        item = item,
-                        isWatched = isWatched,
-                        isSaved = previewIsSaved,
-                        trailerEnabled = trailerPlaybackEnabled,
-                        trailerSoundEnabled = posterCardStyle.hoverPreviewTrailerSoundEnabled,
-                        trailerStartSeconds = posterCardStyle.hoverPreviewTrailerStartSeconds,
-                        trailerPlaybackSource = trailerPlaybackSource.takeIf { ownsPreview && hoverHeld },
-                        onTrailerReady = onTrailerReady,
-                        onTrailerError = onTrailerError,
-                        modifier = Modifier
-                            .testTag("home-hover-preview")
-                            .hoverable(previewInteractionSource)
-                            .onPointerEvent(PointerEventType.Scroll) {
-                                previewDismissedByScroll = true
-                                previewVisible = false
-                                popupMounted = false
-                                homePosterPreviewOwnership.release(ownershipToken)
-                            },
-                        onClick = onClick,
-                        onLongClick = onLongClick,
-                        onWatchedClick = onWatchedClick,
-                        onSaveClick = onSaveClick,
-                    )
-                }
+                previewContent()
             }
         }
     }

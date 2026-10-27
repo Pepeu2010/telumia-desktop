@@ -14,6 +14,7 @@ actual object AppFeaturePolicy {
     actual val trailerPlaybackMode: TrailerPlaybackMode = TrailerPlaybackMode.IN_APP
     actual val heroTrailerPlaybackSupported: Boolean = false
     actual val hoverTrailerPlaybackSupported: Boolean = false
+    actual val hoverPreviewUsesRootOverlay: Boolean = false
     actual val inAppUpdaterEnabled: Boolean = false
     actual val imdbRatingLogoEnabled: Boolean = true
     actual val mediaPlaybackForegroundServiceEnabled: Boolean = false

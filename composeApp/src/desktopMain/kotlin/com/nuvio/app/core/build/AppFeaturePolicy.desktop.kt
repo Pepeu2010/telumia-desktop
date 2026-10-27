@@ -21,6 +21,7 @@ actual object AppFeaturePolicy {
     // Windows' native libmpv surface cannot currently be hosted by Compose Popup's
     // AWT child window. Keep the setting hidden until that integration gate passes.
     actual val hoverTrailerPlaybackSupported: Boolean = !isWindowsDesktop
+    actual val hoverPreviewUsesRootOverlay: Boolean = isWindowsDesktop
     actual val inAppUpdaterEnabled: Boolean = true
     actual val imdbRatingLogoEnabled: Boolean = true
     actual val mediaPlaybackForegroundServiceEnabled: Boolean = false
