@@ -9,8 +9,8 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.FileTime
 import java.security.MessageDigest
 
-/** One byte/file budget shared by the hashed cache and pre-quota profile-background files. */
-internal class BoundedProfileBackgroundCache(
+/** One byte/file budget shared by a hashed cache and recognized files from its legacy directory. */
+internal class BoundedLegacyFileCache(
     directory: Path,
     legacyDirectory: Path,
     private val quotaBytes: () -> Long,
@@ -18,6 +18,11 @@ internal class BoundedProfileBackgroundCache(
     private val maxEntryBytes: Long = 8L * MIB,
     private val canWrite: (Long) -> Boolean = { true },
     private val clock: () -> Long = System::currentTimeMillis,
+    private val legacyFileName: (String) -> String? = { key ->
+        val name = key.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        name.takeIf { it.isNotEmpty() && it.length <= 200 }?.let { "$it.png" }
+    },
+    private val legacyName: Regex = Regex("[A-Za-z0-9._-]{1,200}\\.png"),
 ) {
     internal data class Usage(val bytes: Long, val files: Int)
 
@@ -25,7 +30,10 @@ internal class BoundedProfileBackgroundCache(
     private val legacyDirectory = legacyDirectory.toAbsolutePath().normalize()
     private val lock = Any()
     private val ownedName = Regex("[a-f0-9]{64}\\.cache")
-    private val legacyName = Regex("[A-Za-z0-9._-]{1,200}\\.png")
+    private var lastTrimAtMillis: Long? = null
+    private var lastTrimQuota: Long? = null
+
+    fun get(key: String): ByteArray? = getFile(key)?.let { runCatching { Files.readAllBytes(it.toPath()) }.getOrNull() }
 
     fun getFile(key: String): File? = synchronized(lock) {
         if (!validKey(key)) return@synchronized null
@@ -33,29 +41,29 @@ internal class BoundedProfileBackgroundCache(
         val owned = ownedFile(key)
         if (isValidFile(owned, directory, ownedName)) {
             val size = runCatching { Files.size(owned) }.getOrNull() ?: return@synchronized null
-            if (size > quota || size > maxEntryBytes) {
+            if (size > maxEntryBytes) {
                 runCatching { Files.deleteIfExists(owned) }
-                trim(quota)
+                trimIfNeeded(quota)
                 return@synchronized null
             }
             touch(owned)
-            trim(quota, keep = owned)
+            trimIfNeeded(quota, keep = owned)
             return@synchronized owned.takeIf { isValidFile(it, directory, ownedName) }?.toFile()
         }
 
         val legacy = legacyFile(key) ?: return@synchronized null
         if (!isValidFile(legacy, legacyDirectory, legacyName)) {
-            trim(quota)
+            trimIfNeeded(quota)
             return@synchronized null
         }
         val size = runCatching { Files.size(legacy) }.getOrNull() ?: return@synchronized null
-        if (size > quota || size > maxEntryBytes) {
+        if (size > maxEntryBytes) {
             runCatching { Files.deleteIfExists(legacy) }
-            trim(quota)
+            trimIfNeeded(quota)
             return@synchronized null
         }
         touch(legacy)
-        trim(quota, keep = legacy)
+        trimIfNeeded(quota, keep = legacy)
         if (!isValidFile(legacy, legacyDirectory, legacyName)) return@synchronized null
 
         if (runCatching { canWrite(size) }.getOrDefault(false)) {
@@ -93,6 +101,8 @@ internal class BoundedProfileBackgroundCache(
             runCatching { Files.deleteIfExists(replacedLegacy) }
         }
         trim(quota, keep = target)
+        lastTrimAtMillis = clock()
+        lastTrimQuota = quota
         return target.takeIf { isValidFile(it, directory, ownedName) }?.toFile()
     }
 
@@ -138,11 +148,24 @@ internal class BoundedProfileBackgroundCache(
                 continue
             }
             if (bytes <= quota && files <= maxFiles) break
-            if (entry.path == keep && entry.bytes <= quota && maxFiles > 0) continue
+            if (entry.path == keep) continue
             if (runCatching { Files.deleteIfExists(entry.path) }.getOrDefault(false)) {
                 bytes = (bytes - entry.bytes).coerceAtLeast(0)
                 files--
             }
+        }
+    }
+
+    /** Disk-wide cleanup is rate-limited on reads; every new write still checks the full budget. */
+    private fun trimIfNeeded(quota: Long, keep: Path? = null) {
+        val now = clock()
+        val previousTrim = lastTrimAtMillis
+        if (lastTrimQuota != quota || previousTrim == null || now < previousTrim ||
+            now - previousTrim >= READ_TRIM_INTERVAL_MILLIS
+        ) {
+            trim(quota, keep)
+            lastTrimAtMillis = now
+            lastTrimQuota = quota
         }
     }
 
@@ -185,7 +208,7 @@ internal class BoundedProfileBackgroundCache(
     private fun writeAtomically(target: Path, bytes: ByteArray): Boolean = runCatching {
         Files.createDirectories(directory)
         require(!Files.isSymbolicLink(directory))
-        val pending = Files.createTempFile(directory, "profile-background-", ".part")
+        val pending = Files.createTempFile(directory, "cache-entry-", ".part")
         try {
             Files.write(pending, bytes)
             runCatching { Files.move(pending, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING) }
@@ -199,11 +222,9 @@ internal class BoundedProfileBackgroundCache(
 
     private fun ownedFile(key: String): Path = directory.resolve("${sha256(key)}.cache")
 
-    private fun legacyFile(key: String): Path? {
-        val name = key.replace(Regex("[^A-Za-z0-9._-]"), "_")
-        if (name.isEmpty() || name.length > 200) return null
-        return legacyDirectory.resolve("$name.png")
-    }
+    private fun legacyFile(key: String): Path? = legacyFileName(key)
+        ?.takeIf { legacyName.matches(it) }
+        ?.let(legacyDirectory::resolve)
 
     private fun validKey(key: String): Boolean = key.isNotBlank() && key.length <= 8192
 
@@ -216,4 +237,8 @@ internal class BoundedProfileBackgroundCache(
 
     private fun addSaturated(first: Long, second: Long): Long =
         if (first > Long.MAX_VALUE - second) Long.MAX_VALUE else first + second
+
+    private companion object {
+        const val READ_TRIM_INTERVAL_MILLIS = 15_000L
+    }
 }
