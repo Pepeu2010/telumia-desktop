@@ -75,6 +75,23 @@ class MediaCachePolicyTest {
         assertTrue(!MediaCachePolicy.allowsNewWrites(refreshed.budget, MediaCacheCategory.ADDONS, openedQuota))
     }
 
+    @Test fun occupancyUpdatesCanInvalidateTheBudgetBeforeItsRegularTtlExpires() {
+        var samples = 0
+        val monitor = MediaCacheBudgetMonitor(
+            platform = MediaCachePlatform.DESKTOP,
+            settings = { MediaCacheSettings() },
+            sampleDevice = { samples++; MediaCacheDeviceSnapshot(usableStorageBytes = 100_000L * MIB) },
+            clockMillis = { 1L },
+            refreshIntervalMillis = 15_000L,
+        )
+
+        monitor.current()
+        assertEquals(1, samples)
+        monitor.invalidate()
+        monitor.current()
+        assertEquals(2, samples)
+    }
+
     @Test fun categorySharesSumToTheWholeBudget() {
         assertEquals(100, MediaCacheCategory.entries.sumOf { it.share })
         val budget = MediaCachePolicy.resolve(MediaCachePlatform.TV, MediaCacheSettings(), MediaCacheDeviceSnapshot())

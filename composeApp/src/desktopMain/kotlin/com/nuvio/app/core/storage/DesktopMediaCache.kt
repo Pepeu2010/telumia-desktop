@@ -5,6 +5,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.security.MessageDigest
+import java.util.concurrent.Executors
 import com.sun.management.OperatingSystemMXBean
 
 /** Device-local policy; no auth/profile sync payload is extended. Native runtime files are outside its root. */
@@ -12,9 +13,28 @@ internal object DesktopMediaCache {
     private val preferences = DesktopMediaCachePreferences(DesktopStorage.store("telumia_media_cache_v1"))
     val root: Path by lazy { DesktopStorage.cacheDir.resolve("media-cache-v1").also { Files.createDirectories(it) } }
     val activeSettings: MediaCacheSettings by lazy { loadSettings() }
-    private val budgetMonitor by lazy {
-        MediaCacheBudgetMonitor(MediaCachePlatform.DESKTOP, { activeSettings }, ::detectDevice, { System.nanoTime() / 1_000_000L })
+    private val occupancyExecutor by lazy {
+        Executors.newSingleThreadExecutor { task ->
+            Thread(task, "telumia-media-cache-scan").apply { isDaemon = true; priority = Thread.NORM_PRIORITY - 1 }
+        }
     }
+    private val occupancyMonitor by lazy {
+        MediaCacheOccupancyMonitor(
+            scan = {
+                OwnedMediaCacheOccupancy.measure(DesktopStorage.cacheDir,
+                    MediaCacheCategory.entries.map { listOf("media-cache-v1", it.directoryName) } +
+                        listOf(listOf("gif-cache"), listOf("member_profile_avatars"), listOf("member_profile_backgrounds")))
+            },
+            executor = occupancyExecutor,
+            onSnapshotUpdated = budgetMonitor::invalidate,
+        )
+    }
+    private val budgetMonitor = MediaCacheBudgetMonitor(
+        MediaCachePlatform.DESKTOP,
+        { activeSettings },
+        ::detectDevice,
+        { System.nanoTime() / 1_000_000L },
+    )
     val activeBudget: MediaCacheBudget get() = budgetMonitor.current().budget
 
     fun loadSettings(): MediaCacheSettings = preferences.load()
@@ -29,11 +49,7 @@ internal object DesktopMediaCache {
         (ManagementFactory.getOperatingSystemMXBean() as? OperatingSystemMXBean)?.totalMemorySize
     }.getOrNull()
 
-    internal val occupiedCache: MediaCacheOccupancy by lazy {
-        OwnedMediaCacheOccupancy.measure(DesktopStorage.cacheDir,
-            MediaCacheCategory.entries.map { listOf("media-cache-v1", it.directoryName) } +
-                listOf(listOf("gif-cache"), listOf("member_profile_avatars"), listOf("member_profile_backgrounds")))
-    }
+    internal val occupiedCache: MediaCacheOccupancy get() = occupancyMonitor.current()
 
     fun directory(category: MediaCacheCategory): Path = root.resolve(category.directoryName)
     val writesEnabled: Boolean get() = activeBudget.totalBytes > 0
