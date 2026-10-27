@@ -29,6 +29,7 @@ internal actual fun NuvioAsyncImage(
     filterQuality: FilterQuality?,
     clipToBounds: Boolean,
     desktopImageScaling: NuvioDesktopImageScaling,
+    previewCache: Boolean,
 ) {
     AsyncImage(
         model = model,

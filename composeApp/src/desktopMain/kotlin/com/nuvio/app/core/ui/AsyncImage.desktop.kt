@@ -19,11 +19,15 @@ import androidx.compose.ui.unit.IntSize
 import coil3.BitmapImage
 import coil3.Image
 import coil3.PlatformContext
+import coil3.SingletonImageLoader
+import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
+import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.NullRequestDataException
+import coil3.request.crossfade
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.FilterMipmap
 import org.jetbrains.skia.FilterMode
@@ -59,6 +63,7 @@ internal actual fun NuvioAsyncImage(
     filterQuality: FilterQuality?,
     clipToBounds: Boolean,
     desktopImageScaling: NuvioDesktopImageScaling,
+    previewCache: Boolean,
 ) {
     val context = LocalPlatformContext.current
     val effectiveDesktopImageScaling = remember(desktopImageScaling) {
@@ -71,6 +76,14 @@ internal actual fun NuvioAsyncImage(
             model.withDesktopHighQualitySize(context)
         }
     }
+    val effectiveModel = remember(context, requestModel, previewCache) {
+        if (!previewCache) requestModel else when (requestModel) {
+            is ImageRequest -> requestModel.newBuilder().memoryCachePolicy(CachePolicy.DISABLED).build()
+            else -> ImageRequest.Builder(context).data(requestModel).memoryCachePolicy(CachePolicy.DISABLED).build()
+        }
+    }
+    val previewLoader = remember(context) { lazy { DesktopPreviewImageLoader.get(context) } }
+    val requestImageLoader = if (previewCache) previewLoader.value else SingletonImageLoader.get(context)
     val transform: (AsyncImagePainter.State) -> AsyncImagePainter.State = remember(
         placeholder,
         error,
@@ -115,7 +128,8 @@ internal actual fun NuvioAsyncImage(
     }
 
     AsyncImage(
-        model = requestModel,
+        model = effectiveModel,
+        imageLoader = requestImageLoader,
         contentDescription = contentDescription,
         modifier = modifier,
         transform = transform,
@@ -127,6 +141,28 @@ internal actual fun NuvioAsyncImage(
         filterQuality = filterQuality ?: FilterQuality.High,
         clipToBounds = clipToBounds,
     )
+}
+
+@OptIn(ExperimentalCoilApi::class)
+private object DesktopPreviewImageLoader {
+    @Volatile private var instance: coil3.ImageLoader? = null
+
+    fun get(context: PlatformContext): coil3.ImageLoader = instance ?: synchronized(this) {
+        instance ?: coil3.ImageLoader.Builder(context)
+            .crossfade(false)
+            .components {
+                add(com.nuvio.app.core.poster.CustomPosterFallbackInterceptor())
+                add(coil3.svg.SvgDecoder.Factory())
+                add(
+                    coil3.network.ktor3.KtorNetworkFetcherFactory(
+                        cacheStrategy = { coil3.network.cachecontrol.CacheControlCacheStrategy() },
+                    ),
+                )
+            }
+            .configurePlatformPreviewImageLoader()
+            .build()
+            .also { instance = it }
+    }
 }
 
 private fun Any?.withDesktopHighQualitySize(context: PlatformContext): Any? {

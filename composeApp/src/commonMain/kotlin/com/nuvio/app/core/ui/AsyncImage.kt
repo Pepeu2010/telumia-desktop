@@ -33,4 +33,5 @@ internal expect fun NuvioAsyncImage(
     filterQuality: FilterQuality? = null,
     clipToBounds: Boolean = true,
     desktopImageScaling: NuvioDesktopImageScaling = NuvioDesktopImageScaling.Auto,
+    previewCache: Boolean = false,
 )

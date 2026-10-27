@@ -412,6 +412,7 @@ private fun HomePosterPreviewCard(
                     contentDescription = item.name,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
+                    previewCache = true,
                 )
             }
 
@@ -453,6 +454,7 @@ private fun HomePosterPreviewCard(
                     contentScale = ContentScale.Fit,
                     clipToBounds = false,
                     onError = { logoLoadError = true },
+                    previewCache = true,
                 )
             } else {
                 Text(

@@ -44,6 +44,7 @@ internal object DesktopMediaCache {
         coilBudget().quota(MediaCacheCategory.IMAGES), hasSeparateGifCache = true,
     )
     fun coilImageQuota(): Long = imageCacheAllocation().coilBytes
+    fun coilPreviewQuota(): Long = coilBudget().quota(MediaCacheCategory.PREVIEWS)
     fun coilBadgeQuota(): Long = coilBudget().quota(MediaCacheCategory.BADGES)
     fun cacheQuota(category: MediaCacheCategory): Long = coilBudget().quota(category)
     fun memberBackgroundQuota(): Long = imageCacheAllocation().memberBackgroundBytes
