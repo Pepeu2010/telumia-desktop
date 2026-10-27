@@ -36,14 +36,28 @@ internal object DesktopMediaCache {
     // Under the storage reserve, open existing Coil caches for reads with their requested capacity.
     // The loader's READ_ONLY policy suspends writes rather than deleting offline records.
     private fun coilBudget(): MediaCacheBudget = if (writesEnabled) activeBudget else activeBudget.copy(totalBytes = activeBudget.requestedBytes)
-    fun coilImageQuota(): Long = coilBudget().quota(MediaCacheCategory.IMAGES) * 9 / 10
+    private fun imageCacheAllocation() = MediaImageCachePolicy.allocate(
+        coilBudget().quota(MediaCacheCategory.IMAGES), hasSeparateGifCache = true,
+    )
+    fun coilImageQuota(): Long = imageCacheAllocation().coilBytes
     fun coilBadgeQuota(): Long = coilBudget().quota(MediaCacheCategory.BADGES)
     fun cacheQuota(category: MediaCacheCategory): Long = coilBudget().quota(category)
+    fun memberBackgroundQuota(): Long = imageCacheAllocation().memberBackgroundBytes
     fun cacheWritesAllowed(category: MediaCacheCategory, openedQuotaBytes: Long): Boolean =
         MediaCachePolicy.allowsNewWrites(activeBudget, category, openedQuotaBytes)
 
     val gifCache: BoundedFileCache by lazy { BoundedFileCache(directory(MediaCacheCategory.IMAGES).resolve("gifs"),
-        quotaBytes = { activeBudget.quota(MediaCacheCategory.IMAGES) / 10 }, maxFiles = 200, canWrite = ::hasStorageFor) }
+        quotaBytes = { imageCacheAllocation().gifBytes }, maxFiles = 200, canWrite = ::hasStorageFor) }
+
+    val memberBackgroundCache: BoundedFileCache by lazy {
+        BoundedFileCache(
+            directory(MediaCacheCategory.IMAGES).resolve("member-backgrounds"),
+            quotaBytes = ::memberBackgroundQuota,
+            maxFiles = 64,
+            maxEntryBytes = 8L * MIB,
+            canWrite = ::hasStorageFor,
+        )
+    }
 
     val memberAvatarCache: BoundedFileCache by lazy {
         BoundedFileCache(

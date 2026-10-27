@@ -82,4 +82,18 @@ class MediaCachePolicyTest {
         assertTrue(allocated <= budget.totalBytes)
         assertTrue(budget.totalBytes - allocated < 100)
     }
+
+    @Test fun imageConsumersShareOneQuotaAcrossCoilGifsAndRemoteProfileBackgrounds() {
+        val desktop = MediaImageCachePolicy.allocate(1_000L, hasSeparateGifCache = true)
+        assertEquals(800L, desktop.coilBytes)
+        assertEquals(100L, desktop.gifBytes)
+        assertEquals(100L, desktop.memberBackgroundBytes)
+        assertEquals(1_000L, desktop.coilBytes + desktop.gifBytes + desktop.memberBackgroundBytes)
+
+        val tv = MediaImageCachePolicy.allocate(1_000L, hasSeparateGifCache = false)
+        assertEquals(900L, tv.coilBytes)
+        assertEquals(0L, tv.gifBytes)
+        assertEquals(100L, tv.memberBackgroundBytes)
+        assertEquals(1_000L, tv.coilBytes + tv.gifBytes + tv.memberBackgroundBytes)
+    }
 }
