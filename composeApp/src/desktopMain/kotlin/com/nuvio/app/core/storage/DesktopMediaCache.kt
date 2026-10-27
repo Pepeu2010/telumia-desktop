@@ -21,9 +21,13 @@ internal object DesktopMediaCache {
     fun saveSettings(settings: MediaCacheSettings) = preferences.save(settings)
 
     fun detectDevice(): MediaCacheDeviceSnapshot = MediaCacheDeviceSnapshot(
-        memoryBytes = runCatching { (ManagementFactory.getOperatingSystemMXBean() as? OperatingSystemMXBean)?.totalMemorySize }.getOrNull(),
+        memoryBytes = physicalMemoryBytes(),
         usableStorageBytes = runCatching { Files.getFileStore(root).usableSpace }.getOrNull(),
         occupiedCacheBytes = occupiedCache.bytes)
+
+    fun physicalMemoryBytes(): Long? = runCatching {
+        (ManagementFactory.getOperatingSystemMXBean() as? OperatingSystemMXBean)?.totalMemorySize
+    }.getOrNull()
 
     internal val occupiedCache: MediaCacheOccupancy by lazy {
         OwnedMediaCacheOccupancy.measure(DesktopStorage.cacheDir,

@@ -8,14 +8,9 @@ import platform.Foundation.NSFileManager
 import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSUserDefaults
 import platform.Foundation.NSURL
-import platform.posix.SEEK_END
 import platform.posix.fclose
 import platform.posix.fopen
-import platform.posix.fread
-import platform.posix.fseek
-import platform.posix.ftell
 import platform.posix.fwrite
-import platform.posix.rewind
 
 @OptIn(ExperimentalForeignApi::class)
 internal actual object MemberAssetStorage {
@@ -40,12 +35,18 @@ internal actual object MemberAssetStorage {
         NSUserDefaults.standardUserDefaults.setObject(payload, forKey = backgroundCatalogPayloadKey)
     }
 
-    actual fun loadProfileBackground(cacheKey: String): ByteArray? =
-        readFile("$backgroundDirectory/${safeKey(cacheKey)}.png")
-
-    actual fun saveProfileBackground(cacheKey: String, bytes: ByteArray) {
-        writeFile(backgroundDirectory, "$backgroundDirectory/${safeKey(cacheKey)}.png", bytes)
+    actual fun loadProfileBackgroundUri(cacheKey: String): String? {
+        val path = "$backgroundDirectory/${safeKey(cacheKey)}.png"
+        return if (fileExists(path)) fileUrl(path) else null
     }
+
+    actual fun saveProfileBackground(cacheKey: String, bytes: ByteArray): String? {
+        if (bytes.isEmpty() || bytes.size > 8 * 1024 * 1024) return null
+        val path = "$backgroundDirectory/${safeKey(cacheKey)}.png"
+        return if (writeFile(backgroundDirectory, path, bytes)) fileUrl(path) else null
+    }
+
+    actual fun profileBackgroundDeviceMemoryBytes(): Long? = null
 
     actual fun loadProfileAvatar(cacheKey: String): String? {
         val path = "$avatarDirectory/${safeKey(cacheKey)}"
@@ -78,24 +79,6 @@ internal actual object MemberAssetStorage {
             if (isEmpty()) return true
             usePinned { pinned ->
                 fwrite(pinned.addressOf(0), 1.convert(), size.convert(), file).toLong() == size.toLong()
-            }
-        } finally {
-            fclose(file)
-        }
-    }
-
-    private fun readFile(path: String): ByteArray? {
-        val file = fopen(path, "rb") ?: return null
-        return try {
-            if (fseek(file, 0, SEEK_END) != 0) return null
-            val size = ftell(file)
-            if (size <= 0L || size > Int.MAX_VALUE) return null
-            rewind(file)
-            ByteArray(size.toInt()).also { result ->
-                val read = result.usePinned { pinned ->
-                    fread(pinned.addressOf(0), 1.convert(), result.size.convert(), file)
-                }
-                if (read.toLong() != result.size.toLong()) return null
             }
         } finally {
             fclose(file)
