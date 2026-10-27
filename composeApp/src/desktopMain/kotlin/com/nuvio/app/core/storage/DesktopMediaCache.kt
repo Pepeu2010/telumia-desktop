@@ -70,9 +70,10 @@ internal object DesktopMediaCache {
     val gifCache: BoundedFileCache by lazy { BoundedFileCache(directory(MediaCacheCategory.IMAGES).resolve("gifs"),
         quotaBytes = { imageCacheAllocation().gifBytes }, maxFiles = 200, canWrite = ::hasStorageFor) }
 
-    val memberBackgroundCache: BoundedFileCache by lazy {
-        BoundedFileCache(
+    val memberBackgroundCache: BoundedProfileBackgroundCache by lazy {
+        BoundedProfileBackgroundCache(
             directory(MediaCacheCategory.IMAGES).resolve("member-backgrounds"),
+            DesktopStorage.cacheDir.resolve("member_profile_backgrounds"),
             quotaBytes = ::memberBackgroundQuota,
             maxFiles = 64,
             maxEntryBytes = 8L * MIB,
