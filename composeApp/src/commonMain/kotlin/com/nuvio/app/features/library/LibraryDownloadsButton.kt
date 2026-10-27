@@ -1,10 +1,5 @@
 package com.nuvio.app.features.library
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material3.Icon
@@ -25,7 +20,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.ui.accentBrush
 import com.nuvio.app.core.ui.gradientMask
+import com.nuvio.app.core.ui.LocalScreenActive
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.core.ui.rememberUiMotionLoopFloat
 import com.nuvio.app.core.ui.themePalette
 import com.nuvio.app.features.downloads.DownloadStatus
 import com.nuvio.app.features.downloads.DownloadsRepository
@@ -59,11 +56,12 @@ private fun FlowingDownloadIcon() {
     val dimAlpha = MaterialTheme.nuvio.opacity.overlayLight
     val colors = palette.accentGradient.takeIf { it.size >= 2 }
         ?: listOf(palette.secondary, palette.secondary.copy(alpha = dimAlpha))
-    val phase by rememberInfiniteTransition(label = "downloadsFlow").animateFloat(
+    val phase by rememberUiMotionLoopFloat(
+        active = LocalScreenActive.current,
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(durationMillis = 1600, easing = LinearEasing)),
-        label = "downloadsFlowPhase",
+        durationMillis = 1600,
+        label = "downloadsFlow",
     )
     DownloadIcon(
         modifier = Modifier

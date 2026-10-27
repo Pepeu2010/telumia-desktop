@@ -21,7 +21,6 @@ internal object NativePlayerBridge {
         "WebView2Loader.dll",
     )
     private val preloadStarted = AtomicBoolean(false)
-
     init {
         loadNativeLibrary()
     }
@@ -126,33 +125,27 @@ internal object NativePlayerBridge {
 
     fun preloadAsync() {
         if (!preloadStarted.compareAndSet(false, true)) return
+        // Windows starts six WebView2 helper processes for this hidden view.
+        // Start WebView2 only when the actual player opens there. Linux keeps
+        // its WebKitGTK warmup, which primes the controls context used by players.
+        if (DesktopHostOs.current != DesktopHostOs.LINUX) return
         Thread {
             val controlsPage = runCatching { controlsPageAssets }
                 .getOrNull()
                 ?: return@Thread
-            // Linux warms the WebKitGTK engine through the same entry point
-            // (the bridge maps warmupWebView2 to a hidden WebKitGTK view).
-            if (DesktopHostOs.current == DesktopHostOs.WINDOWS ||
-                DesktopHostOs.current == DesktopHostOs.LINUX
-            ) {
-                runCatching { warmupWebView2(controlsPage.url) }
-            }
+            runCatching { warmupWebView2(controlsPage.url) }
         }.apply {
             name = "nuvio-native-player-preload"
             isDaemon = true
             start()
         }
-        if (DesktopHostOs.current == DesktopHostOs.WINDOWS ||
-            DesktopHostOs.current == DesktopHostOs.LINUX
-        ) {
-            Runtime.getRuntime().addShutdownHook(
-                Thread {
-                    runCatching { shutdownWebView2Warmup() }
-                }.apply {
-                    name = "nuvio-webview2-warmup-shutdown"
-                }
-            )
-        }
+        Runtime.getRuntime().addShutdownHook(
+            Thread {
+                runCatching { shutdownWebView2Warmup() }
+            }.apply {
+                name = "nuvio-webview2-warmup-shutdown"
+            }
+        )
     }
 
     private fun loadNativeLibrary() {
@@ -308,8 +301,6 @@ internal fun preloadNativePlayerBridgeAsync() {
         DesktopHostOs.current == DesktopHostOs.WINDOWS ||
         DesktopHostOs.current == DesktopHostOs.LINUX
     ) {
-        runCatching {
-            NativePlayerBridge.preloadAsync()
-        }
+        runCatching { NativePlayerBridge.preloadAsync() }
     }
 }

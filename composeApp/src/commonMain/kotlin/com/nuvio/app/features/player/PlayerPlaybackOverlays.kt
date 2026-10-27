@@ -3,6 +3,7 @@ package com.nuvio.app.features.player
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -11,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.nuvio.app.core.ui.LocalUiMotion
 import com.nuvio.app.features.p2p.P2pLoadingStatus
 import com.nuvio.app.features.player.skip.NextEpisodeCard
 import com.nuvio.app.features.player.skip.NextEpisodeInfo
@@ -62,10 +64,13 @@ internal fun BoxScope.PlayerPlaybackOverlays(
     errorMessage: String?,
     onDismissError: () -> Unit,
 ) {
+    val motion = LocalUiMotion.current
+    val fadeInSpec = tween<Float>(durationMillis = motion.durationMillis(220))
+    val fadeOutSpec = tween<Float>(durationMillis = motion.durationMillis(90))
     AnimatedVisibility(
         visible = playerControlsLocked && lockedOverlayVisible,
-        enter = fadeIn(),
-        exit = fadeOut(),
+        enter = fadeIn(animationSpec = fadeInSpec),
+        exit = fadeOut(animationSpec = fadeOutSpec),
     ) {
         LockedPlayerOverlay(
             playbackSnapshot = playbackSnapshot,
@@ -81,8 +86,8 @@ internal fun BoxScope.PlayerPlaybackOverlays(
 
     AnimatedVisibility(
         visible = showOpeningOverlay,
-        enter = fadeIn(),
-        exit = fadeOut(),
+        enter = fadeIn(animationSpec = fadeInSpec),
+        exit = fadeOut(animationSpec = fadeOutSpec),
     ) {
         OpeningOverlay(
             artwork = backdropArtwork,

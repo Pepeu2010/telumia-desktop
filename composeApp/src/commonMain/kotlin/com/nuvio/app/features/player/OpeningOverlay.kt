@@ -2,11 +2,7 @@ package com.nuvio.app.features.player
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -49,7 +45,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.NuvioBackButton
+import com.nuvio.app.core.ui.LocalUiMotion
 import com.nuvio.app.core.ui.nuvioTypeScale
+import com.nuvio.app.core.ui.rememberUiMotionLoopFloat
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_player_close
 import org.jetbrains.compose.resources.stringResource
@@ -65,23 +63,33 @@ internal fun OpeningOverlay(
     message: String? = null,
     progress: Float? = null,
 ) {
-    val contentAlpha by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(durationMillis = 700, delayMillis = 400, easing = LinearEasing),
-        label = "openingOverlayContentAlpha",
-    )
-    val pulse = rememberInfiniteTransition(label = "openingOverlayContentPulse")
-    val contentScale by pulse.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.04f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "openingOverlayContentScale",
-    )
+    val motion = LocalUiMotion.current
     var logoLoadError by remember(logo) { mutableStateOf(false) }
     val logoUrl = logo?.takeIf { it.isNotBlank() }
+    val targetProgress = progress?.coerceIn(0f, 1f)
+    val progressActive = targetProgress != null
+    val pulseActive = if (logoUrl != null && !logoLoadError) {
+        !progressActive
+    } else {
+        !title.isNullOrBlank()
+    }
+    val contentAlpha by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(
+            durationMillis = motion.durationMillis(700),
+            delayMillis = if (motion.allowsSpatialEffects) motion.durationMillis(400) else 0,
+            easing = LinearEasing,
+        ),
+        label = "openingOverlayContentAlpha",
+    )
+    val contentScale by rememberUiMotionLoopFloat(
+        active = pulseActive,
+        initialValue = 1f,
+        targetValue = 1.04f,
+        durationMillis = 2000,
+        label = "openingOverlayContentPulse",
+        repeatMode = androidx.compose.animation.core.RepeatMode.Reverse,
+    )
 
     BoxWithConstraints(
         modifier = modifier
@@ -128,16 +136,14 @@ internal fun OpeningOverlay(
             contentDescription = stringResource(Res.string.compose_player_close),
         )
 
-        val targetProgress = progress?.coerceIn(0f, 1f)
         val animatedProgress by animateFloatAsState(
             targetValue = targetProgress ?: 0f,
             animationSpec = tween(
-                durationMillis = if ((targetProgress ?: 0f) >= 0.999f) 160 else 400,
+                durationMillis = motion.durationMillis(if ((targetProgress ?: 0f) >= 0.999f) 160 else 400),
                 easing = LinearEasing,
             ),
             label = "openingOverlayP2pProgress",
         )
-        val progressActive = targetProgress != null
         Layout(
             modifier = Modifier
                 .fillMaxSize()
@@ -209,7 +215,7 @@ internal fun OpeningOverlay(
                     Spacer(modifier = Modifier.height(16.dp))
                     Crossfade(
                         targetState = message?.takeIf { it.isNotBlank() },
-                        animationSpec = tween(260),
+                        animationSpec = tween(motion.durationMillis(260)),
                         label = "openingLoadingMessage",
                         modifier = Modifier
                             .fillMaxWidth()
