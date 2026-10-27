@@ -48,6 +48,33 @@ class MediaCachePolicyTest {
         assertEquals(32L * MIB, MediaCachePolicy.resolve(MediaCachePlatform.TV, MediaCacheSettings(MediaCacheMode.MANUAL, -1), MediaCacheDeviceSnapshot()).totalBytes)
     }
 
+    @Test fun budgetMonitorRechecksStorageDuringTheSessionAndStopsWritesBelowOpenedQuota() {
+        var now = 1_000L
+        var freeBytes = 20_000L * MIB
+        var samples = 0
+        val monitor = MediaCacheBudgetMonitor(
+            platform = MediaCachePlatform.DESKTOP,
+            settings = { MediaCacheSettings() },
+            sampleDevice = { samples++; MediaCacheDeviceSnapshot(usableStorageBytes = freeBytes) },
+            clockMillis = { now },
+            refreshIntervalMillis = 15_000L,
+        )
+
+        val opened = monitor.current()
+        val openedQuota = opened.budget.quota(MediaCacheCategory.ADDONS)
+        assertTrue(MediaCachePolicy.allowsNewWrites(opened.budget, MediaCacheCategory.ADDONS, openedQuota))
+        freeBytes = 2_500L * MIB
+        now += 14_999L
+        assertEquals(opened.budget, monitor.current().budget)
+        assertEquals(1, samples)
+        now += 1L
+        val refreshed = monitor.current()
+        assertEquals(2, samples)
+        assertEquals(freeBytes, refreshed.device.usableStorageBytes)
+        assertTrue(refreshed.budget.totalBytes < opened.budget.totalBytes)
+        assertTrue(!MediaCachePolicy.allowsNewWrites(refreshed.budget, MediaCacheCategory.ADDONS, openedQuota))
+    }
+
     @Test fun categorySharesSumToTheWholeBudget() {
         assertEquals(100, MediaCacheCategory.entries.sumOf { it.share })
         val budget = MediaCachePolicy.resolve(MediaCachePlatform.TV, MediaCacheSettings(), MediaCacheDeviceSnapshot())

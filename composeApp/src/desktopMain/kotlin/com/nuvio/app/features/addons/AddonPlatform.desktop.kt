@@ -69,12 +69,14 @@ internal fun createAddonHttpClient(cache: Cache, writesEnabled: () -> Boolean): 
     .build()
 
 private val desktopHttpClient by lazy {
-    createAddonHttpClient(
-        Cache(
-            DesktopMediaCache.directory(MediaCacheCategory.ADDONS).resolve("http").toFile(),
-            DesktopMediaCache.cacheQuota(MediaCacheCategory.ADDONS),
-        ),
-    ) { DesktopMediaCache.writesEnabled }
+    val openedAddonQuota = DesktopMediaCache.cacheQuota(MediaCacheCategory.ADDONS)
+    val cache = Cache(
+        DesktopMediaCache.directory(MediaCacheCategory.ADDONS).resolve("http").toFile(),
+        openedAddonQuota,
+    )
+    createAddonHttpClient(cache) {
+        DesktopMediaCache.cacheWritesAllowed(MediaCacheCategory.ADDONS, openedAddonQuota)
+    }
 }
 
 private const val truncationSuffix = "\n...[truncated]"

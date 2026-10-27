@@ -12,7 +12,10 @@ internal object DesktopMediaCache {
     private val preferences = DesktopMediaCachePreferences(DesktopStorage.store("telumia_media_cache_v1"))
     val root: Path by lazy { DesktopStorage.cacheDir.resolve("media-cache-v1").also { Files.createDirectories(it) } }
     val activeSettings: MediaCacheSettings by lazy { loadSettings() }
-    val activeBudget: MediaCacheBudget by lazy { MediaCachePolicy.resolve(MediaCachePlatform.DESKTOP, activeSettings, detectDevice()) }
+    private val budgetMonitor by lazy {
+        MediaCacheBudgetMonitor(MediaCachePlatform.DESKTOP, { activeSettings }, ::detectDevice, { System.nanoTime() / 1_000_000L })
+    }
+    val activeBudget: MediaCacheBudget get() = budgetMonitor.current().budget
 
     fun loadSettings(): MediaCacheSettings = preferences.load()
     fun saveSettings(settings: MediaCacheSettings) = preferences.save(settings)
@@ -35,6 +38,8 @@ internal object DesktopMediaCache {
     fun coilImageQuota(): Long = coilBudget().quota(MediaCacheCategory.IMAGES) * 9 / 10
     fun coilBadgeQuota(): Long = coilBudget().quota(MediaCacheCategory.BADGES)
     fun cacheQuota(category: MediaCacheCategory): Long = coilBudget().quota(category)
+    fun cacheWritesAllowed(category: MediaCacheCategory, openedQuotaBytes: Long): Boolean =
+        MediaCachePolicy.allowsNewWrites(activeBudget, category, openedQuotaBytes)
 
     val gifCache: BoundedFileCache by lazy { BoundedFileCache(directory(MediaCacheCategory.IMAGES).resolve("gifs"),
         quotaBytes = { activeBudget.quota(MediaCacheCategory.IMAGES) / 10 }, maxFiles = 200, canWrite = ::hasStorageFor) }
