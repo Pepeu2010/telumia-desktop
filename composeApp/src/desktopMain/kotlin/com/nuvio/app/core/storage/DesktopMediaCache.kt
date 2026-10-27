@@ -3,7 +3,6 @@ package com.nuvio.app.core.storage
 import java.lang.management.ManagementFactory
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.security.MessageDigest
 import java.util.concurrent.Executors
 import com.sun.management.OperatingSystemMXBean
@@ -67,11 +66,21 @@ internal object DesktopMediaCache {
     fun cacheWritesAllowed(category: MediaCacheCategory, openedQuotaBytes: Long): Boolean =
         MediaCachePolicy.allowsNewWrites(activeBudget, category, openedQuotaBytes)
 
-    val gifCache: BoundedFileCache by lazy { BoundedFileCache(directory(MediaCacheCategory.IMAGES).resolve("gifs"),
-        quotaBytes = { imageCacheAllocation().gifBytes }, maxFiles = 200, canWrite = ::hasStorageFor) }
+    val gifCache: BoundedLegacyFileCache by lazy {
+        BoundedLegacyFileCache(
+            directory(MediaCacheCategory.IMAGES).resolve("gifs"),
+            DesktopStorage.cacheDir.resolve("gif-cache"),
+            quotaBytes = { imageCacheAllocation().gifBytes },
+            maxFiles = 200,
+            maxEntryBytes = 8L * MIB,
+            canWrite = ::hasStorageFor,
+            legacyFileName = { "${sha256(it)}.gif" },
+            legacyName = Regex("[a-f0-9]{64}\\.gif"),
+        )
+    }
 
-    val memberBackgroundCache: BoundedProfileBackgroundCache by lazy {
-        BoundedProfileBackgroundCache(
+    val memberBackgroundCache: BoundedLegacyFileCache by lazy {
+        BoundedLegacyFileCache(
             directory(MediaCacheCategory.IMAGES).resolve("member-backgrounds"),
             DesktopStorage.cacheDir.resolve("member_profile_backgrounds"),
             quotaBytes = ::memberBackgroundQuota,
@@ -92,16 +101,11 @@ internal object DesktopMediaCache {
     }
 
     /** Migrate legacy GIFs on demand; no network request is required for an already cached image. */
-    fun readGif(url: String): ByteArray? {
-        gifCache.get(url)?.let { return it }
-        return runCatching {
-            val hash = MessageDigest.getInstance("SHA-256").digest(url.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
-            val legacy = DesktopStorage.cacheDir.resolve("gif-cache").resolve("$hash.gif").normalize()
-            if (!Files.isRegularFile(legacy, NOFOLLOW_LINKS) || Files.size(legacy) > BoundedFileCache.MAX_ENTRY_BYTES ||
-                !legacy.toRealPath().startsWith(DesktopStorage.cacheDir.toRealPath())) return@runCatching null
-            Files.readAllBytes(legacy).also { bytes -> if (gifCache.put(url, bytes)) Files.deleteIfExists(legacy) }
-        }.getOrNull()
-    }
+    fun readGif(url: String): ByteArray? = gifCache.get(url)
+
+    private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
 
     private val fileCaches = mutableMapOf<MediaCacheCategory, BoundedFileCache>()
     fun files(category: MediaCacheCategory): BoundedFileCache = synchronized(fileCaches) {

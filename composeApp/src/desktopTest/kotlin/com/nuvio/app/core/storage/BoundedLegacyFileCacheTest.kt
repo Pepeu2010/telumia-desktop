@@ -9,7 +9,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class BoundedProfileBackgroundCacheTest {
+class BoundedLegacyFileCacheTest {
     @Test fun legacyAndHashedFilesShareTheSameByteAndFileBudget() {
         val parent = Files.createTempDirectory("telumia-profile-background-budget")
         val current = parent.resolve("hashed")
@@ -17,7 +17,7 @@ class BoundedProfileBackgroundCacheTest {
         Files.createDirectories(legacy)
         var now = 0L
         var writesEnabled = true
-        val cache = BoundedProfileBackgroundCache(
+        val cache = BoundedLegacyFileCache(
             current,
             legacy,
             quotaBytes = { 8L },
@@ -39,7 +39,7 @@ class BoundedProfileBackgroundCacheTest {
 
         assertNull(cache.getFile("current"))
         assertTrue(legacyFile.toFile().isFile)
-        assertEquals(BoundedProfileBackgroundCache.Usage(bytes = 8, files = 2), cache.usage())
+        assertEquals(BoundedLegacyFileCache.Usage(bytes = 8, files = 2), cache.usage())
     }
 
     @Test fun validLegacyFileMigratesOnlyAfterTheHashedCopyIsVerified() {
@@ -49,14 +49,14 @@ class BoundedProfileBackgroundCacheTest {
         Files.createDirectories(legacy)
         val bytes = byteArrayOf(1, 2, 3, 4)
         val legacyFile = legacy.resolve("background-v1.png").also { Files.write(it, bytes) }
-        val cache = BoundedProfileBackgroundCache(current, legacy, quotaBytes = { 16L })
+        val cache = BoundedLegacyFileCache(current, legacy, quotaBytes = { 16L })
 
         val migrated = cache.getFile("background-v1") ?: error("Expected the valid legacy image to migrate")
 
         assertTrue(migrated.toPath().startsWith(current))
         assertContentEquals(bytes, Files.readAllBytes(migrated.toPath()))
         assertFalse(Files.exists(legacyFile))
-        assertEquals(BoundedProfileBackgroundCache.Usage(bytes = 4, files = 1), cache.usage())
+        assertEquals(BoundedLegacyFileCache.Usage(bytes = 4, files = 1), cache.usage())
     }
 
     @Test fun readableLegacyFileStaysAvailableWhenNewWritesAreDisabled() {
@@ -66,7 +66,7 @@ class BoundedProfileBackgroundCacheTest {
         Files.createDirectories(legacy)
         val bytes = byteArrayOf(8, 7, 6)
         val legacyFile = legacy.resolve("offline.png").also { Files.write(it, bytes) }
-        val cache = BoundedProfileBackgroundCache(
+        val cache = BoundedLegacyFileCache(
             current,
             legacy,
             quotaBytes = { 16L },
@@ -76,7 +76,7 @@ class BoundedProfileBackgroundCacheTest {
         assertEquals(legacyFile.toFile(), cache.getFile("offline"))
         assertContentEquals(bytes, Files.readAllBytes(legacyFile))
         assertFalse(Files.exists(current))
-        assertEquals(BoundedProfileBackgroundCache.Usage(bytes = 3, files = 1), cache.usage())
+        assertEquals(BoundedLegacyFileCache.Usage(bytes = 3, files = 1), cache.usage())
     }
 
     @Test fun oversizedLegacyFilesAreRemovedEvenWhenTheTotalQuotaWouldFit() {
@@ -85,7 +85,7 @@ class BoundedProfileBackgroundCacheTest {
         val legacy = parent.resolve("legacy")
         Files.createDirectories(legacy)
         val legacyFile = legacy.resolve("large.png").also { Files.write(it, ByteArray(5)) }
-        val cache = BoundedProfileBackgroundCache(
+        val cache = BoundedLegacyFileCache(
             current,
             legacy,
             quotaBytes = { 20L },
@@ -94,6 +94,57 @@ class BoundedProfileBackgroundCacheTest {
 
         assertNull(cache.getFile("large"))
         assertFalse(Files.exists(legacyFile))
-        assertEquals(BoundedProfileBackgroundCache.Usage(bytes = 0, files = 0), cache.usage())
+        assertEquals(BoundedLegacyFileCache.Usage(bytes = 0, files = 0), cache.usage())
     }
+
+    @Test fun legacyGifFileMigratesFromItsOldUrlHashToTheSharedHashedCache() {
+        val parent = Files.createTempDirectory("telumia-legacy-gif-migrate")
+        val current = parent.resolve("hashed")
+        val legacy = parent.resolve("legacy")
+        Files.createDirectories(legacy)
+        val url = "https://images.example/gif?id=43"
+        val bytes = byteArrayOf(71, 73, 70, 56, 57, 97)
+        val legacyFile = legacy.resolve("${sha256(url)}.gif").also { Files.write(it, bytes) }
+        val cache = BoundedLegacyFileCache(
+            current,
+            legacy,
+            quotaBytes = { 16L },
+            maxFiles = 2,
+            maxEntryBytes = 8L,
+            legacyFileName = { key -> "${sha256(key)}.gif" },
+            legacyName = Regex("[a-f0-9]{64}\\.gif"),
+        )
+
+        assertContentEquals(bytes, cache.get(url))
+        assertFalse(Files.exists(legacyFile))
+        assertEquals(BoundedLegacyFileCache.Usage(bytes = bytes.size.toLong(), files = 1), cache.usage())
+    }
+
+    @Test fun legacyGifKeyUsesTheRecognizedHashedFilenameAndStaysReadableOffline() {
+        val parent = Files.createTempDirectory("telumia-legacy-gif")
+        val current = parent.resolve("hashed")
+        val legacy = parent.resolve("legacy")
+        Files.createDirectories(legacy)
+        val url = "https://images.example/gif?id=42"
+        val bytes = byteArrayOf(71, 73, 70, 56, 57, 97)
+        val legacyFile = legacy.resolve("${sha256(url)}.gif").also { Files.write(it, bytes) }
+        val cache = BoundedLegacyFileCache(
+            current,
+            legacy,
+            quotaBytes = { 16L },
+            maxFiles = 2,
+            maxEntryBytes = 8L,
+            canWrite = { false },
+            legacyFileName = { key -> "${sha256(key)}.gif" },
+            legacyName = Regex("[a-f0-9]{64}\\.gif"),
+        )
+
+        assertContentEquals(bytes, cache.get(url))
+        assertTrue(Files.isRegularFile(legacyFile))
+        assertEquals(BoundedLegacyFileCache.Usage(bytes = bytes.size.toLong(), files = 1), cache.usage())
+    }
+
+    private fun sha256(value: String): String = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
 }
