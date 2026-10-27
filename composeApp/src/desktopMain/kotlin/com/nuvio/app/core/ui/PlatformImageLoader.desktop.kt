@@ -19,6 +19,16 @@ internal actual fun ImageLoader.Builder.configurePlatformImageLoader(): ImageLoa
             .maxSizeBytes(quota).build()
     }
 
+internal actual fun ImageLoader.Builder.configurePlatformPreviewImageLoader(): ImageLoader.Builder =
+    diskCachePolicy(if (DesktopMediaCache.writesEnabled) CachePolicy.ENABLED else CachePolicy.READ_ONLY)
+        .diskCache {
+            val quota = DesktopMediaCache.coilPreviewQuota()
+            if (quota <= 0L) null else DiskCache.Builder()
+                .directory(DesktopMediaCache.directory(MediaCacheCategory.PREVIEWS).resolve("coil").toFile().toOkioPath())
+                .maxSizeBytes(quota)
+                .build()
+        }
+
 internal actual fun ImageLoader.Builder.configurePlatformBadgeImageLoader(): ImageLoader.Builder =
     diskCachePolicy(if (DesktopMediaCache.writesEnabled) CachePolicy.ENABLED else CachePolicy.READ_ONLY).diskCache {
     val quota = DesktopMediaCache.coilBadgeQuota()
