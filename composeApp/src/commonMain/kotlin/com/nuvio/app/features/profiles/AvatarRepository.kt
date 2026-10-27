@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -30,6 +32,7 @@ import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
 private const val MemberAvatarBucket = "membership-profile-avatars"
+private const val MaxConcurrentMemberAvatarDownloads = 2
 private val AvatarCatalogRefreshInterval = 15.minutes
 
 @Serializable
@@ -57,6 +60,7 @@ internal fun availableAvatarCatalog(
 
 object AvatarRepository {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val memberAvatarDownloads = Semaphore(MaxConcurrentMemberAvatarDownloads)
     private val log = Logger.withTag("AvatarRepository")
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
@@ -177,7 +181,7 @@ object AvatarRepository {
             saveCachedCatalog()
             memberCatalog = coroutineScope {
                 remote.map { item ->
-                    async { loadMemberAvatar(item) }
+                    async { memberAvatarDownloads.withPermit { loadMemberAvatar(item) } }
                 }.awaitAll().filterNotNull()
             }.sortedWith(compareBy({ it.category }, { it.sortOrder }))
             publishCatalog()
