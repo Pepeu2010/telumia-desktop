@@ -1,5 +1,6 @@
 package com.nuvio.app.features.membership
 
+import com.nuvio.app.core.storage.DesktopMediaCache
 import com.nuvio.app.core.storage.DesktopStorage
 import java.io.File
 
@@ -34,13 +35,24 @@ internal actual object MemberAssetStorage {
         saveFile(backgroundFile(cacheKey), bytes)
     }
 
-    actual fun loadProfileAvatar(cacheKey: String): String? =
-        avatarFile(cacheKey).takeIf { it.isFile && it.length() > 0L }?.toURI()?.toString()
+    actual fun loadProfileAvatar(cacheKey: String): String? {
+        DesktopMediaCache.memberAvatarCache.getFile(cacheKey)?.let { return it.toURI().toString() }
+        val legacy = avatarFile(cacheKey)
+        if (!isValidLegacyAvatar(legacy)) return null
+        val bytes = runCatching { legacy.readBytes() }.getOrNull() ?: return null
+        if (DesktopMediaCache.memberAvatarCache.put(cacheKey, bytes)) {
+            DesktopMediaCache.memberAvatarCache.getFile(cacheKey)?.let { cached ->
+                legacy.delete()
+                return cached.toURI().toString()
+            }
+        }
+        return legacy.toURI().toString()
+    }
 
     actual fun saveProfileAvatar(cacheKey: String, bytes: ByteArray): String? {
-        val file = avatarFile(cacheKey)
-        saveFile(file, bytes)
-        return file.takeIf { it.isFile && it.length() > 0L }?.toURI()?.toString()
+        if (bytes.isEmpty() || bytes.size > 2 * 1024 * 1024) return null
+        if (!DesktopMediaCache.memberAvatarCache.put(cacheKey, bytes)) return null
+        return DesktopMediaCache.memberAvatarCache.getFile(cacheKey)?.toURI()?.toString()
     }
 
     actual fun clearAccess() {
@@ -51,6 +63,14 @@ internal actual object MemberAssetStorage {
         backgroundDirectory.resolve("${safeKey(cacheKey)}.png")
 
     private fun avatarFile(cacheKey: String): File = avatarDirectory.resolve(safeKey(cacheKey))
+
+    private fun isValidLegacyAvatar(file: File): Boolean = runCatching {
+        val directory = avatarDirectory.toPath()
+        val path = file.toPath()
+        java.nio.file.Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS) &&
+            java.nio.file.Files.size(path) in 1..(2L * 1024 * 1024) &&
+            path.toRealPath().startsWith(directory.toRealPath())
+    }.getOrDefault(false)
 
     private fun saveFile(file: File, bytes: ByteArray) {
         val directory = file.parentFile ?: return

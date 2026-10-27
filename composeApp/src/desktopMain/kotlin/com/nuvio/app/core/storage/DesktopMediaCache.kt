@@ -27,7 +27,8 @@ internal object DesktopMediaCache {
 
     internal val occupiedCache: MediaCacheOccupancy by lazy {
         OwnedMediaCacheOccupancy.measure(DesktopStorage.cacheDir,
-            MediaCacheCategory.entries.map { listOf("media-cache-v1", it.directoryName) } + listOf(listOf("gif-cache")))
+            MediaCacheCategory.entries.map { listOf("media-cache-v1", it.directoryName) } +
+                listOf(listOf("gif-cache"), listOf("member_profile_avatars"), listOf("member_profile_backgrounds")))
     }
 
     fun directory(category: MediaCacheCategory): Path = root.resolve(category.directoryName)
@@ -43,6 +44,16 @@ internal object DesktopMediaCache {
 
     val gifCache: BoundedFileCache by lazy { BoundedFileCache(directory(MediaCacheCategory.IMAGES).resolve("gifs"),
         quotaBytes = { activeBudget.quota(MediaCacheCategory.IMAGES) / 10 }, maxFiles = 200, canWrite = ::hasStorageFor) }
+
+    val memberAvatarCache: BoundedFileCache by lazy {
+        BoundedFileCache(
+            directory(MediaCacheCategory.AVATARS).resolve("member-assets"),
+            quotaBytes = { activeBudget.quota(MediaCacheCategory.AVATARS) },
+            maxFiles = 256,
+            maxEntryBytes = 2L * MIB,
+            canWrite = ::hasStorageFor,
+        )
+    }
 
     /** Migrate legacy GIFs on demand; no network request is required for an already cached image. */
     fun readGif(url: String): ByteArray? {

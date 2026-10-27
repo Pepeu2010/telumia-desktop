@@ -33,6 +33,18 @@ class BoundedFileCacheTest {
         quota = 0
         assertFalse(cache.put("new", byteArrayOf(4)))
         assertContentEquals(byteArrayOf(1,2,3), cache.get("metadata"))
+        assertTrue(cache.getFile("metadata")?.isFile == true)
+    }
+
+    @Test fun fileHandleSupportsImageUrisAndUsesConfiguredEntryLimit() {
+        val directory = Files.createTempDirectory("telumia-avatar-file-cache")
+        val cache = BoundedFileCache(directory, { 8L }, maxFiles = 2, maxEntryBytes = 4L)
+        assertTrue(cache.put("member-v1.png", byteArrayOf(1, 2, 3, 4)))
+        val file = cache.getFile("member-v1.png")
+        assertTrue(file?.isFile == true)
+        assertContentEquals(byteArrayOf(1, 2, 3, 4), cache.get("member-v1.png"))
+        assertFalse(cache.put("member-v2.png", byteArrayOf(1, 2, 3, 4, 5)))
+        assertTrue(cache.getFile("member-v1.png")?.isFile == true)
     }
 
     @Test fun hostileKeysStayHashedAndOversizedWritesPreserveTheExistingEntry() {

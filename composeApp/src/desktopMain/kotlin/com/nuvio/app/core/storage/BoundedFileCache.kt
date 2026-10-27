@@ -12,6 +12,7 @@ internal class BoundedFileCache(
     directory: Path,
     private val quotaBytes: () -> Long,
     private val maxFiles: Int = 512,
+    private val maxEntryBytes: Long = MAX_ENTRY_BYTES,
     private val canWrite: (Long) -> Boolean = { true },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
@@ -20,18 +21,23 @@ internal class BoundedFileCache(
     private val ownedName = Regex("[a-f0-9]{64}\\.cache")
     companion object { const val MAX_ENTRY_BYTES = 32L * MIB }
 
-    fun get(key: String): ByteArray? = synchronized(lock) {
+    fun get(key: String): ByteArray? = getFile(key)?.let { runCatching { Files.readAllBytes(it.toPath()) }.getOrNull() }
+
+    /** Returns the owned regular file for URI-based image loaders without bypassing the size checks. */
+    fun getFile(key: String): java.io.File? = synchronized(lock) {
         runCatching {
             if (Files.isSymbolicLink(directory)) return@runCatching null
             val file = file(key)
-            if (!Files.isRegularFile(file, NOFOLLOW_LINKS) || Files.size(file) > MAX_ENTRY_BYTES) return@runCatching null
-            Files.readAllBytes(file).also { runCatching { Files.setLastModifiedTime(file, FileTime.fromMillis(clock())) } }
+            if (!Files.isRegularFile(file, NOFOLLOW_LINKS) || Files.size(file) > maxEntryBytes) return@runCatching null
+            if (!file.toRealPath().startsWith(directory.toRealPath())) return@runCatching null
+            runCatching { Files.setLastModifiedTime(file, FileTime.fromMillis(clock())) }
+            file.toFile()
         }.getOrNull()
     }
 
     fun put(key: String, bytes: ByteArray): Boolean = synchronized(lock) {
         val quota = quotaBytes().coerceAtLeast(0)
-        if (quota <= 0 || maxFiles <= 0 || bytes.size.toLong() > minOf(quota, MAX_ENTRY_BYTES) || !canWrite(bytes.size.toLong())) return false
+        if (quota <= 0 || maxFiles <= 0 || maxEntryBytes <= 0 || bytes.size.toLong() > minOf(quota, maxEntryBytes) || !canWrite(bytes.size.toLong())) return false
         runCatching {
             Files.createDirectories(directory)
             require(!Files.isSymbolicLink(directory))
