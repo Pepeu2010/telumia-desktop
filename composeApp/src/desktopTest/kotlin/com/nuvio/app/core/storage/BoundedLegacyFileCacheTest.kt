@@ -97,6 +97,29 @@ class BoundedLegacyFileCacheTest {
         assertEquals(BoundedLegacyFileCache.Usage(bytes = 0, files = 0), cache.usage())
     }
 
+    @Test fun existingHashedHitRemainsReadableWhenTheDynamicQuotaFallsToZero() {
+        val parent = Files.createTempDirectory("telumia-legacy-file-readonly-hit")
+        val current = parent.resolve("hashed")
+        val legacy = parent.resolve("legacy")
+        var quota = 16L
+        var writesEnabled = true
+        val cache = BoundedLegacyFileCache(
+            current,
+            legacy,
+            quotaBytes = { quota },
+            canWrite = { writesEnabled },
+        )
+        val bytes = byteArrayOf(5, 4, 3)
+        assertTrue(cache.put("offline", bytes) != null)
+
+        quota = 0
+        writesEnabled = false
+
+        assertContentEquals(bytes, cache.get("offline"))
+        assertEquals(BoundedLegacyFileCache.Usage(bytes = 3, files = 1), cache.usage())
+        assertNull(cache.put("new", byteArrayOf(8)))
+    }
+
     @Test fun legacyGifFileMigratesFromItsOldUrlHashToTheSharedHashedCache() {
         val parent = Files.createTempDirectory("telumia-legacy-gif-migrate")
         val current = parent.resolve("hashed")
@@ -131,7 +154,7 @@ class BoundedLegacyFileCacheTest {
         val cache = BoundedLegacyFileCache(
             current,
             legacy,
-            quotaBytes = { 16L },
+            quotaBytes = { 0L },
             maxFiles = 2,
             maxEntryBytes = 8L,
             canWrite = { false },

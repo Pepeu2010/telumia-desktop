@@ -41,7 +41,7 @@ internal class BoundedLegacyFileCache(
         val owned = ownedFile(key)
         if (isValidFile(owned, directory, ownedName)) {
             val size = runCatching { Files.size(owned) }.getOrNull() ?: return@synchronized null
-            if (size > quota || size > maxEntryBytes) {
+            if (size > maxEntryBytes) {
                 runCatching { Files.deleteIfExists(owned) }
                 trimIfNeeded(quota)
                 return@synchronized null
@@ -57,7 +57,7 @@ internal class BoundedLegacyFileCache(
             return@synchronized null
         }
         val size = runCatching { Files.size(legacy) }.getOrNull() ?: return@synchronized null
-        if (size > quota || size > maxEntryBytes) {
+        if (size > maxEntryBytes) {
             runCatching { Files.deleteIfExists(legacy) }
             trimIfNeeded(quota)
             return@synchronized null
@@ -148,7 +148,7 @@ internal class BoundedLegacyFileCache(
                 continue
             }
             if (bytes <= quota && files <= maxFiles) break
-            if (entry.path == keep && entry.bytes <= quota && maxFiles > 0) continue
+            if (entry.path == keep) continue
             if (runCatching { Files.deleteIfExists(entry.path) }.getOrDefault(false)) {
                 bytes = (bytes - entry.bytes).coerceAtLeast(0)
                 files--
