@@ -54,9 +54,10 @@ fun ProfileBackgroundBackdrop(
                 .firstOrNull { it.id == backgroundSelection.id }
                 ?.let { background ->
                     if (isPortrait) {
-                        background.portraitImageBytes ?: background.landscapeImageBytes
+                        background.portraitImageUri ?: background.portraitImageBytes
+                            ?: background.landscapeImageUri ?: background.landscapeImageBytes
                     } else {
-                        background.landscapeImageBytes
+                        background.landscapeImageUri ?: background.landscapeImageBytes
                     }
                 }
             is ProfileBackgroundSelection.Custom -> backgroundSelection.url

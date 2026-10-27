@@ -28,15 +28,18 @@ internal actual object MemberAssetStorage {
         store.putString(backgroundCatalogPayloadKey, payload)
     }
 
-    actual fun loadProfileBackground(cacheKey: String): ByteArray? {
-        DesktopMediaCache.memberBackgroundCache.get(cacheKey)?.let { return it }
-        return loadLegacyProfileBackground(cacheKey)
+    actual fun loadProfileBackgroundUri(cacheKey: String): String? {
+        DesktopMediaCache.memberBackgroundCache.getFile(cacheKey)?.let { return it.toURI().toString() }
+        return loadLegacyProfileBackgroundUri(cacheKey)
     }
 
-    actual fun saveProfileBackground(cacheKey: String, bytes: ByteArray) {
-        if (bytes.isEmpty() || bytes.size.toLong() > MAX_PROFILE_BACKGROUND_BYTES) return
-        DesktopMediaCache.memberBackgroundCache.put(cacheKey, bytes)
+    actual fun saveProfileBackground(cacheKey: String, bytes: ByteArray): String? {
+        if (bytes.isEmpty() || bytes.size.toLong() > MAX_PROFILE_BACKGROUND_BYTES) return null
+        if (!DesktopMediaCache.memberBackgroundCache.put(cacheKey, bytes)) return null
+        return DesktopMediaCache.memberBackgroundCache.getFile(cacheKey)?.toURI()?.toString()
     }
+
+    actual fun profileBackgroundDeviceMemoryBytes(): Long? = DesktopMediaCache.physicalMemoryBytes()
 
     actual fun loadProfileAvatar(cacheKey: String): String? {
         DesktopMediaCache.memberAvatarCache.getFile(cacheKey)?.let { return it.toURI().toString() }
@@ -75,17 +78,17 @@ internal actual object MemberAssetStorage {
             path.toRealPath().startsWith(directory.toRealPath())
     }.getOrDefault(false)
 
-    private fun loadLegacyProfileBackground(cacheKey: String): ByteArray? {
+    private fun loadLegacyProfileBackgroundUri(cacheKey: String): String? {
         val legacy = backgroundFile(cacheKey)
         if (!isValidLegacyProfileBackground(legacy)) return null
         val bytes = runCatching { legacy.readBytes() }.getOrNull() ?: return null
         if (DesktopMediaCache.memberBackgroundCache.put(cacheKey, bytes)) {
-            DesktopMediaCache.memberBackgroundCache.get(cacheKey)?.let { migrated ->
+            DesktopMediaCache.memberBackgroundCache.getFile(cacheKey)?.let { migrated ->
                 legacy.delete()
-                return migrated
+                return migrated.toURI().toString()
             }
         }
-        return bytes
+        return legacy.toURI().toString()
     }
 
     private fun isValidLegacyProfileBackground(file: File): Boolean = runCatching {

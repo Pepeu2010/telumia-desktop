@@ -34,13 +34,17 @@ internal actual object MemberAssetStorage {
         preferences?.edit()?.putString(backgroundCatalogPayloadKey, payload)?.apply()
     }
 
-    actual fun loadProfileBackground(cacheKey: String): ByteArray? =
-        backgroundFile(cacheKey)?.takeIf { it.isFile && it.length() > 0L }?.readBytes()
+    actual fun loadProfileBackgroundUri(cacheKey: String): String? =
+        backgroundFile(cacheKey)?.takeIf { it.isFile && it.length() in 1..(8L * 1024 * 1024) }?.toURI()?.toString()
 
-    actual fun saveProfileBackground(cacheKey: String, bytes: ByteArray) {
-        val file = backgroundFile(cacheKey) ?: return
+    actual fun saveProfileBackground(cacheKey: String, bytes: ByteArray): String? {
+        val file = backgroundFile(cacheKey) ?: return null
+        if (bytes.isEmpty() || bytes.size > 8 * 1024 * 1024) return null
         saveFile(file, bytes)
+        return file.takeIf { it.isFile && it.length() in 1..(8L * 1024 * 1024) }?.toURI()?.toString()
     }
+
+    actual fun profileBackgroundDeviceMemoryBytes(): Long? = null
 
     actual fun loadProfileAvatar(cacheKey: String): String? =
         avatarFile(cacheKey)?.takeIf { it.isFile && it.length() > 0L }?.toURI()?.toString()

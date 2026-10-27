@@ -207,6 +207,7 @@ fun ProfileEditScreen(
                             onSelectionChange = { id, url ->
                                 selectedBackgroundId = id
                                 selectedBackgroundUrl = url
+                                id?.let { ProfileBackgroundRepository.loadSelectedAndPreload(it, portrait = false) }
                             },
                         )
                     }

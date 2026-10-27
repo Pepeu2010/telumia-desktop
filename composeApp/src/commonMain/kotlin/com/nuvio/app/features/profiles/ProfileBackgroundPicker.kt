@@ -105,7 +105,7 @@ internal fun ProfileBackgroundPicker(
                 onClick = { onSelectionChange(background.id, null) },
             ) {
                 AsyncImage(
-                    model = background.landscapeImageBytes,
+                    model = background.landscapeImageUri ?: background.landscapeImageBytes,
                     contentDescription = background.displayName,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,

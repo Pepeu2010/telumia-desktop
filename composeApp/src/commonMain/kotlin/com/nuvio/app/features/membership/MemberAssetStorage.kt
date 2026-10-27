@@ -5,8 +5,9 @@ internal expect object MemberAssetStorage {
     fun saveAccessPayload(payload: String)
     fun loadProfileBackgroundCatalogPayload(): String?
     fun saveProfileBackgroundCatalogPayload(payload: String)
-    fun loadProfileBackground(cacheKey: String): ByteArray?
-    fun saveProfileBackground(cacheKey: String, bytes: ByteArray)
+    fun loadProfileBackgroundUri(cacheKey: String): String?
+    fun saveProfileBackground(cacheKey: String, bytes: ByteArray): String?
+    fun profileBackgroundDeviceMemoryBytes(): Long?
     fun loadProfileAvatar(cacheKey: String): String?
     fun saveProfileAvatar(cacheKey: String, bytes: ByteArray): String?
     fun clearAccess()
