@@ -34,6 +34,7 @@ internal object DesktopMediaCache {
     private fun coilBudget(): MediaCacheBudget = if (writesEnabled) activeBudget else activeBudget.copy(totalBytes = activeBudget.requestedBytes)
     fun coilImageQuota(): Long = coilBudget().quota(MediaCacheCategory.IMAGES) * 9 / 10
     fun coilBadgeQuota(): Long = coilBudget().quota(MediaCacheCategory.BADGES)
+    fun cacheQuota(category: MediaCacheCategory): Long = coilBudget().quota(category)
 
     val gifCache: BoundedFileCache by lazy { BoundedFileCache(directory(MediaCacheCategory.IMAGES).resolve("gifs"),
         quotaBytes = { activeBudget.quota(MediaCacheCategory.IMAGES) / 10 }, maxFiles = 200, canWrite = ::hasStorageFor) }
