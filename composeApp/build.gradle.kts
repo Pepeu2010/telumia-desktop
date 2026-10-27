@@ -1323,6 +1323,7 @@ kotlin {
         val desktopTest by getting {
             dependencies {
                 implementation(compose.desktop.uiTestJUnit4)
+                implementation("com.squareup.okhttp3:mockwebserver:4.12.0")
             }
         }
         commonTest.dependencies {

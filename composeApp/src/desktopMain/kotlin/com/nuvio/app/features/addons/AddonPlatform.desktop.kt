@@ -1,6 +1,8 @@
 package com.nuvio.app.features.addons
 
 import com.nuvio.app.core.storage.DesktopStorage
+import com.nuvio.app.core.storage.DesktopMediaCache
+import com.nuvio.app.core.storage.MediaCacheCategory
 import com.nuvio.app.core.network.DesktopIPv4FirstDns
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -11,6 +13,7 @@ import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.network_empty_response_body
 import nuvio.composeapp.generated.resources.network_request_failed_http
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Cache
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -47,14 +50,32 @@ internal actual object AddonStorage {
     }
 }
 
-private val desktopHttpClient = OkHttpClient.Builder()
+internal fun createAddonHttpClient(cache: Cache, writesEnabled: () -> Boolean): OkHttpClient = OkHttpClient.Builder()
     .dns(DesktopIPv4FirstDns())
+    .cache(cache)
     .connectTimeout(60, TimeUnit.SECONDS)
     .readTimeout(60, TimeUnit.SECONDS)
     .writeTimeout(60, TimeUnit.SECONDS)
     .followRedirects(true)
     .followSslRedirects(true)
+    .addNetworkInterceptor { chain ->
+        val response = chain.proceed(chain.request())
+        if (response.code in 400..599 || !writesEnabled()) {
+            response.newBuilder().header("Cache-Control", "no-store").build()
+        } else {
+            response
+        }
+    }
     .build()
+
+private val desktopHttpClient by lazy {
+    createAddonHttpClient(
+        Cache(
+            DesktopMediaCache.directory(MediaCacheCategory.ADDONS).resolve("http").toFile(),
+            DesktopMediaCache.cacheQuota(MediaCacheCategory.ADDONS),
+        ),
+    ) { DesktopMediaCache.writesEnabled }
+}
 
 private const val truncationSuffix = "\n...[truncated]"
 
