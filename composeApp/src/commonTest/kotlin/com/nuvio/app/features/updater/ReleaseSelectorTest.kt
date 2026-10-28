@@ -9,29 +9,14 @@ class ReleaseSelectorTest {
         val releases = listOf(
             release("1.1.0-beta.2", prerelease = true),
             release("1.1.0-beta.1"),
+            release("1.1.0", name = "Alpha 1.1.0"),
             release("1.0.1"),
             release("1.0.0")
         )
 
-        val selected = ReleaseSelector.eligibleReleases(releases, UpdateChannel.STABLE)
+        val selected = ReleaseSelector.eligibleReleases(releases)
 
         assertEquals(listOf("1.0.1", "1.0.0"), selected.map { it.tagName })
-    }
-
-    @Test
-    fun `beta channel prefers final promotion over its betas`() {
-        val releases = listOf(
-            release("1.1.0-beta.10", prerelease = true),
-            release("1.1.0"),
-            release("1.1.0-beta.9", prerelease = true)
-        )
-
-        val selected = ReleaseSelector.eligibleReleases(releases, UpdateChannel.BETA)
-
-        assertEquals(
-            listOf("1.1.0", "1.1.0-beta.10", "1.1.0-beta.9"),
-            selected.map { it.tagName }
-        )
     }
 
     @Test
@@ -41,7 +26,7 @@ class ReleaseSelectorTest {
             release(tag = "0.7.17")
         )
 
-        val selected = ReleaseSelector.eligibleReleases(releases, UpdateChannel.STABLE)
+        val selected = ReleaseSelector.eligibleReleases(releases)
 
         assertEquals(listOf("0.7.17"), selected.map { it.tagName })
     }
@@ -54,7 +39,7 @@ class ReleaseSelectorTest {
             release("1.1.0")
         )
 
-        val selected = ReleaseSelector.eligibleReleases(releases, UpdateChannel.BETA)
+        val selected = ReleaseSelector.eligibleReleases(releases)
 
         assertEquals(listOf("1.1.0"), selected.map { it.tagName })
     }

@@ -6,10 +6,8 @@ import kotlin.test.assertNull
 
 class AppUpdaterRepositoryTest {
     @Test
-    fun channelsUseTheSameReleaseEndpointsAsTv() {
+    fun stableChannelUsesGithubLatestReleaseEndpoint() {
         assertEquals("releases/latest", AppUpdaterRepository.releasePath(UpdateChannel.STABLE))
-        assertEquals("releases?per_page=100", AppUpdaterRepository.releasePath(UpdateChannel.BETA))
-        assertEquals("releases?per_page=20", AppUpdaterRepository.releasePath(UpdateChannel.ALL_RELEASES))
     }
 
     @Test
@@ -33,47 +31,30 @@ class AppUpdaterRepositoryTest {
     }
 
     @Test
-    fun betaSkipsReleasesWithoutAnApkAndSortsByVersion() {
-        val response = """[
-            {"tag_name": "1.1.0-beta.9", "assets": [
-                {"name": "app.apk", "browser_download_url": "https://example.com/beta9.apk"}]},
-            {"tag_name": "1.2.0", "assets": [
-                {"name": "app.ipa", "browser_download_url": "https://example.com/app.ipa"}]},
-            {"tag_name": "1.1.0-beta.10", "assets": [
-                {"name": "app.apk", "browser_download_url": "https://example.com/beta10.apk"}]}
-        ]"""
-        assertEquals("1.1.0-beta.10", select(response, UpdateChannel.BETA)?.tag)
-    }
-
-    @Test
-    fun betaReceivesFinalPromotion() {
-        val response = """[
-            {"tag_name": "1.1.0-beta.10", "prerelease": true, "assets": [
-                {"name": "app.apk", "browser_download_url": "https://example.com/beta.apk"}]},
-            {"tag_name": "1.1.0", "assets": [
-                {"name": "app.apk", "browser_download_url": "https://example.com/stable.apk"}]}
-        ]"""
-        assertEquals("1.1.0", select(response, UpdateChannel.BETA)?.tag)
-    }
-
-    @Test
-    fun desktopSelectsFirstPublishedReleaseInGithubOrderWithoutChannelOrSemverFiltering() {
-        val response = """[
-            {"tag_name": "desktop-preview", "name": "Desktop Preview", "prerelease": true, "assets": [
-                {"name": "Nuvio.dmg", "browser_download_url": "https://example.com/preview.dmg"}]},
-            {"tag_name": "2.0.0", "assets": [
-                {"name": "Nuvio.dmg", "browser_download_url": "https://example.com/stable.dmg"}]}
-        ]"""
+    fun stableRejectsPrereleaseEvenIfItIsReturnedAsTheLatestPayload() {
+        val response = """{
+            "tag_name": "1.1.0-alpha.2", "prerelease": true, "assets": [
+                {"name": "Telumia.msi", "browser_download_url": "https://example.com/alpha.msi"}]
+        }"""
 
         val update = AppUpdaterRepository.selectUpdate(
             responseBody = response,
-            channel = UpdateChannel.ALL_RELEASES,
+            channel = UpdateChannel.STABLE,
             supportedAbis = emptyList(),
-            selector = AppUpdateAssetSelector(fileExtensions = listOf(".dmg")),
+            selector = AppUpdateAssetSelector(fileExtensions = listOf(".msi")),
         )
 
-        assertEquals("desktop-preview", update?.tag)
-        assertEquals("https://example.com/preview.dmg", update?.assetUrl)
+        assertNull(update)
+    }
+
+    @Test
+    fun stableRejectsAlphaTagEvenWhenGithubDoesNotMarkItPrerelease() {
+        val response = """{
+            "tag_name": "1.1.0-alpha.2", "assets": [
+                {"name": "app.apk", "browser_download_url": "https://example.com/alpha.apk"}]
+        }"""
+
+        assertNull(select(response, UpdateChannel.STABLE))
     }
 
     @Test

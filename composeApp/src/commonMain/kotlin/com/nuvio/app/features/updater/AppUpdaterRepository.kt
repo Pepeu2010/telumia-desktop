@@ -90,8 +90,6 @@ internal object AppUpdaterRepository {
 
     internal fun releasePath(channel: UpdateChannel): String = when (channel) {
         UpdateChannel.STABLE -> "releases/latest"
-        UpdateChannel.BETA -> "releases?per_page=100"
-        UpdateChannel.ALL_RELEASES -> "releases?per_page=20"
     }
 
     internal fun selectUpdate(
@@ -105,18 +103,8 @@ internal object AppUpdaterRepository {
             fallbackNameFragments = listOf("universal", "all"),
         ),
     ): AppUpdate? {
-        val releases = when (channel) {
-            UpdateChannel.STABLE -> listOf(json.decodeFromString<GitHubReleaseDto>(responseBody))
-            UpdateChannel.BETA, UpdateChannel.ALL_RELEASES ->
-                json.decodeFromString<List<GitHubReleaseDto>>(responseBody)
-        }
-        val eligibleReleases = ReleaseSelector.eligibleReleases(releases, channel)
-        val releasesToCheck = if (channel == UpdateChannel.ALL_RELEASES) {
-            eligibleReleases.take(1)
-        } else {
-            eligibleReleases
-        }
-        return releasesToCheck.firstNotNullOfOrNull { release ->
+        val release = json.decodeFromString<GitHubReleaseDto>(responseBody)
+        return ReleaseSelector.eligibleReleases(listOf(release)).firstNotNullOfOrNull { release ->
             val asset = selectBestUpdateAsset(
                 assets = release.assets.map { candidate ->
                     AppUpdateAssetCandidate(
@@ -128,14 +116,8 @@ internal object AppUpdaterRepository {
                 },
                 selector = selector,
             ) ?: return@firstNotNullOfOrNull null
-            val tag = if (channel == UpdateChannel.ALL_RELEASES) {
-                release.tagName?.takeIf(String::isNotBlank)
-                    ?: release.name?.takeIf(String::isNotBlank)
-                    ?: return@firstNotNullOfOrNull null
-            } else {
-                release.tagName?.takeIf { VersionUtils.parse(it) != null }
-                    ?: release.name.orEmpty()
-            }
+            val tag = release.tagName?.takeIf { VersionUtils.parse(it) != null }
+                ?: return@firstNotNullOfOrNull null
             AppUpdate(
                 tag = tag,
                 title = release.name?.takeIf { it.isNotBlank() } ?: tag,
