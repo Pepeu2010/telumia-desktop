@@ -20,9 +20,17 @@ internal object DesktopMediaCache {
     private val occupancyMonitor by lazy {
         MediaCacheOccupancyMonitor(
             scan = {
+                // Versioned runtime assets count toward Auto storage estimates but are never media-cache eviction targets.
                 OwnedMediaCacheOccupancy.measure(DesktopStorage.cacheDir,
                     MediaCacheCategory.entries.map { listOf("media-cache-v1", it.directoryName) } +
-                        listOf(listOf("gif-cache"), listOf("member_profile_avatars"), listOf("member_profile_backgrounds")))
+                        listOf(
+                            listOf("gif-cache"),
+                            listOf("member_profile_avatars"),
+                            listOf("member_profile_backgrounds"),
+                            listOf("quickjs"),
+                            listOf("native-player-bridge"),
+                            listOf("player-ui"),
+                        ))
             },
             executor = occupancyExecutor,
             onSnapshotUpdated = budgetMonitor::invalidate,

@@ -51,6 +51,27 @@ class OwnedMediaCacheOccupancyTest {
         assertEquals(31L, result.bytes)
         assertEquals(29L, Files.size(root.resolve("profile-studio/avatar.png")))
     }
+
+    @Test fun versionedRuntimeAssetsAffectAutoOccupancyWithoutTouchingDurableData() = fixture { root ->
+        write(root, "quickjs/windows_x64/version-a/libquickjs.dll", 3)
+        write(root, "native-player-bridge/windows/version-b/player_bridge.dll", 5)
+        write(root, "player-ui/version-c/controls.html", 7)
+        write(root, "sentry/pending-events.json", 11)
+        write(root, "downloads/movie", 13)
+        val roots = listOf(
+            listOf("quickjs"),
+            listOf("native-player-bridge"),
+            listOf("player-ui"),
+        )
+
+        val result = OwnedMediaCacheOccupancy.measure(root, roots, maxMillis = 10_000)
+
+        assertTrue(result.complete)
+        assertEquals(15L, result.bytes)
+        assertEquals(11L, Files.size(root.resolve("sentry/pending-events.json")))
+        assertEquals(13L, Files.size(root.resolve("downloads/movie")))
+    }
+
     @Test fun missingCachesAreAnEmptyMeasurement() = fixture { root ->
         assertEquals(MediaCacheOccupancy(0, 0, true),
             OwnedMediaCacheOccupancy.measure(root, listOf(listOf("missing")), maxMillis = 10_000))
