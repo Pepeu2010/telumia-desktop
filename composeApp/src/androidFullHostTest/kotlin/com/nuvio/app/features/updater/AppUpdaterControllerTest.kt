@@ -4,13 +4,10 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import com.nuvio.app.core.build.AppVersionConfig
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.withContext
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
@@ -69,37 +66,17 @@ class AppUpdaterControllerTest {
     }
 
     @Test
-    fun channelChangeDiscardsPendingUpdate() {
-        val controller = controller { Result.success(update("999.0.0")) }
-        controller.checkForUpdates(force = true, showNoUpdateFeedback = false)
-        assertTrue(controller.uiState.value.showDialog)
-
-        preferences.setChannel(UpdateChannel.BETA)
-
-        assertEquals(AppUpdaterUiState(updateChannel = UpdateChannel.BETA), controller.uiState.value)
-    }
-
-    @Test
-    fun channelChangeChecksNewChannelAndIgnoresLateResults() {
-        val context = RuntimeEnvironment.getApplication()
-        context.applicationInfo.flags = context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE.inv()
-        val oldResult = CompletableDeferred<Result<AppUpdate>>()
+    fun everyCheckUsesStableChannel() {
         val requestedChannels = mutableListOf<UpdateChannel>()
         val controller = controller { channel ->
             requestedChannels += channel
-            if (channel == UpdateChannel.STABLE) {
-                withContext(NonCancellable) { oldResult.await() }
-            } else {
-                Result.success(update("999.0.0-beta.1"))
-            }
+            Result.success(update("999.0.0"))
         }
-        controller.checkForUpdates(force = false, showNoUpdateFeedback = false)
-        preferences.setChannel(UpdateChannel.BETA)
-        oldResult.complete(Result.success(update("999.0.0")))
+        controller.checkForUpdates(force = true, showNoUpdateFeedback = false)
 
-        assertEquals(listOf(UpdateChannel.STABLE, UpdateChannel.BETA), requestedChannels)
-        assertEquals(UpdateChannel.BETA, controller.uiState.value.updateChannel)
-        assertEquals("999.0.0-beta.1", controller.uiState.value.update?.tag)
+        assertEquals(listOf(UpdateChannel.STABLE), requestedChannels)
+        assertEquals(UpdateChannel.STABLE, controller.uiState.value.updateChannel)
+        assertEquals("999.0.0", controller.uiState.value.update?.tag)
         assertTrue(controller.uiState.value.showDialog)
         assertFalse(controller.uiState.value.isChecking)
     }
@@ -112,18 +89,6 @@ class AppUpdaterControllerTest {
         assertFalse(controller.uiState.value.showDialog)
         assertFalse(controller.uiState.value.isChecking)
         assertNull(controller.uiState.value.errorMessage)
-    }
-
-    @Test
-    fun channelChangeCancelsDebugDownloadAndClearsItsState() {
-        val controller = controller { error("Debug channel changes should not check for updates") }
-        controller.showDebugTestUpdate()
-        controller.downloadUpdate()
-        assertTrue(controller.uiState.value.isDownloading)
-
-        preferences.setChannel(UpdateChannel.BETA)
-
-        assertEquals(AppUpdaterUiState(updateChannel = UpdateChannel.BETA), controller.uiState.value)
     }
 
     private fun controller(fetch: suspend (UpdateChannel) -> Result<AppUpdate>) =

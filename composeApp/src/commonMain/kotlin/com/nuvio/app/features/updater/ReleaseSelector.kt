@@ -6,15 +6,7 @@ internal object ReleaseSelector {
         RegexOption.IGNORE_CASE
     )
 
-    fun eligibleReleases(
-        releases: List<GitHubReleaseDto>,
-        channel: UpdateChannel
-    ): List<GitHubReleaseDto> {
-        if (channel == UpdateChannel.ALL_RELEASES) {
-            return releases.filterNot(GitHubReleaseDto::draft)
-        }
-
-        return releases
+    fun eligibleReleases(releases: List<GitHubReleaseDto>): List<GitHubReleaseDto> = releases
             .asSequence()
             .filterNot(GitHubReleaseDto::draft)
             .mapNotNull { release ->
@@ -25,11 +17,10 @@ internal object ReleaseSelector {
                     prerelease = isPrerelease(release, version)
                 )
             }
-            .filter { candidate -> channel == UpdateChannel.BETA || !candidate.prerelease }
+            .filterNot(ReleaseCandidate::prerelease)
             .sortedByDescending(ReleaseCandidate::version)
             .map(ReleaseCandidate::release)
             .toList()
-    }
 
     private fun releaseVersion(release: GitHubReleaseDto): SemanticVersion? =
         VersionUtils.parse(release.tagName) ?: VersionUtils.parse(release.name)
