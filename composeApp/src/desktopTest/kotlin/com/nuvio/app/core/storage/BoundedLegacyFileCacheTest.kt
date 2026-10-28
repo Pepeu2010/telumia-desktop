@@ -167,6 +167,36 @@ class BoundedLegacyFileCacheTest {
         assertEquals(BoundedLegacyFileCache.Usage(bytes = bytes.size.toLong(), files = 1), cache.usage())
     }
 
+    @Test fun legacyAvatarFilenameWithoutExtensionMigratesIntoTheAvatarsBudget() {
+        val parent = Files.createTempDirectory("telumia-legacy-avatar")
+        val current = parent.resolve("hashed")
+        val legacy = parent.resolve("legacy")
+        Files.createDirectories(legacy)
+        val key = "member:42/avatar"
+        val oldName = "member_42_avatar"
+        val bytes = byteArrayOf(2, 4, 6, 8)
+        val legacyFile = legacy.resolve(oldName).also { Files.write(it, bytes) }
+        val cache = BoundedLegacyFileCache(
+            current,
+            legacy,
+            quotaBytes = { 16L },
+            maxFiles = 2,
+            maxEntryBytes = 8L,
+            legacyFileName = { value ->
+                value.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                    .takeIf { it.isNotEmpty() && it.length <= 200 && it != "." && it != ".." }
+            },
+            legacyName = Regex("[A-Za-z0-9._-]{1,200}"),
+        )
+
+        val migrated = cache.getFile(key) ?: error("Expected the old extensionless avatar to migrate")
+
+        assertTrue(migrated.toPath().startsWith(current))
+        assertContentEquals(bytes, Files.readAllBytes(migrated.toPath()))
+        assertFalse(Files.exists(legacyFile))
+        assertEquals(BoundedLegacyFileCache.Usage(bytes = 4, files = 1), cache.usage())
+    }
+
     private fun sha256(value: String): String = java.security.MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
