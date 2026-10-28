@@ -69,6 +69,9 @@ internal object DesktopMediaCache {
     fun coilImageQuota(): Long = imageCacheAllocation().coilBytes
     fun coilPreviewQuota(): Long = coilBudget().quota(MediaCacheCategory.PREVIEWS)
     fun coilBadgeQuota(): Long = coilBudget().quota(MediaCacheCategory.BADGES)
+    private fun imageMemoryCacheAllocation() = DesktopImageMemoryCachePolicy.allocate(physicalMemoryBytes())
+    fun coilImageMemoryCacheBytes(): Long = imageMemoryCacheAllocation().imagesBytes
+    fun coilBadgeMemoryCacheBytes(): Long = imageMemoryCacheAllocation().badgesBytes
     fun cacheQuota(category: MediaCacheCategory): Long = coilBudget().quota(category)
     fun memberBackgroundQuota(): Long = imageCacheAllocation().memberBackgroundBytes
     fun cacheWritesAllowed(category: MediaCacheCategory, openedQuotaBytes: Long): Boolean =
