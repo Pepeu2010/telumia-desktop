@@ -11,13 +11,16 @@ import okio.Path.Companion.toOkioPath
 internal actual val platformProvidesImageLoader: Boolean = false
 
 internal actual fun ImageLoader.Builder.configurePlatformImageLoader(): ImageLoader.Builder =
-    components { add(SkiaGifDecoder.Factory()) }
+    components {
+        add(SkiaGifDecoder.Factory())
+        add(CacheWritePreflightInterceptor { DesktopMediaCache.canBeginCacheWrite(MediaCacheCategory.IMAGES) })
+    }
         .memoryCache {
             MemoryCache.Builder()
                 .maxSizeBytes(DesktopMediaCache.coilImageMemoryCacheBytes())
                 .build()
         }
-        .diskCachePolicy(if (DesktopMediaCache.writesEnabled) CachePolicy.ENABLED else CachePolicy.READ_ONLY)
+        .diskCachePolicy(CachePolicy.ENABLED)
         .diskCache {
         val quota = DesktopMediaCache.coilImageQuota()
         if (quota <= 0L) null else DiskCache.Builder()
@@ -26,7 +29,10 @@ internal actual fun ImageLoader.Builder.configurePlatformImageLoader(): ImageLoa
     }
 
 internal actual fun ImageLoader.Builder.configurePlatformPreviewImageLoader(): ImageLoader.Builder =
-    diskCachePolicy(if (DesktopMediaCache.writesEnabled) CachePolicy.ENABLED else CachePolicy.READ_ONLY)
+    components {
+        add(CacheWritePreflightInterceptor { DesktopMediaCache.canBeginCacheWrite(MediaCacheCategory.PREVIEWS) })
+    }
+        .diskCachePolicy(CachePolicy.ENABLED)
         .diskCache {
             val quota = DesktopMediaCache.coilPreviewQuota()
             if (quota <= 0L) null else DiskCache.Builder()
@@ -36,12 +42,15 @@ internal actual fun ImageLoader.Builder.configurePlatformPreviewImageLoader(): I
         }
 
 internal actual fun ImageLoader.Builder.configurePlatformBadgeImageLoader(): ImageLoader.Builder =
-    memoryCache {
+    components {
+        add(CacheWritePreflightInterceptor { DesktopMediaCache.canBeginCacheWrite(MediaCacheCategory.BADGES) })
+    }
+        .memoryCache {
         MemoryCache.Builder()
             .maxSizeBytes(DesktopMediaCache.coilBadgeMemoryCacheBytes())
             .build()
     }
-        .diskCachePolicy(if (DesktopMediaCache.writesEnabled) CachePolicy.ENABLED else CachePolicy.READ_ONLY)
+        .diskCachePolicy(CachePolicy.ENABLED)
         .diskCache {
             val quota = DesktopMediaCache.coilBadgeQuota()
             if (quota <= 0L) null else DiskCache.Builder()

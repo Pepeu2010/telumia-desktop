@@ -86,6 +86,13 @@ internal object DesktopMediaCache {
     fun cacheWritesAllowed(category: MediaCacheCategory, openedQuotaBytes: Long): Boolean =
         MediaCachePolicy.allowsNewWrites(activeBudget, category, openedQuotaBytes)
 
+    fun canBeginCacheWrite(category: MediaCacheCategory): Boolean = MediaCachePolicy.canBeginCacheWrite(
+        budget = activeBudget,
+        category = category,
+        freeStorageBytes = runCatching { Files.getFileStore(root).usableSpace }.getOrNull(),
+        reserveBytes = MediaCachePlatform.DESKTOP.reserveBytes,
+    )
+
     val gifCache: BoundedLegacyFileCache by lazy {
         BoundedLegacyFileCache(
             directory(MediaCacheCategory.IMAGES).resolve("gifs"),

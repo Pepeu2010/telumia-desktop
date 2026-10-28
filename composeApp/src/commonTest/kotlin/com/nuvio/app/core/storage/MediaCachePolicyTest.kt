@@ -2,6 +2,7 @@ package com.nuvio.app.core.storage
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class MediaCachePolicyTest {
@@ -38,6 +39,16 @@ class MediaCachePolicyTest {
                 assertTrue(budget.requestedBytes > 0)
             }
         }
+    }
+
+    @Test fun imageCacheWritesStopAtTheStorageReserveAndRequireAUsableCategoryQuota() {
+        val budget = MediaCachePolicy.resolve(MediaCachePlatform.DESKTOP, MediaCacheSettings(), MediaCacheDeviceSnapshot())
+        val reserve = MediaCachePlatform.DESKTOP.reserveBytes
+
+        assertTrue(MediaCachePolicy.canBeginCacheWrite(budget, MediaCacheCategory.IMAGES, reserve + 1, reserve))
+        assertFalse(MediaCachePolicy.canBeginCacheWrite(budget, MediaCacheCategory.IMAGES, reserve, reserve))
+        assertFalse(MediaCachePolicy.canBeginCacheWrite(budget, MediaCacheCategory.IMAGES, null, reserve))
+        assertFalse(MediaCachePolicy.canBeginCacheWrite(budget.copy(totalBytes = 0), MediaCacheCategory.IMAGES, reserve + 1, reserve))
     }
 
     @Test fun malformedSettingsAndExtremeTelemetryCannotOverflowOrOverallocate() {
