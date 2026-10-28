@@ -90,13 +90,16 @@ internal object DesktopMediaCache {
         )
     }
 
-    val memberAvatarCache: BoundedFileCache by lazy {
-        BoundedFileCache(
+    val memberAvatarCache: BoundedLegacyFileCache by lazy {
+        BoundedLegacyFileCache(
             directory(MediaCacheCategory.AVATARS).resolve("member-assets"),
+            DesktopStorage.cacheDir.resolve("member_profile_avatars"),
             quotaBytes = { activeBudget.quota(MediaCacheCategory.AVATARS) },
             maxFiles = 256,
             maxEntryBytes = 2L * MIB,
             canWrite = ::hasStorageFor,
+            legacyFileName = ::legacyAvatarFileName,
+            legacyName = Regex("[A-Za-z0-9._-]{1,200}"),
         )
     }
 
@@ -106,6 +109,10 @@ internal object DesktopMediaCache {
     private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
+
+    private fun legacyAvatarFileName(key: String): String? = key
+        .replace(Regex("[^A-Za-z0-9._-]"), "_")
+        .takeIf { it.isNotEmpty() && it.length <= 200 && it != "." && it != ".." }
 
     private val fileCaches = mutableMapOf<MediaCacheCategory, BoundedFileCache>()
     fun files(category: MediaCacheCategory): BoundedFileCache = synchronized(fileCaches) {
