@@ -78,6 +78,16 @@ object MediaCachePolicy {
     /** Keeps existing disk hits while stopping new writes when Auto shrinks below an open cache's cap. */
     fun allowsNewWrites(budget: MediaCacheBudget, category: MediaCacheCategory, openedQuotaBytes: Long): Boolean =
         openedQuotaBytes > 0 && budget.totalBytes > 0 && budget.quota(category) >= openedQuotaBytes
+
+    /** Allows a new cache write only when the category has quota and real free space stays above the reserve. */
+    fun canBeginCacheWrite(
+        budget: MediaCacheBudget,
+        category: MediaCacheCategory,
+        freeStorageBytes: Long?,
+        reserveBytes: Long,
+    ): Boolean = budget.totalBytes > 0 && budget.quota(category) > 0 &&
+        freeStorageBytes?.let { it >= 0 && it > reserveBytes.coerceAtLeast(0) } == true
+
     fun resolve(platform: MediaCachePlatform, settings: MediaCacheSettings, device: MediaCacheDeviceSnapshot): MediaCacheBudget {
         val constraints = mutableSetOf<MediaCacheConstraint>()
         val memory = device.memoryBytes?.takeIf { it > 0 }
