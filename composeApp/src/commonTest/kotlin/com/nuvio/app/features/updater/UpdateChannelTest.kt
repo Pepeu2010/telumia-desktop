@@ -6,9 +6,9 @@ import kotlin.test.assertNull
 
 class UpdateChannelTest {
     @Test
-    fun prereleaseBuildsDefaultToBeta() {
+    fun prereleaseBuildsStillDefaultToStableOnly() {
         listOf("1.1.0-beta", "v1.1.0-beta.2", "1.1.0-rc.1+123").forEach { version ->
-            assertEquals(UpdateChannel.BETA, UpdateChannel.defaultForVersion(version))
+            assertEquals(UpdateChannel.STABLE, UpdateChannel.defaultForVersion(version))
         }
     }
 
@@ -22,7 +22,8 @@ class UpdateChannelTest {
     @Test
     fun savedChannelsAreCaseInsensitive() {
         assertEquals(UpdateChannel.STABLE, UpdateChannel.fromStoredValue("stable"))
-        assertEquals(UpdateChannel.BETA, UpdateChannel.fromStoredValue("BETA"))
+        assertNull(UpdateChannel.fromStoredValue("BETA"))
+        assertNull(UpdateChannel.fromStoredValue("all"))
         assertNull(UpdateChannel.fromStoredValue(null))
         assertNull(UpdateChannel.fromStoredValue("nightly"))
     }

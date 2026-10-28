@@ -111,11 +111,10 @@ class AppUpdaterController internal constructor(
             if (channel != preferences.channel.value) return@launch
 
             result.onSuccess { update ->
-                val remoteNewer = if (channel == UpdateChannel.ALL_RELEASES) {
-                    VersionUtils.isRemoteNewerLegacy(update.tag, AppUpdaterPlatform.currentVersionName)
-                } else {
-                    VersionUtils.isRemoteNewer(update.tag, AppUpdaterPlatform.currentVersionName)
-                }
+                val remoteNewer = VersionUtils.isRemoteNewer(
+                    update.tag,
+                    AppUpdaterPlatform.currentVersionName,
+                )
                 val ignored = ignoredTag != null && ignoredTag == update.tag
                 val shouldShowDialog = remoteNewer && (force || !ignored)
 
@@ -168,7 +167,7 @@ class AppUpdaterController internal constructor(
     }
 
     private suspend fun noUpdateMessage(channel: UpdateChannel): String = getString(
-        if (channel == UpdateChannel.STABLE && VersionUtils.isPrerelease(AppUpdaterPlatform.currentVersionName)) {
+        if (VersionUtils.isPrerelease(AppUpdaterPlatform.currentVersionName)) {
             Res.string.updates_waiting_for_stable
         } else {
             Res.string.updates_latest_version

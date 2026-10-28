@@ -32,6 +32,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -75,6 +76,7 @@ import nuvio.composeapp.generated.resources.updates_preparing_download
 import nuvio.composeapp.generated.resources.updates_release_notes
 import nuvio.composeapp.generated.resources.updates_title_allow_installs
 import nuvio.composeapp.generated.resources.updates_title_available
+import nuvio.composeapp.generated.resources.updates_message_downloading
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -153,6 +155,53 @@ fun AppUpdaterHost(
             onContinue = controller::resumeInstallation,
             onDismiss = controller::dismissDialog,
         )
+    }
+
+    if (state.isDownloading && update != null) {
+        UpdateDownloadProgressDialog(
+            update = update,
+            progress = state.downloadProgress,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun UpdateDownloadProgressDialog(
+    update: AppUpdate,
+    progress: Float?,
+) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress?.coerceIn(0f, 1f) ?: 0f,
+        animationSpec = tween(durationMillis = 180),
+        label = "updateDialogProgress",
+    )
+    DialogSurface(
+        onDismissRequest = {},
+        title = stringResource(Res.string.updates_message_downloading),
+        message = update.title,
+    ) {
+        if (progress != null) {
+            LinearProgressIndicator(
+                progress = { animatedProgress },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = stringResource(
+                    Res.string.updates_downloading_progress,
+                    (progress * 100).toInt().coerceIn(0, 100),
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Text(
+                text = stringResource(Res.string.updates_preparing_download),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

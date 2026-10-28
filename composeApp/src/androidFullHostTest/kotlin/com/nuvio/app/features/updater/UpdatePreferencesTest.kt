@@ -22,10 +22,17 @@ class UpdatePreferencesTest {
     }
 
     @Test
-    fun betaDefaultSurvivesPromotionToStable() {
-        assertEquals(UpdateChannel.BETA, UpdatePreferences("1.1.0-beta.1").channel.value)
-        assertEquals("beta", AppUpdaterPlatform.getUpdateChannel())
-        assertEquals(UpdateChannel.BETA, UpdatePreferences("1.1.0").channel.value)
+    fun androidFullUpdaterUsesTelumiaTvReleases() {
+        assertEquals("Pepeu2010", AppUpdaterPlatform.releaseSource.owner)
+        assertEquals("telumia-tv", AppUpdaterPlatform.releaseSource.repo)
+        assertEquals(false, AppUpdaterPlatform.releaseSource.includePrereleases)
+    }
+
+    @Test
+    fun prereleaseBuildsUseStableChannel() {
+        assertEquals(UpdateChannel.STABLE, UpdatePreferences("1.1.0-beta.1").channel.value)
+        assertEquals("stable", AppUpdaterPlatform.getUpdateChannel())
+        assertEquals(UpdateChannel.STABLE, UpdatePreferences("1.1.0").channel.value)
     }
 
     @Test
@@ -37,18 +44,15 @@ class UpdatePreferencesTest {
     }
 
     @Test
-    fun changingChannelClearsIgnoredRelease() {
-        val preferences = UpdatePreferences("1.1.0")
-        AppUpdaterPlatform.setIgnoredTag("1.2.0")
-        preferences.setChannel(UpdateChannel.BETA)
+    fun legacyBetaPreferenceMigratesToStable() {
+        AppUpdaterPlatform.setUpdateChannel("beta")
 
-        assertNull(AppUpdaterPlatform.getIgnoredTag())
-        assertEquals(UpdateChannel.BETA, preferences.channel.value)
-        assertEquals(UpdateChannel.BETA, UpdatePreferences("1.1.0").channel.value)
+        assertEquals(UpdateChannel.STABLE, UpdatePreferences("1.1.0-beta.1").channel.value)
+        assertEquals("stable", AppUpdaterPlatform.getUpdateChannel())
     }
 
     @Test
-    fun initializationAndReselectingChannelPreserveIgnoredRelease() {
+    fun selectingStablePreservesIgnoredRelease() {
         AppUpdaterPlatform.setIgnoredTag("1.2.0")
         val preferences = UpdatePreferences("1.1.0")
         preferences.setChannel(UpdateChannel.STABLE)
@@ -57,10 +61,10 @@ class UpdatePreferencesTest {
     }
 
     @Test
-    fun invalidSavedChannelIsReplacedByBuildDefault() {
+    fun unknownSavedChannelIsReplacedByStable() {
         AppUpdaterPlatform.setUpdateChannel("unknown")
 
-        assertEquals(UpdateChannel.BETA, UpdatePreferences("1.1.0-beta.1").channel.value)
-        assertEquals("beta", AppUpdaterPlatform.getUpdateChannel())
+        assertEquals(UpdateChannel.STABLE, UpdatePreferences("1.1.0-beta.1").channel.value)
+        assertEquals("stable", AppUpdaterPlatform.getUpdateChannel())
     }
 }

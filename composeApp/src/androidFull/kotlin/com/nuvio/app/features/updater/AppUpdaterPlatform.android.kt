@@ -6,13 +6,12 @@ actual object AppUpdaterPlatform {
     actual val isSupported: Boolean = true
     actual val isDebugBuild: Boolean
         get() = AndroidAppUpdaterPlatform.isDebugBuild()
-    actual val hasSingleUpdateChannel: Boolean = false
+    actual val hasSingleUpdateChannel: Boolean = true
 
     actual val releaseSource: AppUpdateReleaseSource = AppUpdateReleaseSource(
-        owner = "NuvioMedia",
-        repo = "NuvioMobile",
-        channelBranch = "cmp-rewrite",
-        userAgent = "NuvioMobile",
+        owner = "Pepeu2010",
+        repo = "telumia-tv",
+        userAgent = "Telumia",
     )
 
     actual val assetSelector: AppUpdateAssetSelector

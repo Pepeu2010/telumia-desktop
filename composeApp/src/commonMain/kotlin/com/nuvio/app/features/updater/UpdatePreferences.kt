@@ -5,12 +5,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 internal class UpdatePreferences(versionName: String = AppUpdaterPlatform.currentVersionName) {
     private val storedChannel = UpdateChannel.fromStoredValue(AppUpdaterPlatform.getUpdateChannel())
-    private val singleChannel = AppUpdaterPlatform.hasSingleUpdateChannel
-    private val defaultChannel = if (singleChannel) {
-        UpdateChannel.ALL_RELEASES
-    } else {
-        storedChannel ?: UpdateChannel.defaultForVersion(versionName)
-    }
+    private val defaultChannel = storedChannel ?: UpdateChannel.defaultForVersion(versionName)
     private val _channel = MutableStateFlow(defaultChannel)
     val channel = _channel.asStateFlow()
 
@@ -21,7 +16,7 @@ internal class UpdatePreferences(versionName: String = AppUpdaterPlatform.curren
     }
 
     fun setChannel(channel: UpdateChannel) {
-        val selectedChannel = if (singleChannel) UpdateChannel.ALL_RELEASES else channel
+        val selectedChannel = UpdateChannel.STABLE
         if (_channel.value == selectedChannel) return
         AppUpdaterPlatform.setUpdateChannel(selectedChannel.storedValue)
         AppUpdaterPlatform.setIgnoredTag(null)
