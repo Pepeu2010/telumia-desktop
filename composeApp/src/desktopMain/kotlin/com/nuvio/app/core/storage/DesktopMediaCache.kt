@@ -21,7 +21,8 @@ internal object DesktopMediaCache {
         MediaCacheOccupancyMonitor(
             scan = {
                 // Versioned runtime assets count toward Auto storage estimates but are never media-cache eviction targets.
-                OwnedMediaCacheOccupancy.measure(DesktopStorage.cacheDir,
+                val directFiles = DirectCacheFileOccupancy.measure(DesktopStorage.cacheDir, maxMillis = 25)
+                val ownedCaches = OwnedMediaCacheOccupancy.measure(DesktopStorage.cacheDir,
                     MediaCacheCategory.entries.map { listOf("media-cache-v1", it.directoryName) } +
                         listOf(
                             listOf("gif-cache"),
@@ -31,6 +32,14 @@ internal object DesktopMediaCache {
                             listOf("native-player-bridge"),
                             listOf("player-ui"),
                         ))
+                MediaCacheOccupancy(
+                    bytes = (directFiles.bytes + ownedCaches.bytes).let { total ->
+                        if (total < 0 || total < directFiles.bytes) Long.MAX_VALUE else total
+                    },
+                    visitedEntries = (directFiles.visitedEntries.toLong() + ownedCaches.visitedEntries)
+                        .coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                    complete = directFiles.complete && ownedCaches.complete,
+                )
             },
             executor = occupancyExecutor,
             onSnapshotUpdated = budgetMonitor::invalidate,
