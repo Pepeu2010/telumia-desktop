@@ -55,6 +55,20 @@ class AppOpeningMotionTest {
         assertTrue(openingBeamMotionFrame(2f).startXFraction == openingBeamMotionFrame(1f).startXFraction)
     }
 
+    @Test
+    fun ambientOpeningLightMovesAcrossTheLockupAndLoopsSeamlessly() {
+        val leftToRight = openingAmbientMotionFrame(0.25f)
+        val rightToLeft = openingAmbientMotionFrame(0.75f)
+        val start = openingAmbientMotionFrame(0f)
+        val wrapped = openingAmbientMotionFrame(1f)
+        val midpoint = openingAmbientMotionFrame(0.5f)
+
+        assertTrue(leftToRight.spotlightXFraction > rightToLeft.spotlightXFraction, "ambient color should travel across the stage")
+        assertTrue(start == wrapped, "ambient loop should return to its exact start frame")
+        assertTrue(start.sweepAlpha < AlphaTolerance, "the sweep should be invisible at the loop boundary")
+        assertTrue(midpoint.sweepAlpha > 0.99f, "the sweep should peak as it crosses the lockup")
+    }
+
     private companion object {
         const val AlphaTolerance = 0.0001f
     }
