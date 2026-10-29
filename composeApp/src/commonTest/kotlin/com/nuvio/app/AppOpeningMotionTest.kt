@@ -6,6 +6,33 @@ import kotlin.test.assertTrue
 
 class AppOpeningMotionTest {
     @Test
+    fun iconAndWordmarkRevealInSequenceAndTheIconSettlesWithOvershoot() {
+        val start = openingLockupMotionFrame(0f)
+        val iconArrival = openingLockupMotionFrame(0.31f)
+        val final = openingLockupMotionFrame(1f)
+
+        assertTrue(start.iconReveal == 0f, "the mark should begin hidden")
+        assertTrue(start.wordmarkReveal == 0f, "the wordmark should follow the mark")
+        assertTrue(iconArrival.iconReveal > iconArrival.wordmarkReveal, "the mark should lead the wordmark reveal")
+        assertTrue(iconArrival.iconScale > 1f, "the mark should overshoot before settling")
+        assertTrue(final.iconReveal == 1f && final.wordmarkReveal == 1f, "the full lockup should be revealed")
+        assertTrue(abs(final.iconScale - 1f) < AlphaTolerance, "the mark should settle at its original scale")
+        assertTrue(abs(final.iconRotationDegrees) < AlphaTolerance, "the mark should settle without rotation")
+        assertTrue(abs(final.iconTranslationY) < AlphaTolerance, "the mark should settle at its original position")
+    }
+
+    @Test
+    fun cinematicLockupClampsProgressToItsFiniteSequence() {
+        val before = openingLockupMotionFrame(-1f)
+        val start = openingLockupMotionFrame(0f)
+        val after = openingLockupMotionFrame(2f)
+        val end = openingLockupMotionFrame(1f)
+
+        assertTrue(before == start, "negative progress should hold the first frame")
+        assertTrue(after == end, "progress above one should hold the settled frame")
+    }
+
+    @Test
     fun cinematicBeamCrossesTheWordmarkAndFadesAtTheEdges() {
         val start = openingBeamMotionFrame(0f)
         val midpoint = openingBeamMotionFrame(0.5f)
