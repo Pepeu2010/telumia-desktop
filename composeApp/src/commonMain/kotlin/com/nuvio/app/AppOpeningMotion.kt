@@ -41,6 +41,10 @@ import com.nuvio.app.features.settings.AppBrandWordmark
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.app_brand_name
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.PI
+import kotlin.math.sin
+
+internal const val OpeningBeamWidthFraction = 0.7f
 
 /** Shared cinematic opening used while the real app startup/profile work is in progress. */
 @Composable
@@ -125,15 +129,17 @@ private fun OpeningAtmosphere(
     secondary: Color,
     modifier: Modifier = Modifier,
 ) {
+    val beam = openingBeamMotionFrame(phase)
     Canvas(modifier = modifier) {
         val maxDimension = maxOf(size.width, size.height)
-        val drift = (phase - 0.5f) * size.width * 0.035f
+        val beamStartX = size.width * beam.startXFraction
+        val beamEndX = beamStartX + size.width * OpeningBeamWidthFraction
 
         drawRect(color = Color.Black.copy(alpha = 0.32f), size = size)
         drawRect(
             brush = Brush.radialGradient(
                 colors = listOf(primary.copy(alpha = 0.20f), Color.Transparent),
-                center = Offset(size.width * (0.49f + (phase - 0.5f) * 0.08f), size.height * 0.48f),
+                center = Offset(size.width * (0.38f + phase * 0.24f), size.height * 0.48f),
                 radius = maxDimension * 0.44f,
             ),
             size = size,
@@ -148,41 +154,41 @@ private fun OpeningAtmosphere(
         )
 
         val lightRibbon = Path().apply {
-            moveTo(-size.width * 0.08f + drift, size.height * 0.70f)
+            moveTo(beamStartX, size.height * 0.70f)
             cubicTo(
-                size.width * 0.20f + drift,
+                beamStartX + size.width * 0.18f,
                 size.height * 0.43f,
-                size.width * 0.65f + drift,
+                beamEndX - size.width * 0.14f,
                 size.height * 0.76f,
-                size.width * 1.08f + drift,
+                beamEndX,
                 size.height * 0.47f,
             )
         }
         val ribbonBrush = Brush.horizontalGradient(
             colors = listOf(
                 Color.Transparent,
-                primary.copy(alpha = 0.20f),
-                secondary.copy(alpha = 0.18f),
+                primary.copy(alpha = 0.48f),
+                secondary.copy(alpha = 0.40f),
                 Color.Transparent,
             ),
-            startX = -size.width * 0.12f + drift,
-            endX = size.width * 1.08f + drift,
+            startX = beamStartX,
+            endX = beamEndX,
         )
         drawPath(
             path = lightRibbon,
             brush = ribbonBrush,
-            alpha = 0.40f,
-            style = Stroke(width = maxDimension * 0.055f, cap = StrokeCap.Round),
+            alpha = beam.alpha * 0.48f,
+            style = Stroke(width = maxDimension * 0.035f, cap = StrokeCap.Round),
         )
         drawPath(
             path = lightRibbon,
             brush = Brush.horizontalGradient(
-                colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.22f), Color.Transparent),
-                startX = -size.width * 0.12f + drift,
-                endX = size.width * 1.08f + drift,
+                colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.46f), Color.Transparent),
+                startX = beamStartX,
+                endX = beamEndX,
             ),
-            alpha = 0.30f,
-            style = Stroke(width = 1.25.dp.toPx(), cap = StrokeCap.Round),
+            alpha = beam.alpha * 0.58f,
+            style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round),
         )
         drawRect(
             brush = Brush.radialGradient(
@@ -197,6 +203,19 @@ private fun OpeningAtmosphere(
             size = size,
         )
     }
+}
+
+internal data class OpeningBeamMotionFrame(
+    val startXFraction: Float,
+    val alpha: Float,
+)
+
+internal fun openingBeamMotionFrame(progress: Float): OpeningBeamMotionFrame {
+    val phase = progress.coerceIn(0f, 1f)
+    return OpeningBeamMotionFrame(
+        startXFraction = -0.35f + (phase - 0.5f) * 1.6f,
+        alpha = sin(PI * phase).toFloat().coerceIn(0f, 1f),
+    )
 }
 
 @Composable
