@@ -54,7 +54,8 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 internal const val OpeningBeamWidthFraction = 0.7f
-private const val OpeningDurationMillis = 2_200
+private const val OpeningDurationMillis = 2_450
+private const val OpeningAmbientDurationMillis = 5_200
 
 /** Shared cinematic opening used while the real app startup/profile work is in progress. */
 @Composable
@@ -74,7 +75,8 @@ internal fun TelumiaOpeningMotion(modifier: Modifier = Modifier) {
         ),
         label = "telumiaOpeningSequence",
     )
-    val lockup = openingLockupMotionFrame(progress)
+    val openingProgress = if (motion.allowsSpatialEffects) progress else 1f
+    val lockup = openingLockupMotionFrame(openingProgress)
     val loadingSweep = rememberUiMotionLoopFloat(
         active = active,
         initialValue = 0f,
@@ -82,13 +84,21 @@ internal fun TelumiaOpeningMotion(modifier: Modifier = Modifier) {
         durationMillis = 1_350,
         label = "telumiaOpeningLoadingSweep",
     )
+    val ambientSweep = rememberUiMotionLoopFloat(
+        active = active,
+        initialValue = 0f,
+        targetValue = 1f,
+        durationMillis = OpeningAmbientDurationMillis,
+        label = "telumiaOpeningAmbientSweep",
+    )
 
     BoxWithConstraints(
         modifier = modifier
             .clipToBounds(),
     ) {
         OpeningAtmosphere(
-            phase = progress,
+            phase = openingProgress,
+            ambientPhase = ambientSweep.value,
             primary = palette.secondary,
             secondary = palette.secondaryVariant,
             modifier = Modifier.fillMaxSize(),
@@ -109,6 +119,27 @@ internal fun TelumiaOpeningMotion(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .width(logoWidth)
                     .height(logoHeight)
+                    .drawWithContent {
+                        drawContent()
+                        if (active && motion.allowsSpatialEffects) {
+                            val sweepWidth = size.width * 0.16f
+                            val left = (size.width + sweepWidth) * ambientSweep.value - sweepWidth
+                            clipRect(left = left, right = left + sweepWidth) {
+                                drawRect(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color.White.copy(alpha = 0.28f),
+                                            Color.Transparent,
+                                        ),
+                                        startX = left,
+                                        endX = left + sweepWidth,
+                                    ),
+                                    size = size,
+                                )
+                            }
+                        }
+                    }
                     .clearAndSetSemantics {
                         contentDescription = appBrandName
                     },
@@ -162,7 +193,7 @@ internal fun TelumiaOpeningMotion(modifier: Modifier = Modifier) {
             OpeningLoadingSweep(
                 progress = sweepPosition,
                 accent = palette.secondary,
-                modifier = Modifier.width(112.dp).height(2.dp),
+                modifier = Modifier.width(168.dp).height(3.dp),
             )
         }
     }
@@ -171,12 +202,14 @@ internal fun TelumiaOpeningMotion(modifier: Modifier = Modifier) {
 @Composable
 private fun OpeningAtmosphere(
     phase: Float,
+    ambientPhase: Float,
     primary: Color,
     secondary: Color,
     modifier: Modifier = Modifier,
 ) {
     val beamPhase = ((phase - 0.12f) / 0.68f).coerceIn(0f, 1f)
     val beam = openingBeamMotionFrame(beamPhase)
+    val ambient = openingAmbientMotionFrame(ambientPhase)
     Canvas(modifier = modifier) {
         val maxDimension = maxOf(size.width, size.height)
         val minDimension = minOf(size.width, size.height)
@@ -184,6 +217,22 @@ private fun OpeningAtmosphere(
         val beamEndX = beamStartX + size.width * OpeningBeamWidthFraction
 
         drawRect(color = Color.Black.copy(alpha = 0.32f), size = size)
+        drawRect(
+            brush = Brush.radialGradient(
+                colors = listOf(primary.copy(alpha = 0.34f), Color.Transparent),
+                center = Offset(size.width * ambient.spotlightXFraction, size.height * 0.46f),
+                radius = maxDimension * 0.42f,
+            ),
+            size = size,
+        )
+        drawRect(
+            brush = Brush.radialGradient(
+                colors = listOf(secondary.copy(alpha = 0.20f), Color.Transparent),
+                center = Offset(size.width * (1f - ambient.spotlightXFraction), size.height * 0.54f),
+                radius = maxDimension * 0.32f,
+            ),
+            size = size,
+        )
         drawRect(
             brush = Brush.radialGradient(
                 colors = listOf(primary.copy(alpha = 0.24f), Color.Transparent),
@@ -266,6 +315,46 @@ private fun OpeningAtmosphere(
             alpha = beam.alpha * 0.58f,
             style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round),
         )
+
+        val ambientStartX = size.width * ambient.sweepStartXFraction
+        val ambientEndX = ambientStartX + size.width * 0.52f
+        val ambientRibbon = Path().apply {
+            moveTo(ambientStartX, size.height * 0.74f)
+            cubicTo(
+                ambientStartX + size.width * 0.16f,
+                size.height * 0.53f,
+                ambientEndX - size.width * 0.16f,
+                size.height * 0.39f,
+                ambientEndX,
+                size.height * 0.59f,
+            )
+        }
+        val ambientRibbonBrush = Brush.horizontalGradient(
+            colors = listOf(
+                Color.Transparent,
+                primary.copy(alpha = 0.72f),
+                secondary.copy(alpha = 0.62f),
+                Color.Transparent,
+            ),
+            startX = ambientStartX,
+            endX = ambientEndX,
+        )
+        drawPath(
+            path = ambientRibbon,
+            brush = ambientRibbonBrush,
+            alpha = ambient.sweepAlpha * 0.62f,
+            style = Stroke(width = maxDimension * 0.022f, cap = StrokeCap.Round),
+        )
+        drawPath(
+            path = ambientRibbon,
+            brush = Brush.horizontalGradient(
+                colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.76f), Color.Transparent),
+                startX = ambientStartX,
+                endX = ambientEndX,
+            ),
+            alpha = ambient.sweepAlpha * 0.65f,
+            style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round),
+        )
         drawRect(
             brush = Brush.radialGradient(
                 colorStops = arrayOf(
@@ -293,12 +382,12 @@ internal fun openingLockupMotionFrame(progress: Float): OpeningLockupMotionFrame
     val phase = progress.coerceIn(0f, 1f)
     val icon = smoothOpeningStep(0.10f, 0.52f, phase)
     val wordmark = smoothOpeningStep(0.34f, 0.76f, phase)
-    val overshoot = 0.32f * sin(PI * icon).toFloat() * (1f - icon)
+    val overshoot = 0.46f * sin(PI * icon).toFloat() * (1f - icon)
     return OpeningLockupMotionFrame(
         iconReveal = icon,
-        iconScale = 0.76f + icon * 0.24f + overshoot,
-        iconRotationDegrees = (1f - icon) * -8f,
-        iconTranslationY = (1f - icon) * 0.14f,
+        iconScale = 0.68f + icon * 0.32f + overshoot,
+        iconRotationDegrees = (1f - icon) * -15f,
+        iconTranslationY = (1f - icon) * 0.24f,
         wordmarkReveal = wordmark,
     )
 }
@@ -318,6 +407,22 @@ internal fun openingBeamMotionFrame(progress: Float): OpeningBeamMotionFrame {
     return OpeningBeamMotionFrame(
         startXFraction = -0.35f + (phase - 0.5f) * 1.6f,
         alpha = sin(PI * phase).toFloat().coerceIn(0f, 1f),
+    )
+}
+
+internal data class OpeningAmbientMotionFrame(
+    val spotlightXFraction: Float,
+    val sweepStartXFraction: Float,
+    val sweepAlpha: Float,
+)
+
+internal fun openingAmbientMotionFrame(progress: Float): OpeningAmbientMotionFrame {
+    val phase = ((progress % 1f) + 1f) % 1f
+    val angle = PI * 2.0 * phase
+    return OpeningAmbientMotionFrame(
+        spotlightXFraction = (0.5 + 0.20 * sin(angle)).toFloat(),
+        sweepStartXFraction = -0.32f + phase * 1.64f,
+        sweepAlpha = sin(PI * phase).toFloat().coerceIn(0f, 1f),
     )
 }
 
