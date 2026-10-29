@@ -15,12 +15,11 @@ actual object ContinueWatchingEnrichmentStorage {
     actual fun loadPayload(key: String): String? =
         preferences?.getString(key, null)
 
-    actual fun savePayload(key: String, payload: String) {
-        preferences
-            ?.edit()
-            ?.putString(key, payload)
-            ?.apply()
-    }
+    actual fun savePayload(key: String, payload: String): Boolean = runCatching {
+        val current = preferences ?: return false
+        current.edit().putString(key, payload).apply()
+        true
+    }.getOrDefault(false)
 
     actual fun removePayload(key: String) {
         preferences

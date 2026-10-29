@@ -73,6 +73,20 @@ internal object DesktopStorage {
             properties.getProperty(key)
         }
 
+        fun getStringEntriesStartingWith(prefix: String): Map<String, String> = synchronized(lock) {
+            ensureLoaded()
+            properties.stringPropertyNames()
+                .asSequence()
+                .filter { it.startsWith(prefix) }
+                .associateWith { properties.getProperty(it) }
+        }
+
+        fun persistedFileSizeBytes(): Long = synchronized(lock) {
+            runCatching {
+                if (Files.isRegularFile(file, NOFOLLOW_LINKS)) Files.size(file) else 0L
+            }.getOrDefault(0L)
+        }
+
         fun putString(key: String, value: String?) = synchronized(lock) {
             ensureLoaded()
             val previous = properties.getProperty(key)
