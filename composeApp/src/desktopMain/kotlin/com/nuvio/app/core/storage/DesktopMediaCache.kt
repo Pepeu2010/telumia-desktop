@@ -32,13 +32,28 @@ internal object DesktopMediaCache {
                             listOf("native-player-bridge"),
                             listOf("player-ui"),
                         ))
+                // Continue Watching, stream links, and binge-group hints are regenerable caches in
+                // dedicated preference files. Count only these known files, never durable app data.
+                val continueWatchingSnapshots = OwnedMediaCacheOccupancy.measure(
+                    DesktopStorage.rootDir,
+                    listOf(
+                        listOf("nuvio_continue_watching_enrichment.properties"),
+                        listOf("nuvio_stream_link_cache.properties"),
+                        listOf("nuvio_binge_group_cache.properties"),
+                    ),
+                    maxMillis = 25,
+                )
+                val parts = listOf(directFiles, ownedCaches, continueWatchingSnapshots)
+                val totalBytes = parts.fold(0L) { total, part ->
+                    if (total == Long.MAX_VALUE || part.bytes < 0 || total > Long.MAX_VALUE - part.bytes) {
+                        Long.MAX_VALUE
+                    } else total + part.bytes
+                }
                 MediaCacheOccupancy(
-                    bytes = (directFiles.bytes + ownedCaches.bytes).let { total ->
-                        if (total < 0 || total < directFiles.bytes) Long.MAX_VALUE else total
-                    },
-                    visitedEntries = (directFiles.visitedEntries.toLong() + ownedCaches.visitedEntries)
+                    bytes = totalBytes,
+                    visitedEntries = parts.sumOf { it.visitedEntries.toLong() }
                         .coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-                    complete = directFiles.complete && ownedCaches.complete,
+                    complete = parts.all { it.complete },
                 )
             },
             executor = occupancyExecutor,
@@ -100,6 +115,17 @@ internal object DesktopMediaCache {
         freeStorageBytes = runCatching { Files.getFileStore(root).usableSpace }.getOrNull(),
         reserveBytes = MediaCachePlatform.DESKTOP.reserveBytes,
     )
+
+    /** Exact-size preflight for bounded snapshots written outside the cache directory. */
+    fun canWriteCacheEntry(category: MediaCacheCategory, bytes: Long, storagePath: Path): Boolean {
+        if (bytes < 0) return false
+        val snapshot = budgetMonitor.current(forceRefresh = true)
+        val free = runCatching { Files.getFileStore(storagePath).usableSpace }.getOrNull()
+        val reserve = MediaCachePlatform.DESKTOP.reserveBytes
+        val availableAboveReserve = free?.takeIf { it > reserve }?.minus(reserve) ?: return false
+        return snapshot.budget.totalBytes > 0 && snapshot.budget.quota(category) > 0 &&
+            bytes <= availableAboveReserve
+    }
 
     val gifCache: BoundedLegacyFileCache by lazy {
         BoundedLegacyFileCache(

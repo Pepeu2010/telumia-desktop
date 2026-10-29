@@ -75,4 +75,63 @@ class ContinueWatchingEnrichmentCacheTest {
         )
         ContinueWatchingEnrichmentCache.clearAll(profileId = 1)
     }
+
+    @Test
+    fun `continue watching snapshots stay within the shared metadata quota`() {
+        val firstProfile = 9_071
+        val secondProfile = 9_072
+        ContinueWatchingEnrichmentCache.clearAll(firstProfile)
+        ContinueWatchingEnrichmentCache.clearAll(secondProfile)
+        val generation = ContinueWatchingEnrichmentCache.generation.value
+
+        val first = CachedNextUpItem(
+            contentId = "series:first",
+            contentType = "series",
+            name = "a".repeat(6_500_000),
+            videoId = "series:first:1:1",
+            lastWatched = 1,
+            sortTimestamp = 1,
+        )
+        val second = CachedNextUpItem(
+            contentId = "series:second",
+            contentType = "series",
+            name = "b".repeat(2_000_000),
+            videoId = "series:second:1:1",
+            lastWatched = 2,
+            sortTimestamp = 2,
+        )
+
+        try {
+            assertTrue(
+                ContinueWatchingEnrichmentCache.saveSnapshots(
+                    firstProfile,
+                    WatchProgressSource.TRAKT,
+                    generation,
+                    nextUp = listOf(first),
+                    inProgress = emptyList(),
+                ),
+            )
+            assertFalse(
+                ContinueWatchingEnrichmentCache.saveSnapshots(
+                    secondProfile,
+                    WatchProgressSource.NUVIO_SYNC,
+                    generation,
+                    nextUp = listOf(second),
+                    inProgress = emptyList(),
+                ),
+            )
+            assertEquals(
+                first.name,
+                ContinueWatchingEnrichmentCache.getNextUpSnapshot(firstProfile, WatchProgressSource.TRAKT).single().name,
+            )
+            assertTrue(
+                ContinueWatchingEnrichmentCache
+                    .getNextUpSnapshot(secondProfile, WatchProgressSource.NUVIO_SYNC)
+                    .isEmpty(),
+            )
+        } finally {
+            ContinueWatchingEnrichmentCache.clearAll(firstProfile)
+            ContinueWatchingEnrichmentCache.clearAll(secondProfile)
+        }
+    }
 }

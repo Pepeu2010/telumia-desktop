@@ -15,6 +15,42 @@ import kotlin.test.assertTrue
 
 class DesktopStorageTest {
     @Test
+    fun cache_namespace_update_is_atomic_and_preserves_other_preference_keys() = files { directory ->
+        val store = DesktopStorage.Store(directory.resolve("preferences.properties"))
+        store.putString("stream_link_old", "old")
+        store.putString("unrelated_setting", "keep")
+
+        store.updateStringEntriesStartingWith("stream_link_") { current ->
+            current - "stream_link_old" + ("stream_link_new" to "new")
+        }
+
+        assertEquals(null, store.getString("stream_link_old"))
+        assertEquals("new", store.getString("stream_link_new"))
+        assertEquals("keep", store.getString("unrelated_setting"))
+    }
+
+    @Test
+    fun cache_namespace_update_rolls_back_memory_when_publishing_fails() = files { directory ->
+        val file = directory.resolve("preferences.properties")
+        DesktopStorage.Store(file).apply {
+            putString("stream_link_old", "old")
+            putString("unrelated_setting", "keep")
+        }
+        val store = DesktopStorage.Store(file) { _, _ -> error("disk unavailable") }
+
+        assertFailsWith<IllegalStateException> {
+            store.updateStringEntriesStartingWith("stream_link_") { current ->
+                current - "stream_link_old" + ("stream_link_new" to "new")
+            }
+        }
+
+        assertEquals("old", store.getString("stream_link_old"))
+        assertEquals(null, store.getString("stream_link_new"))
+        assertEquals("keep", store.getString("unrelated_setting"))
+        assertEquals("old", DesktopStorage.Store(file).getString("stream_link_old"))
+    }
+
+    @Test
     fun unchanged_operations_do_not_rewrite_the_store() {
         val directory = Files.createTempDirectory("desktop-storage-test")
         val file = directory.resolve("preferences.properties")

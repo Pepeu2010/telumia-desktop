@@ -131,10 +131,11 @@ internal object ContinueWatchingEnrichmentCache {
         val encoded = runCatching {
             json.encodeToString(payload)
         }.getOrNull() ?: return@synchronized false
-        ContinueWatchingEnrichmentStorage.savePayload(
+        val saved = ContinueWatchingEnrichmentStorage.savePayload(
             continueWatchingEnrichmentStorageKey(profileId = profileId, source = source),
             encoded,
         )
+        if (!saved) return@synchronized false
         cachedPayloads[scope] = payload
         true
     }
