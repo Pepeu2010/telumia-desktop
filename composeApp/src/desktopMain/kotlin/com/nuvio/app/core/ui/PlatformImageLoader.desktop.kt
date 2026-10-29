@@ -10,10 +10,13 @@ import okio.Path.Companion.toOkioPath
 
 internal actual val platformProvidesImageLoader: Boolean = false
 
-internal actual fun ImageLoader.Builder.configurePlatformImageLoader(): ImageLoader.Builder =
-    components {
+internal actual fun ImageLoader.Builder.configurePlatformImageLoader(): ImageLoader.Builder {
+    val openedQuota = DesktopMediaCache.coilImageQuota()
+    return components {
         add(SkiaGifDecoder.Factory())
-        add(CacheWritePreflightInterceptor { DesktopMediaCache.canBeginCacheWrite(MediaCacheCategory.IMAGES) })
+        add(CacheWritePreflightInterceptor {
+            DesktopMediaCache.coilCacheWritesAllowed(MediaCacheCategory.IMAGES, openedQuota)
+        })
     }
         .memoryCache {
             MemoryCache.Builder()
@@ -22,28 +25,34 @@ internal actual fun ImageLoader.Builder.configurePlatformImageLoader(): ImageLoa
         }
         .diskCachePolicy(CachePolicy.ENABLED)
         .diskCache {
-        val quota = DesktopMediaCache.coilImageQuota()
-        if (quota <= 0L) null else DiskCache.Builder()
+        if (openedQuota <= 0L) null else DiskCache.Builder()
             .directory(DesktopMediaCache.directory(MediaCacheCategory.IMAGES).resolve("coil").toFile().toOkioPath())
-            .maxSizeBytes(quota).build()
+            .maxSizeBytes(openedQuota).build()
     }
+}
 
-internal actual fun ImageLoader.Builder.configurePlatformPreviewImageLoader(): ImageLoader.Builder =
-    components {
-        add(CacheWritePreflightInterceptor { DesktopMediaCache.canBeginCacheWrite(MediaCacheCategory.PREVIEWS) })
+internal actual fun ImageLoader.Builder.configurePlatformPreviewImageLoader(): ImageLoader.Builder {
+    val openedQuota = DesktopMediaCache.coilPreviewQuota()
+    return components {
+        add(CacheWritePreflightInterceptor {
+            DesktopMediaCache.coilCacheWritesAllowed(MediaCacheCategory.PREVIEWS, openedQuota)
+        })
     }
         .diskCachePolicy(CachePolicy.ENABLED)
         .diskCache {
-            val quota = DesktopMediaCache.coilPreviewQuota()
-            if (quota <= 0L) null else DiskCache.Builder()
+            if (openedQuota <= 0L) null else DiskCache.Builder()
                 .directory(DesktopMediaCache.directory(MediaCacheCategory.PREVIEWS).resolve("coil").toFile().toOkioPath())
-                .maxSizeBytes(quota)
+                .maxSizeBytes(openedQuota)
                 .build()
         }
+}
 
-internal actual fun ImageLoader.Builder.configurePlatformBadgeImageLoader(): ImageLoader.Builder =
-    components {
-        add(CacheWritePreflightInterceptor { DesktopMediaCache.canBeginCacheWrite(MediaCacheCategory.BADGES) })
+internal actual fun ImageLoader.Builder.configurePlatformBadgeImageLoader(): ImageLoader.Builder {
+    val openedQuota = DesktopMediaCache.coilBadgeQuota()
+    return components {
+        add(CacheWritePreflightInterceptor {
+            DesktopMediaCache.coilCacheWritesAllowed(MediaCacheCategory.BADGES, openedQuota)
+        })
     }
         .memoryCache {
         MemoryCache.Builder()
@@ -52,9 +61,9 @@ internal actual fun ImageLoader.Builder.configurePlatformBadgeImageLoader(): Ima
     }
         .diskCachePolicy(CachePolicy.ENABLED)
         .diskCache {
-            val quota = DesktopMediaCache.coilBadgeQuota()
-            if (quota <= 0L) null else DiskCache.Builder()
+            if (openedQuota <= 0L) null else DiskCache.Builder()
                 .directory(DesktopMediaCache.directory(MediaCacheCategory.BADGES).resolve("coil").toFile().toOkioPath())
-                .maxSizeBytes(quota)
+                .maxSizeBytes(openedQuota)
                 .build()
         }
+}

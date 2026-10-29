@@ -87,12 +87,20 @@ internal object DesktopMediaCache {
     // Under the storage reserve, open existing Coil caches for reads with their requested capacity.
     // The loader's READ_ONLY policy suspends writes rather than deleting offline records.
     private fun coilBudget(): MediaCacheBudget = if (writesEnabled) activeBudget else activeBudget.copy(totalBytes = activeBudget.requestedBytes)
+    private fun coilQuota(category: MediaCacheCategory, budget: MediaCacheBudget): Long = when (category) {
+        MediaCacheCategory.IMAGES -> MediaImageCachePolicy.allocate(
+            budget.quota(category), hasSeparateGifCache = true,
+        ).coilBytes
+        MediaCacheCategory.PREVIEWS, MediaCacheCategory.BADGES -> budget.quota(category)
+        else -> error("$category is not backed by a Coil cache")
+    }
+
     private fun imageCacheAllocation() = MediaImageCachePolicy.allocate(
         coilBudget().quota(MediaCacheCategory.IMAGES), hasSeparateGifCache = true,
     )
-    fun coilImageQuota(): Long = imageCacheAllocation().coilBytes
-    fun coilPreviewQuota(): Long = coilBudget().quota(MediaCacheCategory.PREVIEWS)
-    fun coilBadgeQuota(): Long = coilBudget().quota(MediaCacheCategory.BADGES)
+    fun coilImageQuota(): Long = coilQuota(MediaCacheCategory.IMAGES, coilBudget())
+    fun coilPreviewQuota(): Long = coilQuota(MediaCacheCategory.PREVIEWS, coilBudget())
+    fun coilBadgeQuota(): Long = coilQuota(MediaCacheCategory.BADGES, coilBudget())
     private fun imageMemoryCacheAllocation() = DesktopImageMemoryCachePolicy.allocate(physicalMemoryBytes())
     fun coilImageMemoryCacheBytes(): Long = imageMemoryCacheAllocation().imagesBytes
     fun coilBadgeMemoryCacheBytes(): Long = imageMemoryCacheAllocation().badgesBytes
@@ -106,6 +114,23 @@ internal object DesktopMediaCache {
             openedQuotaBytes,
             snapshot.device.usableStorageBytes,
             MediaCachePlatform.DESKTOP.reserveBytes,
+        )
+    }
+
+    /** Stops writes when Auto shrinks below a long-lived Coil loader's exact allocation. */
+    fun coilCacheWritesAllowed(category: MediaCacheCategory, openedQuotaBytes: Long): Boolean {
+        val snapshot = budgetMonitor.current(forceRefresh = true)
+        val reserve = MediaCachePlatform.DESKTOP.reserveBytes
+        return MediaCachePolicy.allowsNewWrites(
+            snapshot.budget,
+            category,
+            openedQuotaBytes,
+            coilQuota(category, snapshot.budget),
+        ) && MediaCachePolicy.canBeginCacheWrite(
+            snapshot.budget,
+            category,
+            snapshot.device.usableStorageBytes,
+            reserve,
         )
     }
 

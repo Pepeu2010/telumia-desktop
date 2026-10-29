@@ -76,8 +76,13 @@ object MediaCachePolicy {
     const val MAX_CONFIGURED_BYTES: Long = 64L * 1024L * MIB
 
     /** Keeps existing disk hits while stopping new writes when Auto shrinks below an open cache's cap. */
-    fun allowsNewWrites(budget: MediaCacheBudget, category: MediaCacheCategory, openedQuotaBytes: Long): Boolean =
-        openedQuotaBytes > 0 && budget.totalBytes > 0 && budget.quota(category) >= openedQuotaBytes
+    fun allowsNewWrites(
+        budget: MediaCacheBudget,
+        category: MediaCacheCategory,
+        openedQuotaBytes: Long,
+        currentQuotaBytes: Long = budget.quota(category),
+    ): Boolean = openedQuotaBytes > 0 && budget.totalBytes > 0 &&
+        minOf(currentQuotaBytes, budget.quota(category)) >= openedQuotaBytes
 
     /** Network caches have unknown response sizes, so they must retain the free-storage reserve before caching. */
     fun allowsNetworkCacheWrite(
