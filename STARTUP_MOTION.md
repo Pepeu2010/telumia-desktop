@@ -25,5 +25,5 @@ A sequência usa APIs de animação do Compose: `animate*AsState` conduz a entra
 - `:composeApp:desktopTest --tests com.nuvio.app.AppOpeningMotionTest`: 2 testes aprovados.
 - `:composeApp:desktopJar` e `:composeApp:packageMsi`: aprovados no Windows.
 - MSI de validação local: `Telumia-Windows-x64-1.0.2-alpha.1.msi`, 210.980.968 bytes, SHA-256 `62A7FE23227D8BF9553A7B4D788177D0697BD5701B6D696044E1F69092716626`. Este artefato não foi publicado.
-- A suíte desktop completa terminou com 1.641 testes, 38 falhas e 4 ignorados; nenhuma falha veio de `AppOpeningMotionTest`. A rodada não incluiu comparação completa contra o pai deste branch.
+- A suíte desktop completa da revisão inicial terminou com 1.641 testes, 38 falhas e 4 ignorados. Ela ocorreu antes do ajuste final da fita; a execução específica final de `AppOpeningMotionTest` passou. A rodada completa não incluiu comparação contra o pai deste branch.
 - A compilação Android deste fork desktop e a inspeção visual em aparelho/TV não foram executadas nesta entrega.
