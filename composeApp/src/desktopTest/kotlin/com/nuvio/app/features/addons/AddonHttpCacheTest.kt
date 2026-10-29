@@ -42,6 +42,32 @@ class AddonHttpCacheTest {
         }
     }
 
+    @Test fun storagePreflightDenialKeepsExistingHitsReadableAndSkipsNewWrites() = withCache { cache ->
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("cached").addHeader("Cache-Control", "public, max-age=3600"))
+            server.enqueue(MockResponse().setBody("fresh").addHeader("Cache-Control", "public, max-age=3600"))
+            var storageAvailable = true
+            val client = createAddonHttpClient(cache) { storageAvailable }
+            val cachedRequest = okhttp3.Request.Builder().url(server.url("/cached")).build()
+
+            client.newCall(cachedRequest).execute().use { assertEquals("cached", it.body!!.string()) }
+            storageAvailable = false
+            client.newCall(cachedRequest).execute().use { response ->
+                assertEquals("cached", response.body!!.string())
+                assertNotNull(response.cacheResponse)
+                assertNull(response.networkResponse)
+            }
+            client.newCall(okhttp3.Request.Builder().url(server.url("/fresh")).build()).execute().use { response ->
+                assertEquals("fresh", response.body!!.string())
+                assertEquals("no-store", response.header("Cache-Control"))
+                assertNull(response.cacheResponse)
+                assertNotNull(response.networkResponse)
+            }
+
+            assertEquals(2, server.requestCount)
+        }
+    }
+
     @Test fun readonlyPolicyDoesNotPersistNewAddonResponses() = withCache { cache ->
         MockWebServer().use { server ->
             repeat(2) { server.enqueue(MockResponse().setBody("catalog").addHeader("Cache-Control", "public, max-age=3600")) }

@@ -51,6 +51,17 @@ class MediaCachePolicyTest {
         assertFalse(MediaCachePolicy.canBeginCacheWrite(budget.copy(totalBytes = 0), MediaCacheCategory.IMAGES, reserve + 1, reserve))
     }
 
+    @Test fun networkCacheWritesRequireTheOpenedQuotaAndFreshStorageReserve() {
+        val budget = MediaCachePolicy.resolve(MediaCachePlatform.DESKTOP, MediaCacheSettings(), MediaCacheDeviceSnapshot())
+        val openedQuota = budget.quota(MediaCacheCategory.ADDONS)
+        val reserve = MediaCachePlatform.DESKTOP.reserveBytes
+
+        assertTrue(MediaCachePolicy.allowsNetworkCacheWrite(budget, MediaCacheCategory.ADDONS, openedQuota, reserve + 1, reserve))
+        assertFalse(MediaCachePolicy.allowsNetworkCacheWrite(budget, MediaCacheCategory.ADDONS, openedQuota, reserve, reserve))
+        assertFalse(MediaCachePolicy.allowsNetworkCacheWrite(budget, MediaCacheCategory.ADDONS, openedQuota, null, reserve))
+        assertFalse(MediaCachePolicy.allowsNetworkCacheWrite(budget, MediaCacheCategory.ADDONS, openedQuota + 1, reserve + 1, reserve))
+    }
+
     @Test fun malformedSettingsAndExtremeTelemetryCannotOverflowOrOverallocate() {
         val budget = MediaCachePolicy.resolve(MediaCachePlatform.DESKTOP, MediaCacheSettings(MediaCacheMode.MANUAL, Long.MAX_VALUE),
             MediaCacheDeviceSnapshot(usableStorageBytes = Long.MAX_VALUE, occupiedCacheBytes = Long.MAX_VALUE))

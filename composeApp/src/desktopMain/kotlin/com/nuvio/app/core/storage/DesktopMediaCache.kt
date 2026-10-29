@@ -83,8 +83,16 @@ internal object DesktopMediaCache {
     fun coilBadgeMemoryCacheBytes(): Long = imageMemoryCacheAllocation().badgesBytes
     fun cacheQuota(category: MediaCacheCategory): Long = coilBudget().quota(category)
     fun memberBackgroundQuota(): Long = imageCacheAllocation().memberBackgroundBytes
-    fun cacheWritesAllowed(category: MediaCacheCategory, openedQuotaBytes: Long): Boolean =
-        MediaCachePolicy.allowsNewWrites(activeBudget, category, openedQuotaBytes)
+    fun cacheWritesAllowed(category: MediaCacheCategory, openedQuotaBytes: Long): Boolean {
+        val snapshot = budgetMonitor.current(forceRefresh = true)
+        return MediaCachePolicy.allowsNetworkCacheWrite(
+            snapshot.budget,
+            category,
+            openedQuotaBytes,
+            snapshot.device.usableStorageBytes,
+            MediaCachePlatform.DESKTOP.reserveBytes,
+        )
+    }
 
     fun canBeginCacheWrite(category: MediaCacheCategory): Boolean = MediaCachePolicy.canBeginCacheWrite(
         budget = activeBudget,
