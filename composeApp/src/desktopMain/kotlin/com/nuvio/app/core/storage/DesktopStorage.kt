@@ -81,6 +81,32 @@ internal object DesktopStorage {
                 .associateWith { properties.getProperty(it) }
         }
 
+        /** Replaces one key namespace in a single durable write; unrelated settings are untouched. */
+        fun updateStringEntriesStartingWith(
+            prefix: String,
+            transform: (Map<String, String>) -> Map<String, String>,
+        ) = synchronized(lock) {
+            require(prefix.isNotEmpty())
+            ensureLoaded()
+            val existingKeys = properties.stringPropertyNames().filter { it.startsWith(prefix) }
+            val current = existingKeys.associateWith { properties.getProperty(it) }
+            val updated = transform(current).toMap()
+            require(updated.keys.all { it.startsWith(prefix) }) {
+                "Namespace updates cannot modify keys outside their prefix"
+            }
+            if (updated == current) return@synchronized
+
+            existingKeys.forEach(properties::remove)
+            updated.forEach { (key, value) -> properties.setProperty(key, value) }
+            try {
+                persist()
+            } catch (error: Exception) {
+                (existingKeys + updated.keys).forEach(properties::remove)
+                current.forEach { (key, value) -> properties.setProperty(key, value) }
+                throw error
+            }
+        }
+
         fun persistedFileSizeBytes(): Long = synchronized(lock) {
             runCatching {
                 if (Files.isRegularFile(file, NOFOLLOW_LINKS)) Files.size(file) else 0L

@@ -32,11 +32,15 @@ internal object DesktopMediaCache {
                             listOf("native-player-bridge"),
                             listOf("player-ui"),
                         ))
-                // Continue Watching is a regenerable cache held in its existing dedicated
-                // preferences store. Count only that known cache file, never the durable app-data tree.
+                // Continue Watching, stream links, and binge-group hints are regenerable caches in
+                // dedicated preference files. Count only these known files, never durable app data.
                 val continueWatchingSnapshots = OwnedMediaCacheOccupancy.measure(
                     DesktopStorage.rootDir,
-                    listOf(listOf("nuvio_continue_watching_enrichment.properties")),
+                    listOf(
+                        listOf("nuvio_continue_watching_enrichment.properties"),
+                        listOf("nuvio_stream_link_cache.properties"),
+                        listOf("nuvio_binge_group_cache.properties"),
+                    ),
                     maxMillis = 25,
                 )
                 val parts = listOf(directFiles, ownedCaches, continueWatchingSnapshots)
