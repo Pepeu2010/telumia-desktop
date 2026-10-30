@@ -2,8 +2,6 @@ package com.nuvio.app.features.tmdb
 
 import co.touchlab.kermit.Logger
 import com.nuvio.app.features.addons.httpGetText
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -11,9 +9,9 @@ import kotlinx.serialization.json.Json
 object TmdbService {
     private val log = Logger.withTag("TmdbService")
     private val json = Json { ignoreUnknownKeys = true }
-    private val imdbToTmdbCache = linkedMapOf<String, String>()
-    private val tmdbToImdbCache = linkedMapOf<String, String>()
-    private val cacheMutex = Mutex()
+    private val idMappingCache by lazy {
+        TmdbIdMappingCache(TmdbIdMappingCacheLimits.DEFAULT.entriesPerDirection)
+    }
 
     suspend fun ensureTmdbId(videoId: String, mediaType: String, fallbackImdbId: String? = null): String? {
         val apiKey = TmdbSettingsRepository.effectiveApiKey()
@@ -47,31 +45,23 @@ object TmdbService {
     suspend fun tmdbToImdb(tmdbId: Int, mediaType: String): String? {
         val apiKey = TmdbSettingsRepository.effectiveApiKey()
 
-        val cacheKey = "$tmdbId:${normalizeMediaType(mediaType)}"
-        cacheMutex.withLock {
-            tmdbToImdbCache[cacheKey]?.let { return it }
-        }
+        val normalizedType = normalizeMediaType(mediaType)
+        idMappingCache.imdbIdForTmdb(tmdbId.toString(), normalizedType)?.let { return it }
 
-        val endpoint = when (normalizeMediaType(mediaType)) {
+        val endpoint = when (normalizedType) {
             "tv" -> "tv/$tmdbId/external_ids"
             else -> "movie/$tmdbId/external_ids"
         }
         val body = fetch<TmdbExternalIdsResponse>(endpoint = endpoint, apiKey = apiKey) ?: return null
         val imdbId = body.imdbId?.trim()?.takeIf(String::isNotBlank) ?: return null
 
-        cacheMutex.withLock {
-            tmdbToImdbCache[cacheKey] = imdbId
-            imdbToTmdbCache["$imdbId:${normalizeMediaType(mediaType)}"] = tmdbId.toString()
-        }
+        idMappingCache.remember(imdbId, tmdbId.toString(), normalizedType)
         return imdbId
     }
 
     private suspend fun imdbToTmdb(imdbId: String, mediaType: String, apiKey: String): String? {
         val normalizedType = normalizeMediaType(mediaType)
-        val cacheKey = "$imdbId:$normalizedType"
-        cacheMutex.withLock {
-            imdbToTmdbCache[cacheKey]?.let { return it }
-        }
+        idMappingCache.tmdbIdForImdb(imdbId, normalizedType)?.let { return it }
 
         val body = fetch<TmdbFindResponse>(
             endpoint = "find/$imdbId",
@@ -86,10 +76,7 @@ object TmdbService {
         }?.takeIf { it > 0 }?.toString()
 
         if (resultId != null) {
-            cacheMutex.withLock {
-                imdbToTmdbCache[cacheKey] = resultId
-                tmdbToImdbCache["$resultId:$normalizedType"] = imdbId
-            }
+            idMappingCache.remember(imdbId, resultId, normalizedType)
         } else {
             log.d { "No TMDB ID found for $imdbId ($normalizedType)" }
         }
@@ -111,12 +98,15 @@ object TmdbService {
     }
 
     internal fun normalizeMediaType(mediaType: String): String =
-        when (mediaType.trim().lowercase()) {
-            "movie", "film" -> "movie"
-            "tv", "series", "show", "tvshow" -> "tv"
-            else -> mediaType.trim().lowercase()
-        }
+        normalizeTmdbMediaType(mediaType)
 }
+
+internal fun normalizeTmdbMediaType(mediaType: String): String =
+    when (mediaType.trim().lowercase()) {
+        "movie", "film" -> "movie"
+        "tv", "series", "show", "tvshow" -> "tv"
+        else -> mediaType.trim().lowercase()
+    }
 
 internal fun buildTmdbUrl(
     endpoint: String,
