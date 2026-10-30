@@ -27,8 +27,8 @@ internal fun measureDesktopCacheOccupancy(
             ),
         maxMillis = maxMillis,
     )
-    // Count known regenerable preference snapshots and the extracted bundled TorrServer binary.
-    // TorrServer configuration and its runtime data remain outside this exact allowlist.
+    // Count known regenerable snapshots, the extracted TorrServer binary and the staged updater installer.
+    // Server configuration/runtime data and user downloads remain outside this exact allowlist.
     val dataCaches = OwnedMediaCacheOccupancy.measure(
         dataDirectory,
         listOf(
@@ -36,6 +36,7 @@ internal fun measureDesktopCacheOccupancy(
             listOf("nuvio_stream_link_cache.properties"),
             listOf("nuvio_binge_group_cache.properties"),
             listOf("torrserver", "bin"),
+            listOf("updates"),
         ),
         maxMillis = maxMillis,
     )
