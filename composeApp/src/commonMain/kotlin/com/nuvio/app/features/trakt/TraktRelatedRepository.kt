@@ -1,14 +1,14 @@
 package com.nuvio.app.features.trakt
 
 import co.touchlab.kermit.Logger
+import com.nuvio.app.core.cache.TimedBoundedLruCache
 import com.nuvio.app.features.addons.httpRequestRaw
+import com.nuvio.app.features.details.RelatedMetadataCacheLimits
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.PosterShape
 import com.nuvio.app.features.tmdb.TmdbService
 import io.ktor.http.encodeURLParameter
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -21,8 +21,10 @@ private const val RELATED_CACHE_TTL_MS = 10 * 60_000L
 object TraktRelatedRepository {
     private val log = Logger.withTag("TraktRelated")
     private val json = Json { ignoreUnknownKeys = true }
-    private val cacheMutex = Mutex()
-    private val cache = mutableMapOf<String, TimedCache>()
+    private val cache = TimedBoundedLruCache<String, List<MetaPreview>>(
+        capacity = RelatedMetadataCacheLimits.DEFAULT.entries,
+        ttlMs = RELATED_CACHE_TTL_MS,
+    )
 
     suspend fun getRelated(
         meta: MetaDetails,
@@ -40,35 +42,22 @@ object TraktRelatedRepository {
         val cacheKey = "${target.type.apiValue}|${target.pathId}"
 
         if (forceRefresh) {
-            cacheMutex.withLock { cache.remove(cacheKey) }
+            cache.remove(cacheKey)
         }
 
         if (!forceRefresh) {
-            cacheMutex.withLock {
-                cache[cacheKey]?.let { cached ->
-                    if (TraktPlatformClock.nowEpochMs() - cached.updatedAtMs <= RELATED_CACHE_TTL_MS) {
-                        return cached.items
-                    }
-                }
-            }
+            cache.get(cacheKey, TraktPlatformClock.nowEpochMs())?.let { return it }
         }
 
         val items = fetchRelated(target = target, headers = headers)
             .distinctBy { it.stableRelatedKey() }
             .take(RELATED_LIMIT)
 
-        cacheMutex.withLock {
-            cache[cacheKey] = TimedCache(
-                items = items,
-                updatedAtMs = TraktPlatformClock.nowEpochMs(),
-            )
-        }
+        cache.put(cacheKey, items, TraktPlatformClock.nowEpochMs())
         return items
     }
 
-    fun clearCache() {
-        cache.clear()
-    }
+    fun clearCache() = cache.clear()
 
     private suspend fun fetchRelated(
         target: ResolvedRelatedTarget,
@@ -194,11 +183,6 @@ object TraktRelatedRepository {
     private fun jsonHeaders(headers: Map<String, String>): Map<String, String> =
         mapOf("Accept" to "application/json") + headers
 }
-
-private data class TimedCache(
-    val items: List<MetaPreview>,
-    val updatedAtMs: Long,
-)
 
 private enum class TraktRelatedType(val apiValue: String) {
     MOVIE("movie"),
