@@ -1,6 +1,8 @@
 package com.nuvio.app.features.simkl
 
 import co.touchlab.kermit.Logger
+import com.nuvio.app.core.cache.TimedBoundedLruCache
+import com.nuvio.app.features.details.RelatedMetadataCacheLimits
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.PosterShape
 import com.nuvio.app.features.details.MetaDetails
@@ -52,7 +54,10 @@ private data class SimklDetailDto(
 object SimklRelatedRepository {
     private val log = Logger.withTag("SimklRelated")
     private val json = Json { ignoreUnknownKeys = true }
-    private val cache = mutableMapOf<String, TimedCache>()
+    private val cache = TimedBoundedLruCache<String, List<MetaPreview>>(
+        capacity = RelatedMetadataCacheLimits.DEFAULT.entries,
+        ttlMs = RELATED_CACHE_TTL_MS,
+    )
 
     suspend fun getRelated(
         meta: MetaDetails,
@@ -69,12 +74,10 @@ object SimklRelatedRepository {
         val resolved = SimklIdResolver.resolveIds(source, id, contentTypeHint) ?: return emptyList()
         val cacheKey = "${resolved.type}|${resolved.simklId}"
 
-        if (!forceRefresh) {
-            cache[cacheKey]?.let { cached ->
-                if (currentTimeMs() - cached.updatedAtMs <= RELATED_CACHE_TTL_MS) return cached.items
-            }
-        } else {
+        if (forceRefresh) {
             cache.remove(cacheKey)
+        } else {
+            cache.get(cacheKey, currentTimeMs())?.let { return it }
         }
 
         val detail = fetchDetail(resolved.type, resolved.simklId) ?: return emptyList()
@@ -87,17 +90,17 @@ object SimklRelatedRepository {
         }.take(RELATED_LIMIT)
 
         if (rawItems.isEmpty()) {
-            cache[cacheKey] = TimedCache(emptyList(), currentTimeMs())
+            cache.put(cacheKey, emptyList(), currentTimeMs())
             return emptyList()
         }
 
         val items = rawItems.mapNotNull(::itemToMetaPreview)
             .distinctBy { "${it.type}:${it.id}" }
-        cache[cacheKey] = TimedCache(items, currentTimeMs())
+        cache.put(cacheKey, items, currentTimeMs())
         return items
     }
 
-    fun clearCache() { cache.clear() }
+    fun clearCache() = cache.clear()
 
     private suspend fun fetchDetail(type: String, simklId: Long): SimklDetailDto? = try {
         val response = SimklApi.client.execute(
@@ -184,7 +187,6 @@ object SimklRelatedRepository {
         }
     }
 
-    private data class TimedCache(val items: List<MetaPreview>, val updatedAtMs: Long)
     private fun currentTimeMs(): Long = TraktPlatformClock.nowEpochMs()
 }
 
