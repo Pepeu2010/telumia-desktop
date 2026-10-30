@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.nuvio.app.features.addons.httpGetTextWithHeaders
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.MetaVideo
+import com.nuvio.app.features.tmdb.BoundedLruCache
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
@@ -20,11 +21,6 @@ import kotlin.time.TimeSource
 
 private const val BASE_URL = "https://api.trakt.tv"
 
-private val NON_ALPHANUMERIC = Regex("[^a-z0-9]+")
-private val COLLAPSED_SPACES = Regex("\\s+")
-private val titleMutex = Mutex()
-private val normalizedTitleCache = mutableMapOf<String, String>()
-
 /**
  * Handles episode number remapping between addon metadata (which may use multi-season
  * numbering for anime) and Trakt (which often uses absolute/single-season numbering).
@@ -39,11 +35,20 @@ object TraktEpisodeMappingService {
     private val json = Json { ignoreUnknownKeys = true }
 
     private val cacheMutex = Mutex()
-    private val mappingCache = mutableMapOf<String, EpisodeMappingEntry>()
-    private val reverseMappingCache = mutableMapOf<String, EpisodeMappingEntry>()
-    private val addonEpisodesCache = mutableMapOf<String, List<EpisodeMappingEntry>>()
-    private val traktEpisodesCache = mutableMapOf<String, List<EpisodeMappingEntry>>()
-    // In-flight dedup: prevents multiple concurrent coroutines from fetching
+    private val cacheLimits by lazy { TraktEpisodeMappingCacheLimits.DEFAULT }
+    private val mappingCache by lazy {
+        BoundedLruCache<String, EpisodeMappingEntry>(cacheLimits.remappedEpisodes)
+    }
+    private val reverseMappingCache by lazy {
+        BoundedLruCache<String, EpisodeMappingEntry>(cacheLimits.reverseRemaps)
+    }
+    private val addonEpisodesCache by lazy {
+        BoundedLruCache<String, List<EpisodeMappingEntry>>(cacheLimits.addonEpisodeLists)
+    }
+    private val traktEpisodesCache by lazy {
+        BoundedLruCache<String, List<EpisodeMappingEntry>>(cacheLimits.traktEpisodeLists)
+    }
+    private val normalizedTitleCache by lazy { EpisodeTitleNormalizer(cacheLimits.normalizedEpisodeTitles) }
     // In-flight dedup: prevents multiple concurrent coroutines from fetching
     // the same show's addon episodes simultaneously.
     private val addonEpisodesInFlight = mutableMapOf<String, CompletableDeferred<List<EpisodeMappingEntry>>>()
@@ -138,7 +143,7 @@ object TraktEpisodeMappingService {
         try {
             val key = cacheKey(contentId, contentType, videoId, season, episode) ?: return null
             cacheMutex.withLock {
-                mappingCache[key]?.let { return it }
+                mappingCache.get(key)?.let { return it }
             }
 
             val requestedSeason = season ?: return null
@@ -167,7 +172,7 @@ object TraktEpisodeMappingService {
             ) ?: return null
 
             cacheMutex.withLock {
-                mappingCache[key] = mapped
+                mappingCache.put(key, mapped)
             }
             return mapped
         } finally {
@@ -205,7 +210,7 @@ object TraktEpisodeMappingService {
                 title = episodeTitle,
             )
             cacheMutex.withLock {
-                reverseMappingCache[reverseKey]?.let { return it }
+                reverseMappingCache.get(reverseKey)?.let { return it }
             }
 
             val addonEpisodes = getAddonEpisodes(resolvedContentId, resolvedContentType)
@@ -231,7 +236,7 @@ object TraktEpisodeMappingService {
             ) ?: return null
 
             cacheMutex.withLock {
-                reverseMappingCache[reverseKey] = mapped
+                reverseMappingCache.put(reverseKey, mapped)
             }
             return mapped
         } finally {
@@ -247,7 +252,7 @@ object TraktEpisodeMappingService {
         episode: Int?,
     ): EpisodeMappingEntry? {
         val key = cacheKey(contentId, contentType, videoId, season, episode) ?: return null
-        return cacheMutex.withLock { mappingCache[key] }
+        return cacheMutex.withLock { mappingCache.get(key) }
     }
 
     suspend fun prefetchEpisodeMapping(
@@ -260,11 +265,14 @@ object TraktEpisodeMappingService {
         return resolveEpisodeMapping(contentId, contentType, videoId, season, episode)
     }
 
-    fun clearCache() {
-        mappingCache.clear()
-        reverseMappingCache.clear()
-        addonEpisodesCache.clear()
-        traktEpisodesCache.clear()
+    suspend fun clearCache() {
+        cacheMutex.withLock {
+            mappingCache.clear()
+            reverseMappingCache.clear()
+            addonEpisodesCache.clear()
+            traktEpisodesCache.clear()
+        }
+        normalizedTitleCache.clear()
     }
 
     // ── Season structure comparison ───────────────────────────────────────
@@ -370,7 +378,7 @@ object TraktEpisodeMappingService {
 
         // Fast path: cache hit
         cacheMutex.withLock {
-            addonEpisodesCache[cacheKey]?.let { return it }
+            addonEpisodesCache.get(cacheKey)?.let { return it }
         }
 
         getAddonMisses++
@@ -385,7 +393,7 @@ object TraktEpisodeMappingService {
         val deferred = CompletableDeferred<List<EpisodeMappingEntry>>()
         val weOwn = cacheMutex.withLock {
             // Double-check: cache or another flight may have appeared while we waited.
-            addonEpisodesCache[cacheKey]?.let { return it }
+            addonEpisodesCache.get(cacheKey)?.let { return it }
             if (addonEpisodesInFlight.containsKey(cacheKey)) {
                 false
             } else {
@@ -400,7 +408,7 @@ object TraktEpisodeMappingService {
 
         return try {
             val addonEpisodes = fetchAddonEpisodes(contentId, contentType)
-            cacheMutex.withLock { addonEpisodesCache[cacheKey] = addonEpisodes }
+            cacheMutex.withLock { addonEpisodesCache.put(cacheKey, addonEpisodes) }
             deferred.complete(addonEpisodes)
             addonEpisodes
         } catch (e: Exception) {
@@ -450,7 +458,7 @@ object TraktEpisodeMappingService {
     private suspend fun getTraktEpisodes(showLookupId: String): List<EpisodeMappingEntry> {
         getTraktCalls++
         cacheMutex.withLock {
-            traktEpisodesCache[showLookupId]?.let { return it }
+            traktEpisodesCache.get(showLookupId)?.let { return it }
         }
 
         val existingDeferred = cacheMutex.withLock { traktEpisodesInFlight[showLookupId] }
@@ -460,7 +468,7 @@ object TraktEpisodeMappingService {
 
         val deferred = CompletableDeferred<List<EpisodeMappingEntry>>()
         val weOwn = cacheMutex.withLock {
-            traktEpisodesCache[showLookupId]?.let { return it }
+            traktEpisodesCache.get(showLookupId)?.let { return it }
             if (traktEpisodesInFlight.containsKey(showLookupId)) {
                 false
             } else {
@@ -495,7 +503,7 @@ object TraktEpisodeMappingService {
 
         val traktEpisodes = parseTraktSeasonsPayload(payload)
         cacheMutex.withLock {
-            traktEpisodesCache[showLookupId] = traktEpisodes
+            traktEpisodesCache.put(showLookupId, traktEpisodes)
         }
         deferred.complete(traktEpisodes)
         cleanupTraktFlight(showLookupId)
@@ -607,15 +615,7 @@ object TraktEpisodeMappingService {
         val startTime = TimeSource.Monotonic.markNow()
         normalizeTitleCount++
         try {
-            if (title == null) return ""
-            return titleMutex.withLock {
-                normalizedTitleCache.getOrPut(title) {
-                    title.lowercase()
-                        .replace(NON_ALPHANUMERIC, " ")
-                        .trim()
-                        .replace(COLLAPSED_SPACES, " ")
-                }
-            }
+            return normalizedTitleCache.normalize(title)
         } finally {
             normalizeTitleTimeNs += startTime.elapsedNow().inWholeNanoseconds
         }
