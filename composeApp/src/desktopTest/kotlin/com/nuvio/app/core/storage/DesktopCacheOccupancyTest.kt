@@ -35,6 +35,18 @@ class DesktopCacheOccupancyTest {
         assertEquals(17L, Files.size(data.resolve("downloads/movie.mkv")))
     }
 
+    @Test
+    fun `auto counts extracted bundled profile art but excludes selected user avatars`() = fixture { cache, data ->
+        write(data, "profile-studio-v1/bundled/ABCD.svg", 19)
+        write(data, "profile-studio-v1/avatars/profile-1.png", 23)
+
+        val result = measureDesktopCacheOccupancy(cache, data, maxMillis = 10_000)
+
+        assertTrue(result.complete)
+        assertEquals(19L, result.bytes)
+        assertEquals(23L, Files.size(data.resolve("profile-studio-v1/avatars/profile-1.png")))
+    }
+
     private fun fixture(test: (Path, Path) -> Unit) {
         val parent = Files.createTempDirectory("telumia-desktop-cache-occupancy-")
         val cache = Files.createDirectory(parent.resolve("cache"))
