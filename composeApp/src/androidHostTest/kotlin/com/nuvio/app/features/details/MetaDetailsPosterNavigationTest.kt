@@ -115,7 +115,6 @@ class MetaDetailsPosterNavigationTest {
         assertEquals(recommendation.poster, poster.rawPosterUrl)
     }
 
-    @Suppress("UNCHECKED_CAST")
     private fun cache(meta: MetaDetails, enriched: Boolean = false) {
         val repositoryClass = MetaDetailsRepository::class.java
         val fingerprint = repositoryClass.getDeclaredMethod(
@@ -132,7 +131,8 @@ class MetaDetailsPosterNavigationTest {
             .newInstance(meta, meta.takeIf { enriched }, fingerprint.takeIf { enriched })
         val cache = repositoryClass.getDeclaredField("cachedMetaByRequestKey")
             .apply { isAccessible = true }
-            .get(MetaDetailsRepository) as MutableMap<String, Any>
-        cache["${meta.type}:${meta.id}"] = entry
+            .get(MetaDetailsRepository)
+        cache::class.java.getDeclaredMethod("put", Any::class.java, Any::class.java)
+            .invoke(cache, "${meta.type}:${meta.id}", entry)
     }
 }
