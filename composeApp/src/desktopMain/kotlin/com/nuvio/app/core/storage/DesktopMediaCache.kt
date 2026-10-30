@@ -7,6 +7,52 @@ import java.security.MessageDigest
 import java.util.concurrent.Executors
 import com.sun.management.OperatingSystemMXBean
 
+internal fun measureDesktopCacheOccupancy(
+    cacheDirectory: Path,
+    dataDirectory: Path,
+    maxMillis: Long = 25,
+): MediaCacheOccupancy {
+    // Versioned runtime assets count toward Auto storage estimates but are never media-cache eviction targets.
+    val directFiles = DirectCacheFileOccupancy.measure(cacheDirectory, maxMillis = maxMillis)
+    val ownedCaches = OwnedMediaCacheOccupancy.measure(
+        cacheDirectory,
+        MediaCacheCategory.entries.map { listOf("media-cache-v1", it.directoryName) } +
+            listOf(
+                listOf("gif-cache"),
+                listOf("member_profile_avatars"),
+                listOf("member_profile_backgrounds"),
+                listOf("quickjs"),
+                listOf("native-player-bridge"),
+                listOf("player-ui"),
+            ),
+        maxMillis = maxMillis,
+    )
+    // Count known regenerable preference snapshots and the extracted bundled TorrServer binary.
+    // TorrServer configuration and its runtime data remain outside this exact allowlist.
+    val dataCaches = OwnedMediaCacheOccupancy.measure(
+        dataDirectory,
+        listOf(
+            listOf("nuvio_continue_watching_enrichment.properties"),
+            listOf("nuvio_stream_link_cache.properties"),
+            listOf("nuvio_binge_group_cache.properties"),
+            listOf("torrserver", "bin"),
+        ),
+        maxMillis = maxMillis,
+    )
+    val parts = listOf(directFiles, ownedCaches, dataCaches)
+    val totalBytes = parts.fold(0L) { total, part ->
+        if (total == Long.MAX_VALUE || part.bytes < 0 || total > Long.MAX_VALUE - part.bytes) {
+            Long.MAX_VALUE
+        } else total + part.bytes
+    }
+    return MediaCacheOccupancy(
+        bytes = totalBytes,
+        visitedEntries = parts.sumOf { it.visitedEntries.toLong() }
+            .coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+        complete = parts.all { it.complete },
+    )
+}
+
 /** Device-local policy; no auth/profile sync payload is extended. Native runtime files are outside its root. */
 internal object DesktopMediaCache {
     private val preferences = DesktopMediaCachePreferences(DesktopStorage.store("telumia_media_cache_v1"))
@@ -19,43 +65,7 @@ internal object DesktopMediaCache {
     }
     private val occupancyMonitor by lazy {
         MediaCacheOccupancyMonitor(
-            scan = {
-                // Versioned runtime assets count toward Auto storage estimates but are never media-cache eviction targets.
-                val directFiles = DirectCacheFileOccupancy.measure(DesktopStorage.cacheDir, maxMillis = 25)
-                val ownedCaches = OwnedMediaCacheOccupancy.measure(DesktopStorage.cacheDir,
-                    MediaCacheCategory.entries.map { listOf("media-cache-v1", it.directoryName) } +
-                        listOf(
-                            listOf("gif-cache"),
-                            listOf("member_profile_avatars"),
-                            listOf("member_profile_backgrounds"),
-                            listOf("quickjs"),
-                            listOf("native-player-bridge"),
-                            listOf("player-ui"),
-                        ))
-                // Continue Watching, stream links, and binge-group hints are regenerable caches in
-                // dedicated preference files. Count only these known files, never durable app data.
-                val continueWatchingSnapshots = OwnedMediaCacheOccupancy.measure(
-                    DesktopStorage.rootDir,
-                    listOf(
-                        listOf("nuvio_continue_watching_enrichment.properties"),
-                        listOf("nuvio_stream_link_cache.properties"),
-                        listOf("nuvio_binge_group_cache.properties"),
-                    ),
-                    maxMillis = 25,
-                )
-                val parts = listOf(directFiles, ownedCaches, continueWatchingSnapshots)
-                val totalBytes = parts.fold(0L) { total, part ->
-                    if (total == Long.MAX_VALUE || part.bytes < 0 || total > Long.MAX_VALUE - part.bytes) {
-                        Long.MAX_VALUE
-                    } else total + part.bytes
-                }
-                MediaCacheOccupancy(
-                    bytes = totalBytes,
-                    visitedEntries = parts.sumOf { it.visitedEntries.toLong() }
-                        .coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-                    complete = parts.all { it.complete },
-                )
-            },
+            scan = { measureDesktopCacheOccupancy(DesktopStorage.cacheDir, DesktopStorage.rootDir) },
             executor = occupancyExecutor,
             onSnapshotUpdated = budgetMonitor::invalidate,
         )
