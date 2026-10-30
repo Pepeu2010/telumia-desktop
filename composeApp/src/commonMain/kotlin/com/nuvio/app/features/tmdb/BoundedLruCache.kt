@@ -23,5 +23,7 @@ internal class BoundedLruCache<K : Any, V : Any>(private val capacity: Int) {
         }
     }
 
+    suspend fun clear() = mutex.withLock { entries.clear() }
+
     suspend fun size(): Int = mutex.withLock { entries.size }
 }
