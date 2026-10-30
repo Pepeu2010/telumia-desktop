@@ -23,6 +23,18 @@ class DesktopCacheOccupancyTest {
         assertEquals(11L, Files.size(data.resolve("torrserver/settings.db")))
     }
 
+    @Test
+    fun `auto counts staged updater package but excludes user downloads`() = fixture { cache, data ->
+        write(data, "updates/Telumia-setup.msi", 13)
+        write(data, "downloads/movie.mkv", 17)
+
+        val result = measureDesktopCacheOccupancy(cache, data, maxMillis = 10_000)
+
+        assertTrue(result.complete)
+        assertEquals(13L, result.bytes)
+        assertEquals(17L, Files.size(data.resolve("downloads/movie.mkv")))
+    }
+
     private fun fixture(test: (Path, Path) -> Unit) {
         val parent = Files.createTempDirectory("telumia-desktop-cache-occupancy-")
         val cache = Files.createDirectory(parent.resolve("cache"))
