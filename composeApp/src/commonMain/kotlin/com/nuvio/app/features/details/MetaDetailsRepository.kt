@@ -47,7 +47,7 @@ object MetaDetailsRepository {
     private val _uiState = MutableStateFlow(MetaDetailsUiState())
     val uiState: StateFlow<MetaDetailsUiState> = _uiState.asStateFlow()
     private var activeRequestKey: String? = null
-    private val cachedMetaByRequestKey = mutableMapOf<String, CachedMetaEntry>()
+    private val cachedMetaByRequestKey = BoundedLruCache<String, CachedMetaEntry>(MAX_CACHED_META_ENTRIES)
 
     fun load(type: String, id: String) {
         log.d { "load() called — type=$type id=$id" }
@@ -233,20 +233,23 @@ object MetaDetailsRepository {
                     if (originalEdition == null) originalEdition = result
                     continue
                 }
-                if (cacheResult) {
-                    cachedMetaByRequestKey[requestKey] = CachedMetaEntry(baseMeta = result)
-                }
+                cachedMetaByRequestKey.putIfPresent(
+                    requestKey,
+                    CachedMetaEntry(baseMeta = result).takeIf { cacheResult },
+                )
                 return result
             }
         }
 
-        return (originalEdition ?: tryFetchTmdbFallbackMeta(type = type, id = id))?.also { result ->
-            if (cacheResult) {
-                cachedMetaByRequestKey[requestKey] = CachedMetaEntry(baseMeta = result)
-            }
-        }
+        val result = originalEdition ?: tryFetchTmdbFallbackMeta(type = type, id = id)
+        cachedMetaByRequestKey.putIfPresent(
+            requestKey,
+            result?.takeIf { cacheResult }?.let(::CachedMetaEntry),
+        )
+        return result
     }
 
+    private const val MAX_CACHED_META_ENTRIES = 128
     private const val FETCH_TIMEOUT_MS = 5_000L
     private const val METADATA_PROVIDER_READY_TIMEOUT_MS = 10_000L
     private const val TMDB_ENRICH_TIMEOUT_MS = 5_000L
