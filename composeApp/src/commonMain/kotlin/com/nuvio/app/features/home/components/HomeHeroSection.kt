@@ -40,9 +40,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
@@ -523,6 +520,8 @@ private fun DefaultHomeHeroFrame(
                 Spacer(modifier = Modifier.height(14.dp))
                 Surface(
                     modifier = Modifier
+                        .width(188.dp)
+                        .height(48.dp)
                         .clickable(enabled = onItemClick != null) {
                             onItemClick?.invoke(currentHeroItem(items, pagerState))
                         },
@@ -530,12 +529,16 @@ private fun DefaultHomeHeroFrame(
                     contentColor = MaterialTheme.colorScheme.background,
                     shape = RoundedCornerShape(40.dp),
                 ) {
-                    Text(
-                        text = stringResource(Res.string.home_view_details),
-                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.home_view_details),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             }
 
@@ -996,12 +999,15 @@ internal fun DesktopHeroContentBlock(
                 overflow = TextOverflow.Ellipsis)
         }
         if (onItemClick != null) {
-            Button(onClick = { onItemClick(item) }, modifier = Modifier.height(52.dp),
+            Button(onClick = { onItemClick(item) }, modifier = Modifier
+                .align(Alignment.Start)
+                .width(188.dp)
+                .height(52.dp),
                 shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(
                     containerColor = colors.onBackground, contentColor = colors.background)) {
-                Text(stringResource(Res.string.home_view_details), style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.width(20.dp))
-                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(20.dp))
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(stringResource(Res.string.home_view_details), style = MaterialTheme.typography.titleSmall)
+                }
             }
         }
     }

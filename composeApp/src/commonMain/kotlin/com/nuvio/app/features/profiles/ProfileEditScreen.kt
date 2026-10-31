@@ -38,9 +38,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.ui.NuvioAsyncImage as AsyncImage
+import com.nuvio.app.core.ui.NuvioAccentMarker
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.ui.NuvioInputField
@@ -140,7 +142,7 @@ fun ProfileEditScreen(
                 onNameChange = { name = it },
                 onUsesPrimaryAddonsChange = { usesPrimaryAddons = it },
                 selectedAvatar = visibleAvatarItem,
-                customAvatarUrl = localAvatarPreview ?: customAvatarUrl,
+                customAvatarUrl = customAvatarUrl ?: localAvatarPreview,
                 accentColor = previewAccent,
                 hasAvatarChoices = avatars.isNotEmpty(),
             )
@@ -153,11 +155,7 @@ fun ProfileEditScreen(
         item {
             NuvioSurfaceCard {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = stringResource(Res.string.profile_custom_avatar_url),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    ProfileSectionHeading(stringResource(Res.string.profile_custom_avatar_url))
                     Text(
                         text = stringResource(Res.string.profile_custom_avatar_url_description),
                         style = MaterialTheme.typography.bodyMedium,
@@ -188,11 +186,7 @@ fun ProfileEditScreen(
             item {
                 NuvioSurfaceCard {
                     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Text(
-                            text = stringResource(Res.string.profile_choose_background),
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
+                        ProfileSectionHeading(stringResource(Res.string.profile_choose_background))
                         Text(
                             text = stringResource(Res.string.profile_background_member_note),
                             style = MaterialTheme.typography.bodyMedium,
@@ -218,11 +212,7 @@ fun ProfileEditScreen(
         item {
             NuvioSurfaceCard {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Text(
-                        text = stringResource(Res.string.profile_choose_avatar),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    ProfileSectionHeading(stringResource(Res.string.profile_choose_avatar))
                     Text(
                         text = selectedAvatarItem?.displayName
                             ?: if (avatars.isEmpty()) {
@@ -250,11 +240,7 @@ fun ProfileEditScreen(
             item {
                 NuvioSurfaceCard {
                     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Text(
-                            text = stringResource(Res.string.profile_security),
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
+                        ProfileSectionHeading(stringResource(Res.string.profile_security))
                         Text(
                             text = if (currentProfile?.pinEnabled == true) {
                                 stringResource(Res.string.profile_security_pin_enabled)
@@ -413,6 +399,25 @@ fun ProfileEditScreen(
             onDismiss = {
                 showPinClear = false
             },
+        )
+    }
+}
+
+@Composable
+private fun ProfileSectionHeading(title: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        NuvioAccentMarker(height = 22.dp)
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

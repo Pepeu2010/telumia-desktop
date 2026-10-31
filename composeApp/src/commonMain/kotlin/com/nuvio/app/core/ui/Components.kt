@@ -188,6 +188,7 @@ fun NuvioScreenHeader(
             verticalAlignment = Alignment.Bottom,
         ) {
             Row(
+                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap),
             ) {
@@ -201,15 +202,26 @@ fun NuvioScreenHeader(
                     }
                 }
                 AnimatedContent(
+                    modifier = Modifier.weight(1f),
                     targetState = title,
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
                     label = "screen_header_title",
                 ) { currentTitle ->
-                    Text(
-                        text = currentTitle,
-                        style = MaterialTheme.typography.displayLarge,
-                        color = tokens.colors.textPrimary,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        NuvioAccentMarker(height = 28.dp)
+                        Text(
+                            text = currentTitle,
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = tokens.colors.textPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
             Row(
@@ -232,13 +244,21 @@ fun NuvioSectionLabel(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Text(
-        text = text,
+    Row(
         modifier = modifier,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.nuvio.colors.textMuted,
-        fontWeight = FontWeight.Bold,
-    )
+        horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s10),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        NuvioAccentMarker(height = 18.dp, width = 3.dp)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.nuvio.colors.textPrimary,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 @Composable

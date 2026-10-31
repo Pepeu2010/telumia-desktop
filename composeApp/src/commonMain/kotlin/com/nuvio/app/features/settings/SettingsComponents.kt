@@ -1,9 +1,16 @@
 package com.nuvio.app.features.settings
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,9 +43,15 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -245,11 +258,51 @@ internal fun SettingsNavigationRow(
     val iconSize = if (isTablet) 42.dp else 36.dp
     val verticalPadding = if (isTablet) 16.dp else 14.dp
     val horizontalPadding = if (isTablet) 20.dp else 16.dp
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+    var isFocused by remember { mutableStateOf(false) }
+    val isEmphasized = enabled && (isHovered || isFocused || isPressed)
+    val rowShape = RoundedCornerShape(NuvioTokens.Radius.lg)
+    val rowBackground by animateColorAsState(
+        targetValue = if (isEmphasized) {
+            tokens.colors.accent.copy(alpha = when {
+                isFocused -> 0.12f
+                isPressed -> 0.105f
+                else -> 0.065f
+            })
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(tokens.motion.fastMillis),
+        label = "settings_navigation_background",
+    )
+    val iconBackground by animateColorAsState(
+        targetValue = if (isEmphasized) tokens.colors.accent.copy(alpha = 0.20f)
+        else tokens.colors.accent.copy(alpha = tokens.opacity.pressed),
+        animationSpec = tween(tokens.motion.fastMillis),
+        label = "settings_navigation_icon_background",
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 3.dp)
+            .clip(rowShape)
+            .background(rowBackground)
+            .border(
+                width = 1.dp,
+                color = if (isFocused && enabled) tokens.colors.accent.copy(alpha = 0.48f) else Color.Transparent,
+                shape = rowShape,
+            )
+            .hoverable(interactionSource)
+            .onFocusChanged { isFocused = it.isFocused }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick,
+            )
             .padding(horizontal = horizontalPadding, vertical = verticalPadding)
             .alpha(if (enabled) NuvioTokens.Opacity.visible else tokens.opacity.medium),
         horizontalArrangement = Arrangement.Start,
@@ -265,7 +318,7 @@ internal fun SettingsNavigationRow(
             if (icon != null || iconPainter != null) {
                 Surface(
                     modifier = Modifier.size(iconSize),
-                    color = tokens.colors.accent.copy(alpha = tokens.opacity.pressed),
+                    color = iconBackground,
                     shape = tokens.shapes.compactCard,
                 ) {
                     Row(

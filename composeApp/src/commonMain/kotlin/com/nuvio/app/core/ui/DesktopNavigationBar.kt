@@ -5,6 +5,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -48,6 +50,7 @@ internal fun DesktopNavigationBar(
     val uiMotion = LocalUiMotion.current
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val palette = MaterialTheme.themePalette
     val isHomeSelected = items.first().selected
     val isSettingsSelected = items.last().selected
     val scrollOffset = scrollState?.totalScrollOffset ?: 0f
@@ -62,9 +65,18 @@ internal fun DesktopNavigationBar(
         label = "desktop_nav_labels",
     )
     val surfaceColor by animateColorAsState(
-        targetValue = if (isFrosted) Color(0xFF1C1C1E).copy(alpha = 0.30f) else Color(0xFF0F0F11).copy(alpha = 0.20f),
+        targetValue = if (isFrosted) {
+            palette.backgroundElevated.copy(alpha = 0.94f)
+        } else {
+            palette.background.copy(alpha = 0.76f)
+        },
         animationSpec = tween(uiMotion.durationMillis(240), easing = FastOutSlowInEasing),
         label = "desktop_nav_surface",
+    )
+    val outlineColor by animateColorAsState(
+        targetValue = palette.secondary.copy(alpha = if (isFrosted) 0.24f else 0.12f),
+        animationSpec = tween(uiMotion.durationMillis(240), easing = FastOutSlowInEasing),
+        label = "desktop_nav_outline",
     )
     val sheenAlpha by animateFloatAsState(
         targetValue = if (isFrosted) 1f else 0f,
@@ -114,7 +126,8 @@ internal fun DesktopNavigationBar(
                                 Color.Transparent,
                             ),
                         ),
-                    ),
+                    )
+                    .border(1.dp, outlineColor, RoundedCornerShape(50)),
             )
         }
     }

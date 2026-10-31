@@ -57,7 +57,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.boundsInRoot
@@ -402,11 +402,17 @@ internal fun HomePosterHoverPreview(
                 modifier = Modifier
                     .testTag("home-hover-preview")
                     .hoverable(previewInteractionSource)
-                    .onPointerEvent(PointerEventType.Scroll) {
-                        previewDismissedByScroll = true
-                        previewVisible = false
-                        popupMounted = false
-                        homePosterPreviewOwnership.release(ownershipToken)
+                    .pointerInput(ownershipToken) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                if (awaitPointerEvent().type == PointerEventType.Scroll) {
+                                    previewDismissedByScroll = true
+                                    previewVisible = false
+                                    popupMounted = false
+                                    homePosterPreviewOwnership.release(ownershipToken)
+                                }
+                            }
+                        }
                     },
                 onClick = onClick,
                 onLongClick = onLongClick,

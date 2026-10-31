@@ -130,6 +130,18 @@ fun String.isValidAvatarUrl(): Boolean {
 }
 
 fun profileAvatarImageUrl(profile: NuvioProfile, avatar: AvatarCatalogItem?): String? =
-    ProfileStudioAvatars.imageUrl(profile)
-        ?: normalizedAvatarUrl(profile.avatarUrl)
-        ?: avatar?.let(::avatarImageUrl)
+    resolveProfileAvatarImageUrl(
+        customAvatarUrl = profile.avatarUrl,
+        studioAvatarUrl = ProfileStudioAvatars.imageUrl(profile),
+        catalogAvatarUrl = avatar?.let(::avatarImageUrl),
+    )
+
+/** An explicitly saved URL is the selected identity and must win over an older local studio asset. */
+internal fun resolveProfileAvatarImageUrl(
+    customAvatarUrl: String?,
+    studioAvatarUrl: String?,
+    catalogAvatarUrl: String?,
+): String? =
+    normalizedAvatarUrl(customAvatarUrl)
+        ?: studioAvatarUrl
+        ?: catalogAvatarUrl

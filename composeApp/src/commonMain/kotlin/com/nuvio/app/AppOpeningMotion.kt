@@ -4,6 +4,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
@@ -30,10 +32,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -41,9 +41,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nuvio.app.core.ui.LocalScreenActive
 import com.nuvio.app.core.ui.LocalUiMotion
-import com.nuvio.app.core.ui.rememberUiMotionLoopFloat
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.themePalette
 import com.nuvio.app.features.settings.AppBrandWordmark
@@ -55,13 +53,11 @@ import kotlin.math.sin
 
 internal const val OpeningBeamWidthFraction = 0.7f
 private const val OpeningDurationMillis = 2_450
-private const val OpeningAmbientDurationMillis = 5_200
 
 /** Shared cinematic opening used while the real app startup/profile work is in progress. */
 @Composable
 internal fun TelumiaOpeningMotion(modifier: Modifier = Modifier) {
     val motion = LocalUiMotion.current
-    val active = LocalScreenActive.current
     val palette = MaterialTheme.themePalette
     val appBrandName = stringResource(Res.string.app_brand_name)
     var entered by remember { mutableStateOf(false) }
@@ -77,28 +73,18 @@ internal fun TelumiaOpeningMotion(modifier: Modifier = Modifier) {
     )
     val openingProgress = if (motion.allowsSpatialEffects) progress else 1f
     val lockup = openingLockupMotionFrame(openingProgress)
-    val loadingSweep = rememberUiMotionLoopFloat(
-        active = active,
-        initialValue = 0f,
-        targetValue = 1f,
-        durationMillis = 1_350,
-        label = "telumiaOpeningLoadingSweep",
-    )
-    val ambientSweep = rememberUiMotionLoopFloat(
-        active = active,
-        initialValue = 0f,
-        targetValue = 1f,
-        durationMillis = OpeningAmbientDurationMillis,
-        label = "telumiaOpeningAmbientSweep",
-    )
 
     BoxWithConstraints(
         modifier = modifier
             .clipToBounds(),
     ) {
         OpeningAtmosphere(
+            primary = palette.secondary,
+            secondary = palette.secondaryVariant,
+            modifier = Modifier.fillMaxSize(),
+        )
+        OpeningBeam(
             phase = openingProgress,
-            ambientPhase = ambientSweep.value,
             primary = palette.secondary,
             secondary = palette.secondaryVariant,
             modifier = Modifier.fillMaxSize(),
@@ -107,7 +93,7 @@ internal fun TelumiaOpeningMotion(modifier: Modifier = Modifier) {
         val logoHeight = minOf((maxHeight * 0.15f).coerceIn(64.dp, 126.dp), maxWidth * 0.17f)
         val logoWidth = logoHeight * 4.1f
         val fontScale = LocalDensity.current.fontScale
-        val sweepPosition = if (active && motion.allowsSpatialEffects) loadingSweep.value else 0.5f
+        val sweepPosition = if (motion.allowsSpatialEffects) openingProgress else 0.5f
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -119,27 +105,6 @@ internal fun TelumiaOpeningMotion(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .width(logoWidth)
                     .height(logoHeight)
-                    .drawWithContent {
-                        drawContent()
-                        if (active && motion.allowsSpatialEffects) {
-                            val sweepWidth = size.width * 0.16f
-                            val left = (size.width + sweepWidth) * ambientSweep.value - sweepWidth
-                            clipRect(left = left, right = left + sweepWidth) {
-                                drawRect(
-                                    brush = Brush.horizontalGradient(
-                                        colors = listOf(
-                                            Color.Transparent,
-                                            Color.White.copy(alpha = 0.28f),
-                                            Color.Transparent,
-                                        ),
-                                        startX = left,
-                                        endX = left + sweepWidth,
-                                    ),
-                                    size = size,
-                                )
-                            }
-                        }
-                    }
                     .clearAndSetSemantics {
                         contentDescription = appBrandName
                     },
@@ -201,171 +166,83 @@ internal fun TelumiaOpeningMotion(modifier: Modifier = Modifier) {
 
 @Composable
 private fun OpeningAtmosphere(
+    primary: Color,
+    secondary: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.drawWithCache {
+        val maxDimension = maxOf(size.width, size.height)
+        val primaryGlow = Brush.radialGradient(
+            colors = listOf(primary.copy(alpha = 0.32f), Color.Transparent),
+            center = Offset(size.width * 0.23f, size.height * 0.47f),
+            radius = maxDimension * 0.78f,
+        )
+        val secondaryGlow = Brush.radialGradient(
+            colors = listOf(secondary.copy(alpha = 0.18f), Color.Transparent),
+            center = Offset(size.width * 0.82f, size.height * 0.52f),
+            radius = maxDimension * 0.68f,
+        )
+        val vignette = Brush.radialGradient(
+            colorStops = arrayOf(
+                0f to Color.Transparent,
+                0.58f to Color.Transparent,
+                1f to Color.Black.copy(alpha = 0.68f),
+            ),
+            center = Offset(size.width * 0.5f, size.height * 0.48f),
+            radius = maxDimension * 0.78f,
+        )
+        onDrawBehind {
+            drawRect(Color(0xFF06080D))
+            drawRect(primaryGlow)
+            drawRect(secondaryGlow)
+            drawRect(vignette)
+        }
+    })
+}
+
+@Composable
+private fun OpeningBeam(
     phase: Float,
-    ambientPhase: Float,
     primary: Color,
     secondary: Color,
     modifier: Modifier = Modifier,
 ) {
     val beamPhase = ((phase - 0.12f) / 0.68f).coerceIn(0f, 1f)
     val beam = openingBeamMotionFrame(beamPhase)
-    val ambient = openingAmbientMotionFrame(ambientPhase)
     Canvas(modifier = modifier) {
-        val maxDimension = maxOf(size.width, size.height)
-        val minDimension = minOf(size.width, size.height)
-        val beamStartX = size.width * beam.startXFraction
-        val beamEndX = beamStartX + size.width * OpeningBeamWidthFraction
-
-        drawRect(color = Color.Black.copy(alpha = 0.32f), size = size)
-        drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(primary.copy(alpha = 0.34f), Color.Transparent),
-                center = Offset(size.width * ambient.spotlightXFraction, size.height * 0.46f),
-                radius = maxDimension * 0.42f,
-            ),
-            size = size,
-        )
-        drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(secondary.copy(alpha = 0.20f), Color.Transparent),
-                center = Offset(size.width * (1f - ambient.spotlightXFraction), size.height * 0.54f),
-                radius = maxDimension * 0.32f,
-            ),
-            size = size,
-        )
-        drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(primary.copy(alpha = 0.24f), Color.Transparent),
-                center = Offset(size.width * (0.35f + phase * 0.30f), size.height * 0.48f),
-                radius = maxDimension * 0.48f,
-            ),
-            size = size,
-        )
-        drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(secondary.copy(alpha = 0.12f), Color.Transparent),
-                center = Offset(size.width * 0.82f, size.height * 0.56f),
-                radius = maxDimension * 0.38f,
-            ),
-            size = size,
-        )
-
-        val center = Offset(size.width * 0.5f, size.height * 0.48f)
-        for (ring in 0..2) {
-            val start = 0.22f + ring * 0.11f
-            val ringProgress = ((phase - start) / 0.58f).coerceIn(0f, 1f)
-            if (phase in start..(start + 0.58f)) {
-                drawCircle(
-                    color = if (ring == 1) secondary else primary,
-                    radius = minDimension * (0.08f + ringProgress * 0.46f),
-                    center = center,
-                    alpha = (1f - ringProgress) * 0.16f,
-                    style = Stroke(width = (1.0f + ring * 0.35f).dp.toPx()),
-                )
-            }
-        }
-
-        for (particle in 0 until 22) {
-            val xSeed = (particle * 37 % 101) / 100f
-            val ySeed = (particle * 61 % 97) / 96f
-            val twinkle = ((sin(phase * PI * 2.0 + particle * 1.71) + 1.0) * 0.5).toFloat()
-            val particleAlpha = (0.025f + twinkle * 0.075f) * (1f - phase * 0.45f)
-            drawCircle(
-                color = if (particle % 4 == 0) secondary else Color.White,
-                radius = (0.65f + twinkle * 0.75f).dp.toPx(),
-                center = Offset(size.width * xSeed, size.height * ySeed),
-                alpha = particleAlpha,
-            )
-        }
-
-        val lightRibbon = Path().apply {
-            moveTo(beamStartX, size.height * 0.70f)
-            cubicTo(
-                beamStartX + size.width * 0.18f,
-                size.height * 0.43f,
-                beamEndX - size.width * 0.14f,
-                size.height * 0.76f,
-                beamEndX,
-                size.height * 0.47f,
-            )
-        }
-        val ribbonBrush = Brush.horizontalGradient(
+        if (beam.alpha <= 0f) return@Canvas
+        val startX = size.width * beam.startXFraction
+        val endX = startX + size.width * OpeningBeamWidthFraction
+        val beamBrush = Brush.horizontalGradient(
             colors = listOf(
                 Color.Transparent,
-                primary.copy(alpha = 0.48f),
-                secondary.copy(alpha = 0.40f),
+                primary.copy(alpha = 0.52f),
+                secondary.copy(alpha = 0.46f),
                 Color.Transparent,
             ),
-            startX = beamStartX,
-            endX = beamEndX,
+            startX = startX,
+            endX = endX,
         )
-        drawPath(
-            path = lightRibbon,
-            brush = ribbonBrush,
-            alpha = beam.alpha * 0.48f,
-            style = Stroke(width = maxDimension * 0.035f, cap = StrokeCap.Round),
+        drawLine(
+            brush = beamBrush,
+            start = Offset(startX, size.height * 0.69f),
+            end = Offset(endX, size.height * 0.47f),
+            strokeWidth = maxOf(size.width, size.height) * 0.032f,
+            cap = StrokeCap.Round,
+            alpha = beam.alpha * 0.66f,
         )
-        drawPath(
-            path = lightRibbon,
+        drawLine(
             brush = Brush.horizontalGradient(
-                colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.46f), Color.Transparent),
-                startX = beamStartX,
-                endX = beamEndX,
+                colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.66f), Color.Transparent),
+                startX = startX,
+                endX = endX,
             ),
-            alpha = beam.alpha * 0.58f,
-            style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round),
-        )
-
-        val ambientStartX = size.width * ambient.sweepStartXFraction
-        val ambientEndX = ambientStartX + size.width * 0.52f
-        val ambientRibbon = Path().apply {
-            moveTo(ambientStartX, size.height * 0.74f)
-            cubicTo(
-                ambientStartX + size.width * 0.16f,
-                size.height * 0.53f,
-                ambientEndX - size.width * 0.16f,
-                size.height * 0.39f,
-                ambientEndX,
-                size.height * 0.59f,
-            )
-        }
-        val ambientRibbonBrush = Brush.horizontalGradient(
-            colors = listOf(
-                Color.Transparent,
-                primary.copy(alpha = 0.72f),
-                secondary.copy(alpha = 0.62f),
-                Color.Transparent,
-            ),
-            startX = ambientStartX,
-            endX = ambientEndX,
-        )
-        drawPath(
-            path = ambientRibbon,
-            brush = ambientRibbonBrush,
-            alpha = ambient.sweepAlpha * 0.62f,
-            style = Stroke(width = maxDimension * 0.022f, cap = StrokeCap.Round),
-        )
-        drawPath(
-            path = ambientRibbon,
-            brush = Brush.horizontalGradient(
-                colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.76f), Color.Transparent),
-                startX = ambientStartX,
-                endX = ambientEndX,
-            ),
-            alpha = ambient.sweepAlpha * 0.65f,
-            style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round),
-        )
-        drawRect(
-            brush = Brush.radialGradient(
-                colorStops = arrayOf(
-                    0f to Color.Transparent,
-                    0.56f to Color.Transparent,
-                    1f to Color.Black.copy(alpha = 0.72f),
-                ),
-                center = Offset(size.width * 0.5f, size.height * 0.48f),
-                radius = maxDimension * 0.76f,
-            ),
-            size = size,
+            start = Offset(startX, size.height * 0.69f),
+            end = Offset(endX, size.height * 0.47f),
+            strokeWidth = 1.5.dp.toPx(),
+            cap = StrokeCap.Round,
+            alpha = beam.alpha * 0.54f,
         )
     }
 }
@@ -407,22 +284,6 @@ internal fun openingBeamMotionFrame(progress: Float): OpeningBeamMotionFrame {
     return OpeningBeamMotionFrame(
         startXFraction = -0.35f + (phase - 0.5f) * 1.6f,
         alpha = sin(PI * phase).toFloat().coerceIn(0f, 1f),
-    )
-}
-
-internal data class OpeningAmbientMotionFrame(
-    val spotlightXFraction: Float,
-    val sweepStartXFraction: Float,
-    val sweepAlpha: Float,
-)
-
-internal fun openingAmbientMotionFrame(progress: Float): OpeningAmbientMotionFrame {
-    val phase = ((progress % 1f) + 1f) % 1f
-    val angle = PI * 2.0 * phase
-    return OpeningAmbientMotionFrame(
-        spotlightXFraction = (0.5 + 0.20 * sin(angle)).toFloat(),
-        sweepStartXFraction = -0.32f + phase * 1.64f,
-        sweepAlpha = sin(PI * phase).toFloat().coerceIn(0f, 1f),
     )
 }
 
