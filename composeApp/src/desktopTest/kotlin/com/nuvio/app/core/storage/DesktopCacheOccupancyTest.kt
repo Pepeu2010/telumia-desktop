@@ -3,6 +3,7 @@ package com.nuvio.app.core.storage
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Comparator
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -45,6 +46,20 @@ class DesktopCacheOccupancyTest {
         assertTrue(result.complete)
         assertEquals(19L, result.bytes)
         assertEquals(23L, Files.size(data.resolve("profile-studio-v1/avatars/profile-1.png")))
+    }
+
+    @Test
+    fun `auto counts queued diagnostics without reading or including unrelated cache data`() = fixture { cache, data ->
+        write(cache, "sentry/envelopes/queued-event", 29)
+        write(cache, "unmanaged/private-payload", 31)
+        val original = Files.readAllBytes(cache.resolve("sentry/envelopes/queued-event"))
+
+        val result = measureDesktopCacheOccupancy(cache, data, maxMillis = 10_000)
+
+        assertTrue(result.complete)
+        assertEquals(29L, result.bytes)
+        assertArrayEquals(original, Files.readAllBytes(cache.resolve("sentry/envelopes/queued-event")))
+        assertEquals(31L, Files.size(cache.resolve("unmanaged/private-payload")))
     }
 
     private fun fixture(test: (Path, Path) -> Unit) {

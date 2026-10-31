@@ -24,6 +24,7 @@ internal fun measureDesktopCacheOccupancy(
                 listOf("quickjs"),
                 listOf("native-player-bridge"),
                 listOf("player-ui"),
+                listOf("sentry"),
             ),
         maxMillis = maxMillis,
     )
