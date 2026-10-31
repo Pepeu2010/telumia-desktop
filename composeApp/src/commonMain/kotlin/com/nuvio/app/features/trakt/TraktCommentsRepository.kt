@@ -5,8 +5,6 @@ import com.nuvio.app.features.addons.httpGetTextWithHeaders
 import com.nuvio.app.features.addons.httpRequestRaw
 import com.nuvio.app.features.details.MetaDetails
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
@@ -24,15 +22,7 @@ private val commentsJson = Json { ignoreUnknownKeys = true }
 object TraktCommentsRepository {
     private val log = Logger.withTag("TraktComments")
 
-    private data class TimedCache(
-        val pages: Map<Int, List<TraktCommentReview>>,
-        val pageCount: Int,
-        val itemCount: Int,
-        val updatedAtMs: Long,
-    )
-
-    private val cacheMutex = Mutex()
-    private val cache = mutableMapOf<String, TimedCache>()
+    private val cache = TraktCommentsCache(TraktCommentsCacheLimits.DEFAULT, COMMENTS_CACHE_TTL_MS)
 
     suspend fun getCommentsPage(
         meta: MetaDetails,
@@ -44,25 +34,11 @@ object TraktCommentsRepository {
         val cacheKey = "${target.type.apiValue}|${target.pathId}"
 
         if (forceRefresh) {
-            cacheMutex.withLock { cache.remove(cacheKey) }
+            cache.remove(cacheKey)
         }
 
         if (!forceRefresh) {
-            cacheMutex.withLock {
-                val cached = cache[cacheKey]
-                if (
-                    cached != null &&
-                    currentTimeMillis() - cached.updatedAtMs <= COMMENTS_CACHE_TTL_MS &&
-                    cached.pages.containsKey(page)
-                ) {
-                    return TraktCommentsPage(
-                        items = cached.pages.getValue(page),
-                        currentPage = page,
-                        pageCount = cached.pageCount,
-                        itemCount = cached.itemCount,
-                    )
-                }
-            }
+            cache.get(cacheKey, page, currentTimeMillis())?.let { return it }
         }
 
         val headers = TraktAuthRepository.authorizedHeaders()
@@ -104,15 +80,7 @@ object TraktCommentsRepository {
             ?: dtos.size
         val selected = filterDisplayableComments(dtos).map(::toReviewModel)
 
-        cacheMutex.withLock {
-            val cached = cache[cacheKey]
-            cache[cacheKey] = TimedCache(
-                pages = (cached?.pages.orEmpty()) + (page to selected),
-                pageCount = pageCount,
-                itemCount = itemCount,
-                updatedAtMs = currentTimeMillis(),
-            )
-        }
+        cache.put(cacheKey, page, selected, pageCount, itemCount, currentTimeMillis())
 
         return TraktCommentsPage(
             items = selected,
