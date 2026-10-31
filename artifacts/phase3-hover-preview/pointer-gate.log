@@ -1,0 +1,43 @@
+97ms OS move requested=java.awt.Point[x=20,y=20] actual=java.awt.Point[x=18,y=21]
+219ms OS move requested=java.awt.Point[x=20,y=20] actual=java.awt.Point[x=20,y=20]
+1187ms windowActive=true transform=AffineTransform[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]] root=1184x711 panel=1184x711
+1251ms anchor-enter=1
+1334ms OS move requested=java.awt.Point[x=469,y=487] actual=java.awt.Point[x=444,y=487]
+1458ms OS move requested=java.awt.Point[x=469,y=487] actual=java.awt.Point[x=469,y=487]
+1461ms anchor=java.awt.Rectangle[x=369,y=337,width=200,height=300] requested=java.awt.Point[x=469,y=487] actual=java.awt.Point[x=469,y=487]
+1783ms anchor-exit pointer=java.awt.Point[x=468,y=487]
+2799ms resolve=1 pointer=java.awt.Point[x=456,y=487]
+3164ms native-ready card=0 resolutions=1
+3177ms native-before-transfer handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true)) paused=false volume=0.0
+3265ms OS move requested=java.awt.Point[x=279,y=431] actual=java.awt.Point[x=279,y=431]
+3266ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3295ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3326ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3356ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3387ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3409ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3430ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3462ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3494ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3525ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3555ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3585ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3615ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=0, bufferedPositionMs=2000, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3646ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=500, bufferedPositionMs=2500, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3668ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=500, bufferedPositionMs=2500, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3691ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=500, bufferedPositionMs=2500, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3724ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=500, bufferedPositionMs=2500, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3755ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=500, bufferedPositionMs=2500, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3785ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=500, bufferedPositionMs=2500, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3815ms transfer-snapshot handle=2672970042800 snapshot=PlayerPlaybackSnapshot(isLoading=false, isPlaying=true, isEnded=false, durationMs=6000, positionMs=500, bufferedPositionMs=2500, playbackSpeed=1.0, videoWidth=0, videoHeight=0, embeddedChapters=EmbeddedChapterSnapshot(chapters=[], complete=true))
+3898ms after-transfer point=java.awt.Point[x=279,y=431] actual=java.awt.Point[x=279,y=431] resolutions=1 owner=true
+4086ms os-enters=1 resolutions=1 overlay=java.awt.Point[x=279,y=431] video=java.awt.Rectangle[x=259,y=313,width=420,height=236] fixturePixels=99120 totalPixels=99120 nativeVolume=0.0
+4088ms anchor-enter=2
+4170ms OS move requested=java.awt.Point[x=931,y=487] actual=java.awt.Point[x=931,y=487]
+4610ms anchor-exit pointer=java.awt.Point[x=931,y=487]
+5619ms resolve=2 pointer=java.awt.Point[x=931,y=487]
+5937ms native-ready card=1 resolutions=2
+6020ms OS move requested=java.awt.Point[x=741,y=431] actual=java.awt.Point[x=741,y=431]
+6718ms second-card ownerRetained=true perCardResolutions=1,1 volume=0.0 fixturePixels=99120
+6811ms OS move requested=java.awt.Point[x=20,y=20] actual=java.awt.Point[x=20,y=20]
+6946ms PASS: real pointer transfer, visible AVI frame, native volume zero, ownership and decoder teardown

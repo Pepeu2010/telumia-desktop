@@ -10,6 +10,7 @@ import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicLong
 import javax.swing.JFrame
 import javax.swing.SwingUtilities
 import kotlin.test.Test
@@ -29,6 +30,8 @@ class WindowsHeroTrailerPlayerSurfaceTest {
         val ready = CountDownLatch(1)
         val ended = CountDownLatch(1)
         val failure = AtomicReference<String?>(null)
+        val readyAt = AtomicLong()
+        val endedAt = AtomicLong()
         lateinit var panel: ComposePanel
         lateinit var window: JFrame
 
@@ -51,8 +54,8 @@ class WindowsHeroTrailerPlayerSurfaceTest {
                             startPositionMillis = 0,
                             fillFrame = false,
                             modifier = Modifier.fillMaxSize(),
-                            onReady = { ready.countDown() },
-                            onEnded = { ended.countDown() },
+                            onReady = { readyAt.compareAndSet(0L, System.nanoTime()); ready.countDown() },
+                            onEnded = { endedAt.set(System.nanoTime()); ended.countDown() },
                             onError = { failure.compareAndSet(null, "preview surface reported a playback error") },
                         )
                     }
@@ -61,7 +64,11 @@ class WindowsHeroTrailerPlayerSurfaceTest {
 
             assertTrue(ready.await(15, TimeUnit.SECONDS), "the composed preview surface must reach media-ready")
             assertFalse(failure.get() != null, failure.get() ?: "")
+            assertFalse(ended.await(500, TimeUnit.MILLISECONDS), "ready/paused must not be mistaken for playback end")
             assertTrue(ended.await(12, TimeUnit.SECONDS), "the composed preview surface must report playback end")
+            val playbackMillis = TimeUnit.NANOSECONDS.toMillis(endedAt.get() - readyAt.get())
+            assertTrue(playbackMillis >= 5_000, "six-second AVI must play through its frames before end; elapsed=$playbackMillis ms")
+            println("Windows inline AVI ready-to-end elapsed=$playbackMillis ms")
             assertFalse(failure.get() != null, failure.get() ?: "")
         } finally {
             SwingUtilities.invokeAndWait {

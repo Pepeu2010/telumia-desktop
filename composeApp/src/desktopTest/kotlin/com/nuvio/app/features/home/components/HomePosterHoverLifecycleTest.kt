@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -25,11 +27,11 @@ import com.nuvio.app.core.ui.NuvioTheme
 import com.nuvio.app.core.ui.PosterCardStyleUiState
 import com.nuvio.app.core.ui.PosterZoomOverlayCoordinator
 import com.nuvio.app.features.home.MetaPreview
+import com.nuvio.app.features.settings.hoverPreviewSettingsContent
 import com.nuvio.app.features.player.desktop.DesktopHostOs
 import com.nuvio.app.features.player.desktop.originalAviFixture
 import com.nuvio.app.features.trailer.TrailerPlaybackSource
-import java.awt.Rectangle
-import java.awt.Robot
+import java.awt.GraphicsEnvironment
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
@@ -44,6 +46,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.junit.Assume.assumeTrue
+import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.settings_hover_preview_trailer_enabled
+import org.jetbrains.compose.resources.stringResource
 
 /** Real hover/overlay lifecycle; controlled resolver test makes no trailer availability claim. */
 @OptIn(ExperimentalTestApi::class, ExperimentalComposeUiApi::class)
@@ -52,14 +57,33 @@ class HomePosterHoverLifecycleTest {
     fun desktopDefaultsToSilentHoverTrailerWithExplicitSoundOptIn() {
         val defaults = PosterCardStyleUiState()
         assertFalse(defaults.hoverPreviewTrailerSoundEnabled)
+        assertTrue(AppFeaturePolicy.hoverTrailerPlaybackSupported)
         if (DesktopHostOs.current == DesktopHostOs.WINDOWS) {
-            assertFalse(AppFeaturePolicy.hoverTrailerPlaybackSupported)
             assertFalse(defaults.hoverPreviewTrailerEnabled)
         } else {
-            assertTrue(AppFeaturePolicy.hoverTrailerPlaybackSupported)
             assertTrue(defaults.hoverPreviewTrailerEnabled)
         }
     }
+
+    @Test
+    fun windowsOffersTrailerSettingsWithPlaybackAndSoundOffByDefault() =
+        runDesktopComposeUiTest(width = 1366, height = 1000) {
+            assumeTrue(DesktopHostOs.current == DesktopHostOs.WINDOWS)
+            lateinit var trailerTitle: String
+            val defaults = PosterCardStyleUiState()
+            setContent {
+                NuvioTheme(navigationMotion = NavigationMotion.OFF) {
+                    trailerTitle = stringResource(Res.string.settings_hover_preview_trailer_enabled)
+                    LazyColumn(Modifier.fillMaxSize()) {
+                        hoverPreviewSettingsContent(isTablet = false, uiState = defaults)
+                    }
+                }
+            }
+            onNodeWithText(trailerTitle).assertIsDisplayed()
+            onAllNodes(isToggleable()).assertCountEquals(3)
+            onAllNodes(isToggleable())[1].assertIsOff()
+            onAllNodes(isToggleable())[2].assertIsOff()
+        }
 
     @Test
     fun leavingTheRealPopupCancelsResolutionAndReleasesItsSlotWithMotionOff() =
@@ -134,7 +158,107 @@ class HomePosterHoverLifecycleTest {
         }
 
     @Test
-    fun windowsHoverPreviewReachesTheRealMutedNativeTrailerSurface() {
+    fun unsupportedPlatformGateKeepsSavedTrailerOptInStatic() =
+        runDesktopComposeUiTest(width = 1366, height = 768) {
+            val resolutionStarted = AtomicBoolean()
+            runOnIdle { PosterZoomOverlayCoordinator.hide() }
+            setContent {
+                NuvioTheme(navigationMotion = NavigationMotion.OFF) {
+                    Box(Modifier.fillMaxSize()) {
+                        Box(Modifier.padding(64.dp)) {
+                            HomePosterHoverPreview(
+                                item = MetaPreview("fixture:gated-hover", "movie", "Static preview"),
+                                isWatched = false,
+                                onClick = {},
+                                onLongClick = null,
+                                previewSettings = PosterCardStyleUiState(
+                                    hoverPreviewEnabled = true,
+                                    hoverPreviewOpenDelayMillis = 100,
+                                    hoverPreviewTrailerEnabled = true,
+                                ),
+                                trailerPreviewSupported = false,
+                                trailerResolver = {
+                                    resolutionStarted.set(true)
+                                    null
+                                },
+                            ) { hover ->
+                                Box(hover.testTag("gated-anchor").size(200.dp, 300.dp))
+                            }
+                        }
+                        HomePosterHoverPreviewOverlayHost()
+                    }
+                }
+            }
+            onNodeWithTag("gated-anchor").performMouseInput { enter(center) }
+            waitUntil(timeoutMillis = 4_000) {
+                onAllNodesWithTag("home-hover-preview").fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithTag("home-hover-preview").performMouseInput { moveTo(center) }
+            waitForIdle()
+            // Pass the extraction debounce while the card stays open.
+            mainClock.advanceTimeBy(2_000)
+            waitForIdle()
+            onNodeWithTag("home-hover-preview").assertIsDisplayed()
+            assertFalse(resolutionStarted.get(), "saved opt-in must not bypass platform capability policy")
+            onNodeWithTag("home-hover-preview").performMouseInput { exit() }
+            waitUntil(timeoutMillis = 4_000) { homePosterPreviewOwnership.active.value == null }
+        }
+
+    @Test
+    fun disablingHoverPreviewsCancelsPendingResolutionAndRemovesTheOverlay() =
+        runDesktopComposeUiTest(width = 1366, height = 768) {
+            val started = AtomicBoolean()
+            val cancelled = AtomicBoolean()
+            val settings = mutableStateOf(PosterCardStyleUiState(
+                hoverPreviewEnabled = true,
+                hoverPreviewOpenDelayMillis = 100,
+                hoverPreviewTrailerEnabled = true,
+            ))
+            runOnIdle { PosterZoomOverlayCoordinator.hide() }
+            setContent {
+                NuvioTheme(navigationMotion = NavigationMotion.OFF) {
+                    Box(Modifier.fillMaxSize()) {
+                        Box(Modifier.padding(64.dp)) {
+                            HomePosterHoverPreview(
+                                item = MetaPreview("fixture:disable-hover", "movie", "Pending preview"),
+                                isWatched = false,
+                                onClick = {},
+                                onLongClick = null,
+                                previewSettings = settings.value,
+                                trailerPreviewSupported = true,
+                                trailerResolver = {
+                                    started.set(true)
+                                    try {
+                                        awaitCancellation()
+                                    } finally {
+                                        cancelled.set(true)
+                                    }
+                                },
+                            ) { hover ->
+                                Box(hover.testTag("disable-anchor").size(200.dp, 300.dp))
+                            }
+                        }
+                        HomePosterHoverPreviewOverlayHost()
+                    }
+                }
+            }
+            onNodeWithTag("disable-anchor").performMouseInput { enter(center) }
+            waitUntil(timeoutMillis = 4_000) {
+                onAllNodesWithTag("home-hover-preview").fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithTag("home-hover-preview").performMouseInput { moveTo(center) }
+            waitUntil(timeoutMillis = 8_000) { started.get() }
+            runOnIdle { settings.value = settings.value.copy(hoverPreviewEnabled = false) }
+            waitUntil(timeoutMillis = 4_000) {
+                cancelled.get() && homePosterPreviewOwnership.active.value == null
+            }
+            onNodeWithTag("home-hover-preview").assertDoesNotExist()
+            onNodeWithTag("disable-anchor").assertIsDisplayed()
+        }
+
+    /** Injected hover proves native readiness/teardown, not OS pointer delivery or visible video. */
+    @Test
+    fun windowsInjectedHoverOverlayReportsNativeReadyAndReleasesTheFixture() {
         assumeTrue("Windows native hover-preview integration gate", DesktopHostOs.current == DesktopHostOs.WINDOWS)
         val fixture = Files.createTempFile("telumia-hover-inline-", ".avi")
         Files.write(fixture, originalAviFixture())
@@ -160,12 +284,12 @@ class HomePosterHoverLifecycleTest {
                 window = JFrame("Telumia hover preview with local trailer")
                 window.contentPane.add(panel)
                 window.setSize(900, 650)
-                window.setLocation(100, 100)
+                // This gate injects hover. Keep OS pointer events from independently holding
+                // the overlay open after the injected interaction exits.
+                val desktopBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().maximumWindowBounds
+                window.setLocation(desktopBounds.x + desktopBounds.width + 500, desktopBounds.y + desktopBounds.height + 500)
                 frameCreated.set(true)
                 window.isVisible = true
-                window.isAlwaysOnTop = true
-                window.toFront()
-                window.requestFocus()
                 panel.setContent {
                     NuvioTheme(navigationMotion = NavigationMotion.OFF) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -217,9 +341,6 @@ class HomePosterHoverLifecycleTest {
             )
             Thread.sleep(250)
             assertTrue(homePosterPreviewOwnership.active.value != null, "the overlay must retain ownership during playback")
-            val screenshot = File("build/reports/telumia-hover-preview/windows-native-overlay.png")
-                .apply { parentFile.mkdirs() }
-            ImageIO.write(Robot().createScreenCapture(Rectangle(window.locationOnScreen, window.size)), "png", screenshot)
             assertTrue(anchorInteractionSource.tryEmit(HoverInteraction.Exit(hoverEnter)))
             val releaseDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(4)
             while (homePosterPreviewOwnership.active.value != null && System.nanoTime() < releaseDeadline) {
