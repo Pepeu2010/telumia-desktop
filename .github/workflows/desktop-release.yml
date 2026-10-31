@@ -508,30 +508,19 @@ jobs:
       - name: Configure desktop runtime
         shell: bash
         run: |
-          missing=()
-          required_values=(
-            LOCAL_PROPERTIES_BASE64
-            SENTRY_AUTH_TOKEN
-            SENTRY_DESKTOP_DSN
-          )
-          for value_name in "${required_values[@]}"; do
-            if [[ -z "${!value_name}" ]]; then
-              missing+=("${value_name}")
-            fi
-          done
-          if (( ${#missing[@]} > 0 )); then
-            printf 'Missing required desktop release values: %s\n' "${missing[*]}" >&2
-            exit 1
+          if [[ -n "${LOCAL_PROPERTIES_BASE64}" ]]; then
+            printf '%s' "${LOCAL_PROPERTIES_BASE64}" | base64 --decode > local.properties
+          else
+            cat > local.properties <<'PROPERTIES'
+          NUVIO_SUPABASE_URL=https://api.nuvio.tv
+          NUVIO_SUPABASE_ANON_KEY=sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN
+          PROPERTIES
           fi
-
-          printf '%s' "${LOCAL_PROPERTIES_BASE64}" | base64 --decode > local.properties
           sed -i -E '/^[[:space:]]*(sdk\.dir|NUVIO_RELEASE_(STORE_FILE|STORE_PASSWORD|KEY_ALIAS|KEY_PASSWORD)|NUVIO_MACOS_(SIGNING_IDENTITY|NOTARY_APPLE_ID|NOTARY_TEAM_ID|NOTARY_PASSWORD|NOTARY_KEYCHAIN_PROFILE|NOTARY_KEYCHAIN_PATH))[[:space:]]*=/d' local.properties
 
           required_properties=(
             NUVIO_SUPABASE_URL
             NUVIO_SUPABASE_ANON_KEY
-            TRAKT_CLIENT_ID
-            TRAKT_CLIENT_SECRET
           )
           for property_name in "${required_properties[@]}"; do
             if ! grep -Eq "^${property_name}=.+" local.properties; then
@@ -580,7 +569,6 @@ jobs:
         run: |
           & .\gradlew.bat `
             :composeApp:packageReleaseMsi `
-            :desktopSentry:sentryUploadSourceBundleJava `
             "-Pnuvio.webview2.dir=$env:WEBVIEW2_ROOT" `
             "-Pcompose.desktop.packaging.checkJdkVendor=false" `
             --no-configuration-cache `
@@ -592,7 +580,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
         run: |
-          $msiRelativePath = "composeApp\build\compose\release-msis\Nuvio-Windows-x64-$env:RELEASE_VERSION.msi"
+          $msiRelativePath = "composeApp\build\compose\release-msis\Telumia-Windows-x64-$env:RELEASE_VERSION.msi"
           if (-not (Test-Path $msiRelativePath)) {
             throw "Expected MSI was not produced: $msiRelativePath"
           }
@@ -655,13 +643,13 @@ jobs:
             throw "The extracted MSI does not contain the bundled Java runtime."
           }
 
-          $manifestPath = "composeApp\build\compose\release-msis\Nuvio-Windows-x64-$env:RELEASE_VERSION-contents.txt"
+          $manifestPath = "composeApp\build\compose\release-msis\Telumia-Windows-x64-$env:RELEASE_VERSION-contents.txt"
           $extractedFiles = Get-ChildItem $extractDir -Recurse -File | Sort-Object FullName
           $nativeEntries = $jarEntries `
             | Where-Object { $_ -like "native/windows/*" } `
             | Sort-Object
           $manifest = [Collections.Generic.List[string]]::new()
-          $manifest.Add("MSI=Nuvio-Windows-x64-$env:RELEASE_VERSION.msi")
+          $manifest.Add("MSI=Telumia-Windows-x64-$env:RELEASE_VERSION.msi")
           $manifest.Add("MSI_SHA256=$((Get-FileHash $msiPath -Algorithm SHA256).Hash.ToLowerInvariant())")
           $manifest.Add("MSI_SIGNATURE_STATUS=$((Get-AuthenticodeSignature $msiPath).Status)")
           $manifest.Add("EXTRACTED_FILE_COUNT=$($extractedFiles.Count)")
@@ -686,10 +674,10 @@ jobs:
       - name: Upload MSI
         uses: actions/upload-artifact@v7
         with:
-          name: nuvio-desktop-${{ needs.metadata.outputs.version }}-windows-x64
+          name: telumia-desktop-${{ needs.metadata.outputs.version }}-windows-x64
           path: |
-            composeApp/build/compose/release-msis/Nuvio-Windows-x64-${{ needs.metadata.outputs.version }}.msi
-            composeApp/build/compose/release-msis/Nuvio-Windows-x64-${{ needs.metadata.outputs.version }}-contents.txt
+            composeApp/build/compose/release-msis/Telumia-Windows-x64-${{ needs.metadata.outputs.version }}.msi
+            composeApp/build/compose/release-msis/Telumia-Windows-x64-${{ needs.metadata.outputs.version }}-contents.txt
           if-no-files-found: error
           retention-days: 14
 
