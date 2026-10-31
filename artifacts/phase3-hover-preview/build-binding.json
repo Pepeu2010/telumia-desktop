@@ -1,0 +1,76 @@
+{
+  "createdUtc": "2026-10-31T13:14:52.7277751Z",
+  "baseHead": "b6b64fbc4382544f5e11a054ab9d01d9c34e23d7",
+  "worktree": "C:\\w\\desktop-hover-preview-regressions",
+  "tests": 13,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "focusedBuild": "BUILD SUCCESSFUL in 28s",
+  "focusedLog": "build/reports/phase3-os-pointer/gradle-opt-in-focused-final.log",
+  "desktopJar": "BUILD SUCCESSFUL in 2s",
+  "desktopJarLog": "build/reports/phase3-os-pointer/gradle-opt-in-desktopJar.log",
+  "packageMsi": "BUILD SUCCESSFUL in 48s",
+  "packageMsiLog": "build/reports/phase3-os-pointer/gradle-opt-in-packageMsi.log",
+  "packagePath": "C:\\w\\desktop-hover-preview-regressions\\composeApp\\build\\compose\\release-msis\\Telumia-Windows-x64-1.0.2-alpha.1.msi",
+  "packageSha256": "8A16B74B74CBEDEC1EE1D0DC3AEEE69BA74F905405E216600820694C52B86C4A",
+  "sourceHashes": [
+    {
+      "path": "composeApp/src/commonMain/kotlin/com/nuvio/app/core/ui/NativeVideoHoverInteraction.kt",
+      "sha256": "C14C16D8D8D16999995C4952F5CD1C0B602CAAA39DCA784DC8A217D81D1725E2"
+    },
+    {
+      "path": "composeApp/src/commonMain/kotlin/com/nuvio/app/core/ui/PosterCardStyleRepository.kt",
+      "sha256": "2F4BDA75E4EE1A50E842ED8254C6C71DA43363FBB1AE3352EFE97D82207ECF0D"
+    },
+    {
+      "path": "composeApp/src/commonMain/kotlin/com/nuvio/app/features/home/components/HomePosterHoverPreview.kt",
+      "sha256": "71079BBA6EE9076400E2590B48E7BD479C9F596531A25477EEDC3412ADF3B367"
+    },
+    {
+      "path": "composeApp/src/desktopMain/kotlin/com/nuvio/app/core/build/AppFeaturePolicy.desktop.kt",
+      "sha256": "6BA29807E2F31CCC0864B5E60C6F54EA93FA0C81545CE22CF32FD291BE27D72A"
+    },
+    {
+      "path": "composeApp/src/desktopMain/kotlin/com/nuvio/app/features/details/components/WindowsHeroTrailerPlayerSurface.kt",
+      "sha256": "7C8D5C76E070AD972385969827152157ADB1E9D6DE0796D6363BF1D01A37CC97"
+    },
+    {
+      "path": "composeApp/src/desktopTest/kotlin/com/nuvio/app/features/details/components/WindowsHeroTrailerPlayerSurfaceTest.kt",
+      "sha256": "93692EC558269772B3D36B4E9883B7623B0FCE79FC8EBC120E460A2E94828D07"
+    },
+    {
+      "path": "composeApp/src/desktopTest/kotlin/com/nuvio/app/features/home/components/HomePosterRealPointerGateTest.kt",
+      "sha256": "137EA9D06ABDA0A45F62D335932C359B9A6D8750DAECC9F3D2895314E20CFBCB"
+    },
+    {
+      "path": "composeApp/src/desktopTest/kotlin/com/nuvio/app/features/home/components/HomePosterHoverLifecycleTest.kt",
+      "sha256": "1E0108BC15D48914F1E443BDB06BAF72DA9B9ECC7AD9E7366C132CBBBC756837"
+    }
+  ],
+  "windowsCapability": true,
+  "windowsPlaybackDefault": false,
+  "windowsSoundDefault": false,
+  "explicitStoredPreferencesPreserved": true,
+  "actualOsGate": [
+    "no ownership or resolution outside window",
+    "Robot transfer to native video outside poster retains one handle per card",
+    "exactly one resolution per card",
+    "two cards each render 99120 of 99120 expected AVI-color pixels",
+    "native JNI volume 0.0",
+    "switch releases first decoder and preserves second owner",
+    "outside OS pointer releases ownership, native handle and temporary fixture",
+    "test uses application capability policy without trailerPreviewSupported override"
+  ],
+  "nativeReadyToEndMillis": 6055,
+  "prematureEndFirst500ms": false,
+  "limitations": [
+    "single monitor transform1.0; mixed DPI not exercised",
+    "local video-only AVI; remote/audio-bearing media not exercised",
+    "OS cursor interference was observed and retained as a failed attempt; final gate confirms requested versus actual positions",
+    "MSI is local and not published"
+  ],
+  "temporaryNativeDiagnosticsRemoved": true,
+  "consultedRuntimeHeader": "https://raw.githubusercontent.com/mpv-player/mpv/f6c116491/include/mpv/client.h",
+  "runtimeVersion": "v0.40.0-465-gf6c116491"
+}

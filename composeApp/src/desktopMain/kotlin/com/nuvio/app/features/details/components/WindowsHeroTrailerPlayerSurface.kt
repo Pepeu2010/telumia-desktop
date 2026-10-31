@@ -1,6 +1,7 @@
 package com.nuvio.app.features.details.components
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -14,11 +15,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.draw.clipToBounds
 import com.nuvio.app.features.player.PlayerResizeMode
+import com.nuvio.app.core.ui.LocalNativeVideoHoverInteractionSource
 import com.nuvio.app.features.player.desktop.NativePlayerController
 import com.nuvio.app.features.player.desktop.NativePlayerHost
 import com.nuvio.app.features.trailer.TrailerExtractionPlatform
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
+import java.awt.MouseInfo
+import java.awt.Rectangle
+import javax.swing.SwingUtilities
 
 private const val TrailerReadyTimeoutMs = 12_000L
 private const val TrailerSnapshotIntervalMs = 100L
@@ -66,6 +71,7 @@ private fun WindowsHeroTrailerPlayerSession(
     onError: () -> Unit,
 ) {
     val host = remember { NativePlayerHost() }
+    val hoverInteractionSource = LocalNativeVideoHoverInteractionSource.current
     val controller = remember(host) {
         NativePlayerController(host = host, nativeControlsEnabled = false)
     }
@@ -75,6 +81,30 @@ private fun WindowsHeroTrailerPlayerSession(
     var hostReady by remember(host) { mutableStateOf(false) }
     var mediaReady by remember(controller) { mutableStateOf(false) }
     var terminalReported by remember(controller) { mutableStateOf(false) }
+
+    LaunchedEffect(host, hoverInteractionSource) {
+        val source = hoverInteractionSource ?: return@LaunchedEffect
+        var entered: HoverInteraction.Enter? = null
+        try {
+            while (true) {
+                // libmpv's child HWND can consume mouse events before AWT listeners see them.
+                // Only a mounted hover-preview surface samples OS bounds; other players do not.
+                val hovered = host.isShowing && SwingUtilities.getWindowAncestor(host)?.isActive == true &&
+                    runCatching {
+                        Rectangle(host.locationOnScreen, host.size).contains(MouseInfo.getPointerInfo()?.location)
+                    }.getOrDefault(false)
+                if (hovered && entered == null) {
+                    entered = HoverInteraction.Enter().also { source.emit(it) }
+                } else if (!hovered && entered != null) {
+                    source.emit(HoverInteraction.Exit(entered))
+                    entered = null
+                }
+                delay(32L)
+            }
+        } finally {
+            entered?.let { source.tryEmit(HoverInteraction.Exit(it)) }
+        }
+    }
 
     DisposableEffect(host) {
         host.onFirstFullSizePaint = { hostReady = true }
@@ -117,7 +147,8 @@ private fun WindowsHeroTrailerPlayerSession(
             sourceHeaders = TrailerExtractionPlatform.defaultHeaders,
             playWhenReady = false,
             initialPositionMs = startPositionMillis.coerceAtLeast(0L),
-            decoderPriority = 0,
+            // Keep hardware decode automatic, but allow codecs without a hardware decoder.
+            decoderPriority = 1,
             nvidiaRtxSuperResolutionEnabled = false,
             onError = {
                 System.err.println("[TelumiaPreview] native player error detail=${it ?: "unknown"}")

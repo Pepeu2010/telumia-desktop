@@ -1,6 +1,7 @@
 package com.nuvio.app.core.ui
 
 import com.nuvio.app.core.build.AppFeaturePolicy
+import com.nuvio.app.isWindows
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +23,9 @@ internal const val MinHoverPreviewTrailerStartSeconds = 0
 internal const val MaxHoverPreviewTrailerStartSeconds = 5
 internal const val HoverPreviewTrailerStartStepSeconds = 1
 
+// Native Windows hover trailers are available, but require the user's playback opt-in.
+private val defaultHoverPreviewTrailerEnabled = AppFeaturePolicy.hoverTrailerPlaybackSupported && !isWindows
+
 @Serializable
 private data class StoredPosterCardStylePreferences(
     val widthDp: Int = DefaultPosterCardWidthDp,
@@ -31,7 +35,7 @@ private data class StoredPosterCardStylePreferences(
     val hideLabelsEnabled: Boolean = false,
     val hoverPreviewEnabled: Boolean = true,
     val hoverPreviewOpenDelayMillis: Int = DefaultHoverPreviewOpenDelayMillis,
-    val hoverPreviewTrailerEnabled: Boolean = AppFeaturePolicy.hoverTrailerPlaybackSupported,
+    val hoverPreviewTrailerEnabled: Boolean = defaultHoverPreviewTrailerEnabled,
     val hoverPreviewTrailerSoundEnabled: Boolean = false,
     val hoverPreviewTrailerStartSeconds: Int = DefaultHoverPreviewTrailerStartSeconds,
     val alwaysShowLandscapeClearlogo: Boolean = false,
@@ -45,7 +49,7 @@ data class PosterCardStyleUiState(
     val hideLabelsEnabled: Boolean = false,
     val hoverPreviewEnabled: Boolean = true,
     val hoverPreviewOpenDelayMillis: Int = DefaultHoverPreviewOpenDelayMillis,
-    val hoverPreviewTrailerEnabled: Boolean = AppFeaturePolicy.hoverTrailerPlaybackSupported,
+    val hoverPreviewTrailerEnabled: Boolean = defaultHoverPreviewTrailerEnabled,
     val hoverPreviewTrailerSoundEnabled: Boolean = false,
     val hoverPreviewTrailerStartSeconds: Int = DefaultHoverPreviewTrailerStartSeconds,
     val alwaysShowLandscapeClearlogo: Boolean = false,

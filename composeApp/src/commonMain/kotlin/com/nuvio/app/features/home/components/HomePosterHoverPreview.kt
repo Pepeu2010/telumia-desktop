@@ -38,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -82,6 +83,7 @@ import com.nuvio.app.core.ui.NuvioAsyncImage
 import com.nuvio.app.core.ui.NuvioPosterWatchedOverlay
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.LocalUiMotion
+import com.nuvio.app.core.ui.LocalNativeVideoHoverInteractionSource
 import com.nuvio.app.core.ui.PosterCardStyleUiState
 import com.nuvio.app.core.ui.PosterZoomOverlayCoordinator
 import com.nuvio.app.core.ui.nuvio
@@ -292,10 +294,10 @@ internal fun HomePosterHoverPreview(
         }
     }
 
-    val hoverHeld = anchorHovered || previewHovered
-    LaunchedEffect(ownsPreview, hoverHeld, trailerPlaybackEnabled, item.type, item.id) {
+    // Keep the decoder through the card's close grace while pointer ownership moves to AWT.
+    LaunchedEffect(ownsPreview, previewVisible, trailerPlaybackEnabled, item.type, item.id) {
         trailerPlaybackSource = null
-        if (!ownsPreview || !hoverHeld || !trailerPlaybackEnabled) return@LaunchedEffect
+        if (!ownsPreview || !previewVisible || !trailerPlaybackEnabled) return@LaunchedEffect
         delay(HoverTrailerExtractionDebounceMillis)
         val source = resolveBoundedHoverPreview { currentTrailerResolver(item) }
         coroutineContext.ensureActive()
@@ -389,30 +391,32 @@ internal fun HomePosterHoverPreview(
                     targetOffsetY = { height -> if (motion.allowsSpatialEffects) height / 32 else 0 },
                 ),
         ) {
-            HomePosterPreviewCard(
-                item = item,
-                isWatched = isWatched,
-                isSaved = previewIsSaved,
-                trailerEnabled = trailerPlaybackEnabled,
-                trailerSoundEnabled = posterCardStyle.hoverPreviewTrailerSoundEnabled,
-                trailerStartSeconds = posterCardStyle.hoverPreviewTrailerStartSeconds,
-                trailerPlaybackSource = trailerPlaybackSource.takeIf { ownsPreview && hoverHeld },
-                onTrailerReady = onTrailerReady,
-                onTrailerError = onTrailerError,
-                modifier = Modifier
-                    .testTag("home-hover-preview")
-                    .hoverable(previewInteractionSource)
-                    .onPointerEvent(PointerEventType.Scroll) {
-                        previewDismissedByScroll = true
-                        previewVisible = false
-                        popupMounted = false
-                        homePosterPreviewOwnership.release(ownershipToken)
-                    },
-                onClick = onClick,
-                onLongClick = onLongClick,
-                onWatchedClick = onWatchedClick,
-                onSaveClick = onSaveClick,
-            )
+            CompositionLocalProvider(LocalNativeVideoHoverInteractionSource provides previewInteractionSource) {
+                HomePosterPreviewCard(
+                    item = item,
+                    isWatched = isWatched,
+                    isSaved = previewIsSaved,
+                    trailerEnabled = trailerPlaybackEnabled,
+                    trailerSoundEnabled = posterCardStyle.hoverPreviewTrailerSoundEnabled,
+                    trailerStartSeconds = posterCardStyle.hoverPreviewTrailerStartSeconds,
+                    trailerPlaybackSource = trailerPlaybackSource.takeIf { ownsPreview && previewVisible },
+                    onTrailerReady = onTrailerReady,
+                    onTrailerError = onTrailerError,
+                    modifier = Modifier
+                        .testTag("home-hover-preview")
+                        .hoverable(previewInteractionSource)
+                        .onPointerEvent(PointerEventType.Scroll) {
+                            previewDismissedByScroll = true
+                            previewVisible = false
+                            popupMounted = false
+                            homePosterPreviewOwnership.release(ownershipToken)
+                        },
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                    onWatchedClick = onWatchedClick,
+                    onSaveClick = onSaveClick,
+                )
+            }
         }
     }
     val latestPreviewContent = rememberUpdatedState(previewContent)
