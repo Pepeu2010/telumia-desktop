@@ -1,6 +1,7 @@
 package com.nuvio.app.features.home.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -11,6 +12,8 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.awt.ComposePanel
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toAwtImage
@@ -52,13 +55,8 @@ class HomePosterHoverLifecycleTest {
     fun desktopDefaultsToSilentHoverTrailerWithExplicitSoundOptIn() {
         val defaults = PosterCardStyleUiState()
         assertFalse(defaults.hoverPreviewTrailerSoundEnabled)
-        if (DesktopHostOs.current == DesktopHostOs.WINDOWS) {
-            assertFalse(AppFeaturePolicy.hoverTrailerPlaybackSupported)
-            assertFalse(defaults.hoverPreviewTrailerEnabled)
-        } else {
-            assertTrue(AppFeaturePolicy.hoverTrailerPlaybackSupported)
-            assertTrue(defaults.hoverPreviewTrailerEnabled)
-        }
+        assertTrue(AppFeaturePolicy.hoverTrailerPlaybackSupported)
+        assertTrue(defaults.hoverPreviewTrailerEnabled)
     }
 
     @Test
@@ -134,6 +132,78 @@ class HomePosterHoverLifecycleTest {
         }
 
     @Test
+    fun keyboardFocusOpensPreviewAndMovingFocusReleasesItsSlot() =
+        runDesktopComposeUiTest(width = 1366, height = 768) {
+            val started = AtomicBoolean()
+            val cleanedUp = AtomicBoolean()
+            val anchorFocusRequester = FocusRequester()
+            val nextFocusRequester = FocusRequester()
+            val settings = PosterCardStyleUiState(
+                hoverPreviewEnabled = true,
+                hoverPreviewOpenDelayMillis = 150,
+                hoverPreviewTrailerEnabled = true,
+                hoverPreviewTrailerSoundEnabled = false,
+            )
+            runOnIdle { PosterZoomOverlayCoordinator.hide() }
+            setContent {
+                NuvioTheme(navigationMotion = NavigationMotion.OFF) {
+                    Box(Modifier.fillMaxSize()) {
+                        HomePosterHoverPreview(
+                            MetaPreview("fixture:keyboard-focus", "movie", "Em foco"),
+                            isWatched = false,
+                            onClick = {},
+                            onLongClick = null,
+                            previewSettings = settings,
+                            trailerPreviewSupported = true,
+                            trailerResolver = {
+                                started.set(true)
+                                try {
+                                    awaitCancellation()
+                                } finally {
+                                    cleanedUp.set(true)
+                                }
+                            },
+                        ) { focusModifier ->
+                            Box(
+                                focusModifier
+                                    .focusRequester(anchorFocusRequester)
+                                    .focusable()
+                                    .testTag("focus-preview-anchor")
+                                    .size(220.dp, 300.dp)
+                                    .background(Color(0xFF18283A)),
+                            ) {
+                                Text("Foco do teclado")
+                            }
+                        }
+                        Box(
+                            Modifier
+                                .focusRequester(nextFocusRequester)
+                                .focusable()
+                                .testTag("next-focus-target")
+                                .align(Alignment.BottomEnd)
+                                .size(100.dp),
+                        )
+                        HomePosterHoverPreviewOverlayHost()
+                    }
+                }
+            }
+
+            runOnIdle { assertTrue(anchorFocusRequester.requestFocus()) }
+            waitForIdle()
+            waitUntil(timeoutMillis = 4_000) {
+                onAllNodesWithTag("home-hover-preview").fetchSemanticsNodes().isNotEmpty()
+            }
+            waitUntil(timeoutMillis = 8_000) { started.get() }
+            onNodeWithTag("home-hover-preview").assertIsDisplayed()
+
+            runOnIdle { assertTrue(nextFocusRequester.requestFocus()) }
+            waitUntil(timeoutMillis = 4_000) {
+                cleanedUp.get() && homePosterPreviewOwnership.active.value == null
+            }
+            onNodeWithTag("home-hover-preview").assertDoesNotExist()
+        }
+
+    @Test
     fun windowsHoverPreviewReachesTheRealMutedNativeTrailerSurface() {
         assumeTrue("Windows native hover-preview integration gate", DesktopHostOs.current == DesktopHostOs.WINDOWS)
         val fixture = Files.createTempFile("telumia-hover-inline-", ".avi")
@@ -146,12 +216,7 @@ class HomePosterHoverLifecycleTest {
         val anchorInteractionSource = MutableInteractionSource()
         lateinit var panel: ComposePanel
         lateinit var window: JFrame
-        val settings = PosterCardStyleUiState(
-            hoverPreviewEnabled = true,
-            hoverPreviewOpenDelayMillis = 500,
-            hoverPreviewTrailerEnabled = true,
-            hoverPreviewTrailerSoundEnabled = false,
-        )
+        val settings = PosterCardStyleUiState(hoverPreviewOpenDelayMillis = 500)
 
         try {
             runCatching { PosterZoomOverlayCoordinator.hide() }
@@ -175,7 +240,7 @@ class HomePosterHoverLifecycleTest {
                                 onClick = {},
                                 onLongClick = null,
                                 previewSettings = settings,
-                                trailerPreviewSupported = true,
+                                trailerPreviewSupported = AppFeaturePolicy.hoverTrailerPlaybackSupported,
                                 anchorInteractionSourceOverride = anchorInteractionSource,
                                 trailerResolver = {
                                     resolving.countDown()

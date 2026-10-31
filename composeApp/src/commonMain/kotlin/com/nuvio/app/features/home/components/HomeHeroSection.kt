@@ -686,7 +686,7 @@ private fun DesktopHomeHeroFrame(
                 pagerState = pagerState,
                 coroutineScope = coroutineScope,
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
+                    .align(Alignment.BottomEnd)
                     .padding(
                         start = contentHorizontalPadding,
                         end = contentHorizontalPadding,
@@ -709,24 +709,32 @@ internal fun DesktopSpotlightPager(
     val activeIndex = pagerState.settledPage % items.size
     val rowState = androidx.compose.foundation.lazy.rememberLazyListState()
     LaunchedEffect(activeIndex) { rowState.scrollToItem(activeIndex) }
-    LazyRow(modifier = modifier, state = rowState, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    LazyRow(
+        modifier = modifier,
+        state = rowState,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         itemsIndexed(items, key = { index, _ -> index }) { index, item ->
             val isActive = index == activeIndex
-            Surface(onClick = {
-                coroutineScope.launch {
-                    pagerState.animateScrollToPage(heroPageForItem(pagerState.currentPage, index, items.size))
-                }
-            }, modifier = Modifier.size(44.dp).semantics {
-                selected = isActive
-                contentDescription = item.name
-            }, shape = RoundedCornerShape(12.dp),
-                color = if (isActive) colors.onBackground else colors.surface.copy(alpha = 0.65f),
-                contentColor = if (isActive) colors.background else colors.onBackground,
-                border = BorderStroke(1.dp, colors.onBackground.copy(alpha = if (isActive) 0.75f else 0.15f))) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text((index + 1).toString().padStart(2, '0'), style = MaterialTheme.typography.labelLarge)
-                }
-            }
+            val targetPage = heroPageForItem(pagerState.currentPage, index, items.size)
+            Box(
+                modifier = Modifier
+                    .clickable {
+                        coroutineScope.launch { pagerState.animateScrollToPage(targetPage) }
+                    }
+                    .semantics {
+                        selected = isActive
+                        contentDescription = item.name
+                    }
+                    .clip(CircleShape)
+                    .background(colors.onBackground)
+                    .graphicsLayer {
+                        val activeFraction = heroPageVisibility(pagerState, targetPage)
+                        alpha = 0.35f + (0.57f * activeFraction)
+                    }
+                    .heroPageIndicatorSize(pagerState, targetPage),
+            )
         }
     }
 }

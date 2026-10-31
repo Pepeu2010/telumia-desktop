@@ -244,6 +244,92 @@ internal fun SettingsSection(
 }
 
 @Composable
+internal fun SettingsQuickActionCard(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    isTablet: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+    var isFocused by remember { mutableStateOf(false) }
+    val isEmphasized = isHovered || isFocused || isPressed
+    val shape = RoundedCornerShape(NuvioTokens.Radius.xl)
+    val containerColor by animateColorAsState(
+        targetValue = if (isEmphasized) {
+            tokens.colors.accent.copy(alpha = if (isFocused) 0.14f else 0.09f)
+        } else {
+            tokens.colors.surfaceCard
+        },
+        animationSpec = tween(tokens.motion.fastMillis),
+        label = "settings_quick_action_container",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isFocused) tokens.colors.accent.copy(alpha = 0.72f)
+        else if (isHovered) tokens.colors.accent.copy(alpha = 0.30f)
+        else tokens.colors.borderSubtle,
+        animationSpec = tween(tokens.motion.fastMillis),
+        label = "settings_quick_action_border",
+    )
+
+    Row(
+        modifier = modifier
+            .height(92.dp)
+            .clip(shape)
+            .background(containerColor)
+            .border(1.dp, borderColor, shape)
+            .hoverable(interactionSource)
+            .onFocusChanged { isFocused = it.isFocused }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(horizontal = if (isTablet) 16.dp else 14.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (isTablet) 14.dp else 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            modifier = Modifier.size(if (isTablet) 42.dp else 38.dp),
+            color = tokens.colors.accent.copy(alpha = if (isEmphasized) 0.24f else 0.15f),
+            shape = tokens.shapes.compactCard,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = tokens.colors.accent,
+                )
+            }
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = tokens.colors.textPrimary,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = tokens.colors.textMuted,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
 internal fun SettingsNavigationRow(
     title: String,
     description: String?,

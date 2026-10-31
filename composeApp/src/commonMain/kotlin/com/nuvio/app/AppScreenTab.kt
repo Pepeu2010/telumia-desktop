@@ -6,6 +6,7 @@ enum class AppScreenTab {
     Home,
     Search,
     Library,
+    Tv,
     Settings,
     ;
 
@@ -19,6 +20,8 @@ internal fun AppScreenTab.toNativeNavigationTab(): NativeNavigationTab = when (t
     AppScreenTab.Home -> NativeNavigationTab.Home
     AppScreenTab.Search -> NativeNavigationTab.Search
     AppScreenTab.Library -> NativeNavigationTab.Library
+    // Live TV is a desktop-only destination; native tab bars keep their existing destinations.
+    AppScreenTab.Tv -> NativeNavigationTab.Home
     AppScreenTab.Settings -> NativeNavigationTab.Settings
 }
 

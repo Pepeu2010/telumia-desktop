@@ -18,9 +18,9 @@ actual object AppFeaturePolicy {
     actual val trailerPlaybackMode: TrailerPlaybackMode =
         if (isWindowsDesktop) TrailerPlaybackMode.EXTERNAL else TrailerPlaybackMode.IN_APP
     actual val heroTrailerPlaybackSupported: Boolean = !isWindowsDesktop
-    // Windows' native libmpv surface cannot currently be hosted by Compose Popup's
-    // AWT child window. Keep the setting hidden until that integration gate passes.
-    actual val hoverTrailerPlaybackSupported: Boolean = !isWindowsDesktop
+    // Windows previews render in the main window overlay to avoid the AWT child-window
+    // limitation; other desktop targets use Compose Popup.
+    actual val hoverTrailerPlaybackSupported: Boolean = true
     actual val hoverPreviewUsesRootOverlay: Boolean = isWindowsDesktop
     actual val inAppUpdaterEnabled: Boolean = true
     actual val imdbRatingLogoEnabled: Boolean = true

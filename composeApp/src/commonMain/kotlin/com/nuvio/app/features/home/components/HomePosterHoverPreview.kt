@@ -52,6 +52,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -219,6 +220,7 @@ internal fun HomePosterHoverPreview(
     }
     val anchorHovered by anchorInteractionSource.collectIsHoveredAsState()
     val previewHovered by previewInteractionSource.collectIsHoveredAsState()
+    var anchorFocused by remember(item.type, item.id) { mutableStateOf(false) }
     var previewVisible by remember(item.type, item.id) { mutableStateOf(false) }
     var popupMounted by remember(item.type, item.id) { mutableStateOf(false) }
     var previewDismissedByScroll by remember(item.type, item.id) { mutableStateOf(false) }
@@ -256,6 +258,7 @@ internal fun HomePosterHoverPreview(
 
     LaunchedEffect(
         anchorHovered,
+        anchorFocused,
         previewHovered,
         posterCardStyle.hoverPreviewOpenDelayMillis,
         previewDismissedByScroll,
@@ -268,7 +271,7 @@ internal fun HomePosterHoverPreview(
             }
             return@LaunchedEffect
         }
-        if (anchorHovered || previewHovered) {
+        if (anchorHovered || anchorFocused || previewHovered) {
             if (!popupMounted) {
                 delay(posterCardStyle.hoverPreviewOpenDelayMillis.toLong())
                 homePosterPreviewOwnership.claim(ownershipToken)
@@ -292,10 +295,10 @@ internal fun HomePosterHoverPreview(
         }
     }
 
-    val hoverHeld = anchorHovered || previewHovered
-    LaunchedEffect(ownsPreview, hoverHeld, trailerPlaybackEnabled, item.type, item.id) {
+    val previewHeld = anchorHovered || anchorFocused || previewHovered
+    LaunchedEffect(ownsPreview, previewHeld, trailerPlaybackEnabled, item.type, item.id) {
         trailerPlaybackSource = null
-        if (!ownsPreview || !hoverHeld || !trailerPlaybackEnabled) return@LaunchedEffect
+        if (!ownsPreview || !previewHeld || !trailerPlaybackEnabled) return@LaunchedEffect
         delay(HoverTrailerExtractionDebounceMillis)
         val source = resolveBoundedHoverPreview { currentTrailerResolver(item) }
         coroutineContext.ensureActive()
@@ -396,7 +399,7 @@ internal fun HomePosterHoverPreview(
                 trailerEnabled = trailerPlaybackEnabled,
                 trailerSoundEnabled = posterCardStyle.hoverPreviewTrailerSoundEnabled,
                 trailerStartSeconds = posterCardStyle.hoverPreviewTrailerStartSeconds,
-                trailerPlaybackSource = trailerPlaybackSource.takeIf { ownsPreview && hoverHeld },
+                trailerPlaybackSource = trailerPlaybackSource.takeIf { ownsPreview && previewHeld },
                 onTrailerReady = onTrailerReady,
                 onTrailerError = onTrailerError,
                 modifier = Modifier
@@ -438,6 +441,7 @@ internal fun HomePosterHoverPreview(
     Box(modifier = modifier) {
         content(
             Modifier
+                .onFocusChanged { anchorFocused = it.hasFocus }
                 .hoverable(anchorInteractionSource)
                 .onGloballyPositioned { coordinates ->
                     if (useRootOverlay) {

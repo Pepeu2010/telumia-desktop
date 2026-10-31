@@ -9,10 +9,10 @@ actual object AppUpdaterPlatform {
     actual val hasSingleUpdateChannel: Boolean = false
 
     actual val releaseSource: AppUpdateReleaseSource = AppUpdateReleaseSource(
-        owner = "NuvioMedia",
-        repo = "NuvioMobile",
-        channelBranch = "cmp-rewrite",
-        userAgent = "NuvioMobile",
+        owner = "Pepeu2010",
+        repo = "telumia-desktop",
+        channelBranch = null,
+        userAgent = "Telumia",
     )
 
     actual val assetSelector: AppUpdateAssetSelector

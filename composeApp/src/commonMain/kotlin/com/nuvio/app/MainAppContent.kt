@@ -419,6 +419,7 @@ internal fun MainAppContent(
                 searchScrollToTopRequests.tryEmit(Unit)
             }
             AppScreenTab.Library -> libraryScrollToTopRequests.tryEmit(Unit)
+            AppScreenTab.Tv -> Unit
             AppScreenTab.Settings -> settingsRootActionRequests.tryEmit(Unit)
         }
     }
@@ -1330,6 +1331,19 @@ internal fun MainAppContent(
                                     navController.navigate(
                                         DetailRoute(type = meta.type, id = meta.id, title = meta.name),
                                     )
+                                },
+                                onLiveTvChannelClick = { channel ->
+                                    val launch = StreamLaunch(
+                                        profileId = activePlaybackProfileId,
+                                        type = channel.streamType,
+                                        videoId = channel.meta.id,
+                                        title = channel.meta.name,
+                                        logo = channel.meta.logo,
+                                        poster = channel.meta.poster,
+                                        background = channel.meta.banner,
+                                    )
+                                    val launchId = StreamLaunchStore.put(launch)
+                                    navController.navigate(StreamRoute(launchId = launchId, title = channel.meta.name))
                                 },
                                 onPosterLongClick = { meta ->
                                     openPosterActions(PosterActionTarget(preview = meta))

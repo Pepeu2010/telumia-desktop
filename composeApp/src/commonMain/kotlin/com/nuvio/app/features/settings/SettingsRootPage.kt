@@ -1,6 +1,16 @@
 package com.nuvio.app.features.settings
 
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.rounded.AccountCircle
@@ -17,6 +27,9 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Policy
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.nuvio.app.core.ui.nuvio
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_settings_page_account
 import nuvio.composeapp.generated.resources.compose_settings_page_advanced
@@ -50,6 +63,8 @@ import nuvio.composeapp.generated.resources.updates_debug_test_description
 import nuvio.composeapp.generated.resources.updates_debug_test_title
 import nuvio.composeapp.generated.resources.about_supporters_contributors_subtitle
 import nuvio.composeapp.generated.resources.about_licenses_attributions_subtitle
+import nuvio.composeapp.generated.resources.settings_quick_access_description
+import nuvio.composeapp.generated.resources.settings_quick_access_title
 import org.jetbrains.compose.resources.stringResource
 
 private const val PRIVACY_POLICY_URL = "https://nuvio.tv/privacy-policy"
@@ -77,6 +92,88 @@ internal fun LazyListScope.settingsRootContent(
     showSupportersContributorsPage: Boolean = true,
     showAttribution: Boolean = true,
 ) {
+    if (showGeneralSection) {
+        item(key = "settings-quick-access") {
+            SettingsSection(
+                title = stringResource(Res.string.settings_quick_access_title),
+                isTablet = isTablet,
+            ) {
+                Text(
+                    text = stringResource(Res.string.settings_quick_access_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.nuvio.colors.textMuted,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                )
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    if (maxWidth >= 640.dp) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            SettingsQuickActionCard(
+                                title = stringResource(Res.string.compose_settings_page_appearance),
+                                description = stringResource(Res.string.compose_settings_root_appearance_description),
+                                icon = Icons.Rounded.Palette,
+                                isTablet = isTablet,
+                                modifier = Modifier.weight(1f),
+                                onClick = onAppearanceClick,
+                            )
+                            SettingsQuickActionCard(
+                                title = stringResource(Res.string.compose_settings_page_content_discovery),
+                                description = stringResource(Res.string.compose_settings_root_content_discovery_description),
+                                icon = Icons.Rounded.Extension,
+                                isTablet = isTablet,
+                                modifier = Modifier.weight(1f),
+                                onClick = onContentDiscoveryClick,
+                            )
+                            SettingsQuickActionCard(
+                                title = stringResource(Res.string.compose_settings_page_playback),
+                                description = stringResource(Res.string.settings_playback_subtitle),
+                                icon = Icons.Rounded.PlayArrow,
+                                isTablet = isTablet,
+                                modifier = Modifier.weight(1f),
+                                onClick = onPlaybackClick,
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            SettingsQuickActionCard(
+                                title = stringResource(Res.string.compose_settings_page_appearance),
+                                description = stringResource(Res.string.compose_settings_root_appearance_description),
+                                icon = Icons.Rounded.Palette,
+                                isTablet = isTablet,
+                                modifier = Modifier.width(236.dp),
+                                onClick = onAppearanceClick,
+                            )
+                            SettingsQuickActionCard(
+                                title = stringResource(Res.string.compose_settings_page_content_discovery),
+                                description = stringResource(Res.string.compose_settings_root_content_discovery_description),
+                                icon = Icons.Rounded.Extension,
+                                isTablet = isTablet,
+                                modifier = Modifier.width(236.dp),
+                                onClick = onContentDiscoveryClick,
+                            )
+                            SettingsQuickActionCard(
+                                title = stringResource(Res.string.compose_settings_page_playback),
+                                description = stringResource(Res.string.settings_playback_subtitle),
+                                icon = Icons.Rounded.PlayArrow,
+                                isTablet = isTablet,
+                                modifier = Modifier.width(236.dp),
+                                onClick = onPlaybackClick,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
     if (showAccountSection) {
         item {
             SettingsSection(
