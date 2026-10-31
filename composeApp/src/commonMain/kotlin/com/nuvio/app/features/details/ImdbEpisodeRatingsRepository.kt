@@ -11,15 +11,13 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 object ImdbEpisodeRatingsRepository {
-    private data class CacheEntry(
-        val ratings: Map<Pair<Int, Int>, Double>,
-        val expiresAtMs: Long,
-    )
-
     private val log = Logger.withTag("ImdbEpisodeRatingsRepo")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val mutex = Mutex()
-    private val cache = mutableMapOf<String, CacheEntry>()
+    private val cache = ImdbEpisodeRatingsCache(
+        capacity = MetaDetailsCacheLimits.DEFAULT.entries,
+        ttlMs = CACHE_TTL_MS,
+    )
     private val inFlight = mutableMapOf<String, Deferred<Map<Pair<Int, Int>, Double>>>()
 
     suspend fun getEpisodeRatings(
@@ -32,12 +30,7 @@ object ImdbEpisodeRatingsRepository {
 
         val cacheKey = normalizedImdbId?.let { "imdb:$it" } ?: "tmdb:$normalizedTmdbId"
         val now = currentTimeMs()
-        mutex.withLock {
-            cache[cacheKey]?.let { cached ->
-                if (cached.expiresAtMs > now) return cached.ratings
-                cache.remove(cacheKey)
-            }
-        }
+        cache.get(cacheKey, now)?.let { return it }
 
         val deferred = mutex.withLock {
             inFlight[cacheKey] ?: scope.async {
@@ -46,12 +39,7 @@ object ImdbEpisodeRatingsRepository {
                         imdbId = normalizedImdbId,
                         tmdbId = normalizedTmdbId,
                     ).also { ratings ->
-                        mutex.withLock {
-                            cache[cacheKey] = CacheEntry(
-                                ratings = ratings,
-                                expiresAtMs = currentTimeMs() + CACHE_TTL_MS,
-                            )
-                        }
+                        cache.put(cacheKey, ratings, currentTimeMs())
                     }
                 } finally {
                     mutex.withLock {

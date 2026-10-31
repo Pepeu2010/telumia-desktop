@@ -24,6 +24,8 @@ internal class SynchronizedBoundedLruCache<K : Any, V : Any>(private val capacit
         }
     }
 
+    fun remove(key: K): V? = synchronized(lock) { entries.remove(key) }
+
     fun clear() = synchronized(lock) { entries.clear() }
 
     fun size(): Int = synchronized(lock) { entries.size }
