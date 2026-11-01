@@ -163,7 +163,7 @@ private suspend fun decodeGifCodec(url: String): GifCodecHolder? {
         val cached = readGifDiskCache(url)
         val bytes = cached ?: downloadDesktopGifBytes(url)
 
-        DesktopGifLimits.validateHeader(bytes)
+        DesktopGifLimits.validateAnimationHeader(bytes)
         val codec = Data.makeFromBytes(bytes).use { Codec.makeFromData(it) }.also { owned = it }
         val count = codec.frameCount
         if (count !in 2..DesktopGifLimits.MAX_FRAMES) return null
@@ -209,17 +209,6 @@ internal actual fun CollectionCardRemoteImage(
     val shouldAnimate = animateIfPossible && (isHovered || staticImageUrl.isNullOrBlank())
 
     var composeBitmap by remember(imageUrl) { mutableStateOf<ImageBitmap?>(null) }
-
-    // Prefetch as soon as the card becomes visible (not on hover) so the codec is already
-    // downloaded/decoded and cached by the time the user actually hovers - hover then reads
-    // straight from gifCodecCache with zero network/decode delay.
-    if (animateIfPossible) {
-        LaunchedEffect(imageUrl) {
-            if (synchronized(gifCodecCache) { !gifCodecCache.containsKey(imageUrl) }) {
-                loadDesktopGifCodec(imageUrl)
-            }
-        }
-    }
 
     if (shouldAnimate) {
         var codecHolder by remember(imageUrl) {

@@ -9,6 +9,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -88,7 +90,7 @@ fun NuvioScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(tokens.colors.background),
+            .background(Brush.verticalGradient(listOf(tokens.colors.surface, tokens.colors.background))),
     ) {
         LazyColumn(
             state = listState,
@@ -134,6 +136,7 @@ fun NuvioSurfaceCard(
         modifier = modifier.fillMaxWidth(),
         color = tokens.colors.surface,
         shape = tokens.shapes.card,
+        border = BorderStroke(tokens.borders.hairline, tokens.colors.borderSubtle),
         tonalElevation = tonalElevation.dp,
         shadowElevation = tokens.elevation.flat,
     ) {

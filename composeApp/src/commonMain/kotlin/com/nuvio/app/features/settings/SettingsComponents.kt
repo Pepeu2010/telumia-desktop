@@ -53,6 +53,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -98,7 +99,13 @@ private fun SettingsCard(
             tokens.colors.borderSubtle,
         ),
     ) {
-        Column(content = content)
+        Column(
+            modifier = Modifier.background(Brush.verticalGradient(listOf(
+                tokens.colors.surfaceCard.copy(alpha = 0.55f),
+                tokens.colors.surface,
+            ))),
+            content = content,
+        )
     }
 }
 
@@ -160,9 +167,12 @@ internal fun TabletPageHeader(
             }
             Text(
                 text = title,
+                modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.headlineLarge,
                 color = tokens.colors.textPrimary,
                 fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

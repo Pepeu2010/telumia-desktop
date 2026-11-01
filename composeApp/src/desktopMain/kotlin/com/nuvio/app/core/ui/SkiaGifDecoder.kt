@@ -32,6 +32,22 @@ internal object DesktopGifLimits {
         fun word(offset: Int) = (bytes[offset].toInt() and 255) or ((bytes[offset+1].toInt() and 255) shl 8)
         require(safeDimensions(word(6),word(8))) { "GIF dimensions exceed the working memory limit" }
     }
+
+    /** Animated WebP uses the VP8X canvas header; validate it before native decoding. */
+    fun validateAnimationHeader(bytes: ByteArray) {
+        if (bytes.size >= 6 && bytes.copyOfRange(0, 3).toString(Charsets.US_ASCII) == "GIF") {
+            validateHeader(bytes)
+            return
+        }
+        require(bytes.size in 30..MAX_BYTES)
+        fun fourCC(offset: Int) = bytes.copyOfRange(offset, offset + 4).toString(Charsets.US_ASCII)
+        require(fourCC(0) == "RIFF" && fourCC(8) == "WEBP" && fourCC(12) == "VP8X")
+        fun uint24(offset: Int) = (bytes[offset].toInt() and 255) or
+            ((bytes[offset + 1].toInt() and 255) shl 8) or ((bytes[offset + 2].toInt() and 255) shl 16)
+        require(safeDimensions(uint24(24) + 1, uint24(27) + 1)) {
+            "WebP dimensions exceed the working memory limit"
+        }
+    }
 }
 
 /** Stops after one overflow byte even for unknown-length, chunked responses. */

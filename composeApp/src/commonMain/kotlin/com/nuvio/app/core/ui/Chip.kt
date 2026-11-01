@@ -25,8 +25,8 @@ fun Chip(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        shape = RoundedCornerShape(NuvioTokens.Radius.md),
-        color = if (selected) tokens.colors.overlaySelected else Color.Transparent,
+        shape = RoundedCornerShape(percent = 50),
+        color = if (selected) tokens.colors.accent.copy(alpha = 0.16f) else tokens.colors.surface,
         contentColor = when {
             !enabled -> tokens.colors.textDisabled
             selected -> tokens.colors.textPrimary

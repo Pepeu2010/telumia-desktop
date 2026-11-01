@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -56,15 +57,17 @@ fun DialogSurface(
     BasicAlertDialog(onDismissRequest = onDismissRequest, properties = properties) {
         Surface(
             modifier = modifier
-                .fillMaxWidth()
-                .widthIn(max = tokens.components.dialogMaxWidth),
+                .widthIn(max = tokens.components.dialogMaxWidth)
+                .fillMaxWidth(),
             shape = tokens.shapes.dialog,
             color = tokens.colors.surfaceDialog,
             contentColor = tokens.colors.textPrimary,
-            border = BorderStroke(tokens.borders.thin, SurfaceEdge),
+            border = BorderStroke(tokens.borders.thin, tokens.colors.borderDefault),
         ) {
             Column(
-                modifier = Modifier.padding(tokens.spacing.dialogPadding),
+                modifier = Modifier
+                    .background(Brush.verticalGradient(listOf(tokens.colors.surfaceCard, tokens.colors.surfaceDialog)))
+                    .padding(tokens.spacing.dialogPadding),
                 verticalArrangement = Arrangement.spacedBy(tokens.spacing.listGap),
             ) {
                 if (title != null) {
@@ -98,8 +101,11 @@ fun DialogButtons(
             .fillMaxWidth()
             .padding(top = NuvioTokens.Space.s8),
     ) { measurables, constraints ->
-        val gap = NuvioTokens.Space.s10.roundToPx()
         val width = constraints.maxWidth
+        // Very narrow windows still need valid child constraints.
+        val gap = NuvioTokens.Space.s10.roundToPx().coerceAtMost(
+            width / (measurables.size - 1).coerceAtLeast(1),
+        )
         val totalGap = gap * (measurables.size - 1).coerceAtLeast(0)
         val itemWidth = (width - totalGap) / measurables.size.coerceAtLeast(1)
         if (measurables.all { it.maxIntrinsicWidth(constraints.maxHeight) <= itemWidth }) {

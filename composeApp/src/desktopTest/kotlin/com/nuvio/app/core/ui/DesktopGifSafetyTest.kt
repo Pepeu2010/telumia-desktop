@@ -16,6 +16,16 @@ import org.jetbrains.skia.ImageInfo
 import kotlin.test.*
 
 class DesktopGifSafetyTest {
+    @Test fun animatedWebpCanvasIsValidatedBeforeNativeDecoding() {
+        val bytes = java.util.Base64.getDecoder().decode("UklGRoQAAABXRUJQVlA4WAoAAAACAAAAAQAAAQAAQU5JTQYAAAAAAAAAAABBTk1GKAAAAAAAAAAAAAEAAAEAAMgAAAJWUDhMDwAAAC8BQAAABxD9j/4HIqL/AQBBTk1GKAAAAAAAAAAAAAEAAAEAAMgAAABWUDhMDwAAAC8BQAAAB1DAiP4HIqL/AQA=")
+        DesktopGifLimits.validateAnimationHeader(bytes)
+        bytes[24] = 0xff.toByte()
+        bytes[25] = 0xff.toByte()
+        bytes[26] = 0xff.toByte()
+        assertFailsWith<IllegalArgumentException> { DesktopGifLimits.validateAnimationHeader(bytes) }
+        assertFailsWith<IllegalArgumentException> { DesktopGifLimits.validateAnimationHeader(ByteArray(30)) }
+    }
+
     @Test fun readsExactlyTheLimitAndOnlyOneOverflowByte() {
         val stream=ByteArrayInputStream(ByteArray(33))
         assertFailsWith<IllegalArgumentException> { readGifBytesBounded(stream,32) }

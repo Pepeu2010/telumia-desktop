@@ -458,8 +458,8 @@ internal fun defaultNuvioThemeTokens(
     val surfaceCard = palette.backgroundCard
     val accent = palette.secondary
     val accentStrong = palette.secondaryVariant
-    val borderSubtle = Color(0xFF252A2A).copy(alpha = 0.55f)
-    val borderDefault = Color(0xFF252A2A)
+    val borderSubtle = textPrimary.copy(alpha = 0.10f)
+    val borderDefault = textPrimary.copy(alpha = 0.18f)
     val overlayScrim = Color.Black.copy(alpha = NuvioTokens.Opacity.overlayMedium)
 
     return NuvioThemeTokens(
