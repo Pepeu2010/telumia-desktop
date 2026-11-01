@@ -17,11 +17,13 @@ import com.nuvio.app.features.player.PlayerResizeMode
 import com.nuvio.app.features.player.desktop.NativePlayerController
 import com.nuvio.app.features.player.desktop.NativePlayerHost
 import com.nuvio.app.features.trailer.TrailerExtractionPlatform
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 
 private const val TrailerReadyTimeoutMs = 12_000L
 private const val TrailerSnapshotIntervalMs = 100L
+private val trailerSurfaceLog = Logger.withTag("TelumiaPreview")
 
 @Composable
 internal fun WindowsHeroTrailerPlayerSurface(
@@ -72,6 +74,7 @@ private fun WindowsHeroTrailerPlayerSession(
     val latestOnReady = rememberUpdatedState(onReady)
     val latestOnEnded = rememberUpdatedState(onEnded)
     val latestOnError = rememberUpdatedState(onError)
+    val latestMuted = rememberUpdatedState(muted)
     var hostReady by remember(host) { mutableStateOf(false) }
     var mediaReady by remember(controller) { mutableStateOf(false) }
     var terminalReported by remember(controller) { mutableStateOf(false) }
@@ -92,14 +95,14 @@ private fun WindowsHeroTrailerPlayerSession(
         modifier = modifier.fillMaxSize().clipToBounds(),
     )
 
-    LaunchedEffect(controller, hostReady, sourceUrl, sourceAudioUrl, startPositionMillis, muted) {
+    LaunchedEffect(controller, hostReady, sourceUrl, sourceAudioUrl, startPositionMillis) {
         if (!hostReady || sourceUrl.isBlank()) return@LaunchedEffect
 
         // These previews are silent by default. If the user explicitly enables sound and
         // the extractor returned a separate audio track, fall back to artwork instead of
         // playing a misleading, video-only preview on Windows.
-        if (!muted && !sourceAudioUrl.isNullOrBlank()) {
-            System.err.println("[TelumiaPreview] unsupported audio-combined preview muted=$muted separateAudio=true")
+        if (!latestMuted.value && !sourceAudioUrl.isNullOrBlank()) {
+            System.err.println("[TelumiaPreview] unsupported audio-combined preview separateAudio=true")
             controller.pause()
             controller.dispose()
             mediaReady = false
@@ -117,7 +120,8 @@ private fun WindowsHeroTrailerPlayerSession(
             sourceHeaders = TrailerExtractionPlatform.defaultHeaders,
             playWhenReady = false,
             initialPositionMs = startPositionMillis.coerceAtLeast(0L),
-            decoderPriority = 0,
+            // Prefer hardware but allow software for trailer codecs the GPU cannot decode.
+            decoderPriority = 1,
             nvidiaRtxSuperResolutionEnabled = false,
             onError = {
                 System.err.println("[TelumiaPreview] native player error detail=${it ?: "unknown"}")
@@ -131,7 +135,7 @@ private fun WindowsHeroTrailerPlayerSession(
         val ready = withTimeoutOrNull(TrailerReadyTimeoutMs) {
             while (true) {
                 val snapshot = controller.snapshot()
-                if (!snapshot.isLoading && snapshot.durationMs > 0L) break
+                if (!snapshot.isLoading && snapshot.durationMs > 0L && !snapshot.isEnded) break
                 delay(TrailerSnapshotIntervalMs)
             }
             true
@@ -148,13 +152,23 @@ private fun WindowsHeroTrailerPlayerSession(
         }
 
         controller.setTransientResizeMode(if (fillFrame) PlayerResizeMode.Fill else PlayerResizeMode.Fit)
-        controller.setMuted(muted)
+        controller.setMuted(latestMuted.value)
         mediaReady = true
+        trailerSurfaceLog.d { "ready host=${host.width}x${host.height} snapshot=${controller.snapshot()}" }
         latestOnReady.value()
     }
 
-    LaunchedEffect(controller, mediaReady, playWhenReady, muted) {
+    LaunchedEffect(controller, mediaReady, playWhenReady, muted, sourceAudioUrl) {
         if (!mediaReady) return@LaunchedEffect
+        if (!muted && !sourceAudioUrl.isNullOrBlank()) {
+            controller.pause()
+            mediaReady = false
+            if (!terminalReported) {
+                terminalReported = true
+                latestOnError.value()
+            }
+            return@LaunchedEffect
+        }
         controller.setMuted(muted)
         if (playWhenReady) controller.play() else controller.pause()
     }
@@ -162,9 +176,11 @@ private fun WindowsHeroTrailerPlayerSession(
     LaunchedEffect(controller, mediaReady) {
         if (!mediaReady) return@LaunchedEffect
         while (true) {
-            if (controller.snapshot().isEnded) {
+            val snapshot = controller.snapshot()
+            if (snapshot.isEnded) {
                 if (!terminalReported) {
                     terminalReported = true
+                    trailerSurfaceLog.d { "ended snapshot=$snapshot" }
                     latestOnEnded.value()
                 }
                 break

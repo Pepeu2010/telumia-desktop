@@ -507,6 +507,10 @@ private fun HomePosterPreviewCard(
     val clickInteractionSource = remember { MutableInteractionSource() }
     var logoLoadError by remember(item.type, item.id, item.logo) { mutableStateOf(false) }
     val logoUrl = item.logo?.takeIf { it.isNotBlank() && !logoLoadError }
+    var previewSoundEnabled by remember(item.type, item.id, trailerSoundEnabled) {
+        mutableStateOf(trailerSoundEnabled)
+    }
+    var previewPlaying by remember(trailerPlaybackSource) { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -570,10 +574,11 @@ private fun HomePosterPreviewCard(
             if (trailerEnabled) {
                 HomePosterHoverTrailer(
                     playbackSource = trailerPlaybackSource,
-                    soundEnabled = trailerSoundEnabled,
+                    soundEnabled = previewSoundEnabled,
                     startPositionSeconds = trailerStartSeconds,
-                    onReady = onTrailerReady,
-                    onError = onTrailerError,
+                    onReady = { previewPlaying = true; onTrailerReady() },
+                    onError = { previewPlaying = false; onTrailerError() },
+                    onEnded = { previewPlaying = false },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -636,13 +641,27 @@ private fun HomePosterPreviewCard(
             ),
             verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s10),
         ) {
-            Text(
-                text = item.previewMetadataLine(),
-                style = MaterialTheme.typography.labelLarge,
-                color = tokens.colors.textSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // A Windows native Canvas covers Compose siblings inside its video rectangle.
+            // Keep the audio action beside metadata, outside that rectangle on every desktop.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s10),
+            ) {
+                Text(
+                    text = item.previewMetadataLine(),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = tokens.colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                HomePreviewAudioControl(
+                    visible = trailerEnabled && previewPlaying,
+                    soundEnabled = previewSoundEnabled,
+                    onToggleSound = { previewSoundEnabled = !previewSoundEnabled },
+                )
+            }
 
             item.genres
                 .take(3)

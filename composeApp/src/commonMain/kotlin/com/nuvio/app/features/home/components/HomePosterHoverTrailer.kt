@@ -31,6 +31,7 @@ internal fun HomePosterHoverTrailer(
     startPositionSeconds: Int,
     onReady: () -> Unit = {},
     onError: () -> Unit = {},
+    onEnded: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val motion = LocalUiMotion.current
@@ -71,6 +72,7 @@ internal fun HomePosterHoverTrailer(
             onEnded = {
                 trailerReady = false
                 trailerFinished = true
+                onEnded()
             },
             onError = {
                 trailerReady = false

@@ -74,6 +74,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import com.nuvio.app.isDesktop
+import com.nuvio.app.isWindows
 import com.nuvio.app.isTelevisionDevice
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.ui.FullscreenActionButton
@@ -577,6 +578,8 @@ private fun DefaultHomeHeroFrame(
     trailerSoundEnabled: Boolean,
     trailerStartPositionSeconds: Int,
 ) {
+    var previewSoundEnabled by remember(trailerPlaybackSource, trailerSoundEnabled) { mutableStateOf(trailerSoundEnabled) }
+    var previewPlaying by remember(trailerPlaybackSource) { mutableStateOf(false) }
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -593,8 +596,11 @@ private fun DefaultHomeHeroFrame(
 
         HomePosterHoverTrailer(
             playbackSource = trailerPlaybackSource,
-            soundEnabled = trailerSoundEnabled,
+            soundEnabled = previewSoundEnabled,
             startPositionSeconds = trailerStartPositionSeconds,
+            onReady = { previewPlaying = true },
+            onEnded = { previewPlaying = false },
+            onError = { previewPlaying = false },
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -687,11 +693,17 @@ private fun DefaultHomeHeroFrame(
                 modifier = Modifier.padding(top = if (layout.isTablet) 14.dp else 12.dp),
             )
         }
+        HomePreviewAudioControl(
+            visible = previewPlaying,
+            soundEnabled = previewSoundEnabled,
+            onToggleSound = { previewSoundEnabled = !previewSoundEnabled },
+            modifier = Modifier.align(Alignment.TopEnd).padding(top = 88.dp, end = 24.dp),
+        )
     }
 }
 
 @Composable
-private fun DesktopHomeHeroFrame(
+internal fun DesktopHomeHeroFrame(
     items: List<MetaPreview>,
     pagerState: PagerState,
     listState: LazyListState?,
@@ -711,6 +723,8 @@ private fun DesktopHomeHeroFrame(
     val opacity = NuvioTokens.Opacity
     val space = NuvioTokens.Space
     val backgroundColor = colorScheme.background
+    var previewSoundEnabled by remember(trailerPlaybackSource, trailerSoundEnabled) { mutableStateOf(trailerSoundEnabled) }
+    var previewPlaying by remember(trailerPlaybackSource) { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -731,9 +745,19 @@ private fun DesktopHomeHeroFrame(
 
         HomePosterHoverTrailer(
             playbackSource = trailerPlaybackSource,
-            soundEnabled = trailerSoundEnabled,
+            soundEnabled = previewSoundEnabled,
             startPositionSeconds = trailerStartPositionSeconds,
-            modifier = Modifier.fillMaxSize(),
+            onReady = { previewPlaying = true },
+            onEnded = { previewPlaying = false },
+            onError = { previewPlaying = false },
+            // Windows embeds a heavyweight native video window: Compose text cannot
+            // paint above it. Preserve title/actions and navigation outside its bounds.
+            modifier = if (isWindows) {
+                Modifier.align(Alignment.CenterEnd)
+                    .padding(top = 144.dp, end = contentHorizontalPadding, bottom = 100.dp)
+                    .fillMaxWidth(0.46f)
+                    .aspectRatio(16f / 9f)
+            } else Modifier.fillMaxSize(),
         )
 
         Box(
@@ -799,8 +823,10 @@ private fun DesktopHomeHeroFrame(
                         top = 96.dp,
                         bottom = 100.dp,
                     )
-                    .width((layout.contentContainerMaxWidth * layout.contentWidthFraction - contentHorizontalPadding - space.s32)
-                        .coerceIn(320.dp, layout.contentMaxWidth)),
+                    .width((layout.contentContainerMaxWidth *
+                        (if (isWindows) minOf(layout.contentWidthFraction, 0.49f) else layout.contentWidthFraction) -
+                        contentHorizontalPadding - space.s32)
+                        .coerceIn(if (isWindows) 240.dp else 320.dp, layout.contentMaxWidth)),
                 contentAlignment = Alignment.BottomStart,
             ) {
                 HeroDesktopContentLayers(
@@ -829,6 +855,12 @@ private fun DesktopHomeHeroFrame(
                 )
             }
 
+            HomePreviewAudioControl(
+                visible = previewPlaying,
+                soundEnabled = previewSoundEnabled,
+                onToggleSound = { previewSoundEnabled = !previewSoundEnabled },
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = contentHorizontalPadding),
+            )
             DesktopSpotlightPager(
                 items = items,
                 pagerState = pagerState,

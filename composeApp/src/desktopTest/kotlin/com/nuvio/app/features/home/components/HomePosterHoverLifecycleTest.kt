@@ -280,11 +280,24 @@ class HomePosterHoverLifecycleTest {
                 if (failed.count == 0L) "the main-window overlay must reach media-ready with the muted local trailer"
                 else "the main-window overlay player reported an error before media-ready",
             )
-            Thread.sleep(250)
+            Thread.sleep(1_100)
             assertTrue(homePosterPreviewOwnership.active.value != null, "the overlay must retain ownership during playback")
             val screenshot = File("build/reports/telumia-hover-preview/windows-native-overlay.png")
                 .apply { parentFile.mkdirs() }
-            ImageIO.write(Robot().createScreenCapture(Rectangle(window.locationOnScreen, window.size)), "png", screenshot)
+            val origin = window.locationOnScreen
+            val capture = Robot().createScreenCapture(Rectangle(
+                origin.x + window.width / 4, origin.y + window.height / 4,
+                window.width / 2, window.height / 2 + 64,
+            ))
+            ImageIO.write(capture, "png", screenshot)
+            var visibleVideoSamples = 0
+            for (x in 0 until capture.width step 4) for (y in 0 until capture.height step 4) {
+                val color = java.awt.Color(capture.getRGB(x, y))
+                if ((color.red > 180 && color.green < 80 && color.blue < 80) ||
+                    (color.blue > 180 && color.red < 80 && color.green < 80)) visibleVideoSamples++
+            }
+            assertTrue(visibleVideoSamples > 100,
+                "the real hover must display the original red/blue video, not only report media-ready")
             assertTrue(anchorInteractionSource.tryEmit(HoverInteraction.Exit(hoverEnter)))
             val releaseDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(4)
             while (homePosterPreviewOwnership.active.value != null && System.nanoTime() < releaseDeadline) {
