@@ -177,16 +177,52 @@ internal fun SettingsSidebarItem(
 ) {
     val tokens = MaterialTheme.nuvio
     val primary = tokens.colors.accent
-    val background = if (selected) primary.copy(alpha = tokens.opacity.hover) else Color.Transparent
-    val iconChip = if (selected) primary.copy(alpha = tokens.opacity.selected) else Color.Transparent
-    val contentColor = if (selected) tokens.colors.textPrimary else tokens.colors.textMuted
+    val interactionSource = remember { MutableInteractionSource() }
+    val hovered by interactionSource.collectIsHoveredAsState()
+    val pressed by interactionSource.collectIsPressedAsState()
+    var focused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(NuvioTokens.Space.s10)
+    val background by animateColorAsState(
+        targetValue = when {
+            selected -> primary.copy(alpha = tokens.opacity.hover)
+            focused -> primary.copy(alpha = 0.14f)
+            pressed -> primary.copy(alpha = 0.11f)
+            hovered -> primary.copy(alpha = 0.075f)
+            else -> Color.Transparent
+        },
+        animationSpec = tween(tokens.motion.fastMillis),
+        label = "settings_sidebar_item_background",
+    )
+    val border by animateColorAsState(
+        targetValue = if (focused && !selected) primary.copy(alpha = 0.62f) else Color.Transparent,
+        animationSpec = tween(tokens.motion.fastMillis),
+        label = "settings_sidebar_item_focus_border",
+    )
+    val iconChip by animateColorAsState(
+        targetValue = when {
+            selected -> primary.copy(alpha = tokens.opacity.selected)
+            focused || hovered || pressed -> primary.copy(alpha = 0.16f)
+            else -> Color.Transparent
+        },
+        animationSpec = tween(tokens.motion.fastMillis),
+        label = "settings_sidebar_item_icon_background",
+    )
+    val contentColor = if (selected || focused) tokens.colors.textPrimary else tokens.colors.textMuted
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = tokens.spacing.listGap, vertical = NuvioTokens.Space.s2)
-            .background(background, RoundedCornerShape(NuvioTokens.Space.s10))
-            .clickable(onClick = onClick)
+            .clip(shape)
+            .background(background)
+            .border(1.dp, border, shape)
+            .hoverable(interactionSource)
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
             .padding(horizontal = tokens.spacing.screenHorizontal, vertical = tokens.spacing.listGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {

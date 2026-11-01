@@ -2,6 +2,8 @@ package com.nuvio.app.features.settings
 
 import com.nuvio.app.AppScreenTab
 import com.nuvio.app.core.build.AppFeaturePolicy
+import com.nuvio.app.isDesktop
+import com.nuvio.app.isTelevisionDevice
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -123,6 +125,10 @@ private fun settingsPageTitles(): Map<SettingsPage, String> {
     SettingsPage.entries.forEach { page -> titles[page] = stringResource(page.titleRes) }
     return titles
 }
+
+@Composable
+private fun shouldShowHoverPreviewTrailerSettings(): Boolean =
+    AppFeaturePolicy.hoverTrailerPlaybackSupported && (isDesktop || isTelevisionDevice())
 
 @Composable
 fun SettingsScreen(
@@ -560,6 +566,7 @@ private fun MobileSettingsScreen(
     onTestUpdateBannerClick: (() -> Unit)? = null,
     onCollectionsClick: () -> Unit = {},
 ) {
+    val showHoverPreviewTrailerSettings = shouldShowHoverPreviewTrailerSettings()
     val saveableStateHolder = rememberSaveableStateHolder()
     saveableStateHolder.SaveableStateProvider(page.name) {
         var settingsSearchQuery by rememberSaveable { mutableStateOf("") }
@@ -754,6 +761,7 @@ private fun MobileSettingsScreen(
                 SettingsPage.HoverPreview -> hoverPreviewSettingsContent(
                     isTablet = false,
                     uiState = posterCardStyleUiState,
+                    showTrailerSettings = showHoverPreviewTrailerSettings,
                 )
                 SettingsPage.Advanced -> advancedSettingsContent(
                     isTablet = false,
@@ -940,6 +948,7 @@ private fun TabletSettingsScreen(
     onTestUpdateBannerClick: (() -> Unit)? = null,
     onCollectionsClick: () -> Unit = {},
 ) {
+    val showHoverPreviewTrailerSettings = shouldShowHoverPreviewTrailerSettings()
     var selectedCategory by rememberSaveable { mutableStateOf(SettingsCategory.General.name) }
     val activeCategory = SettingsCategory.valueOf(selectedCategory)
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -979,7 +988,7 @@ private fun TabletSettingsScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
                         .padding(bottom = 16.dp),
-                    style = MaterialTheme.typography.displayLarge,
+                    style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -1209,6 +1218,7 @@ private fun TabletSettingsScreen(
                             SettingsPage.HoverPreview -> hoverPreviewSettingsContent(
                                 isTablet = true,
                                 uiState = posterCardStyleUiState,
+                                showTrailerSettings = showHoverPreviewTrailerSettings,
                             )
                             SettingsPage.Advanced -> advancedSettingsContent(
                                 isTablet = true,

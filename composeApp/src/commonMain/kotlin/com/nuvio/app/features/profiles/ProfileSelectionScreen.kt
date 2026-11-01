@@ -1,6 +1,8 @@
 package com.nuvio.app.features.profiles
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -132,14 +134,10 @@ fun ProfileSelectionScreen(
     val backgroundProfile = profileState.profiles.firstOrNull { it.profileIndex == hoveredProfileIndex }
         ?: profileState.activeProfile ?: profileState.profiles.firstOrNull()
     val hoveredProfileColor = remember(profileState.profiles, hoveredProfileIndex) {
-        if (!isDesktop) {
-            null
-        } else {
-            profileState.profiles
-                .firstOrNull { it.profileIndex == hoveredProfileIndex }
-                ?.avatarColorHex
-                ?.let(::parseHexColor)
-        }
+        profileState.profiles
+            .firstOrNull { it.profileIndex == hoveredProfileIndex }
+            ?.avatarColorHex
+            ?.let(::parseHexColor)
     }
 
     LaunchedEffect(profileState.profiles) {
@@ -231,6 +229,7 @@ internal fun ProfileSelectionContent(
     modifier: Modifier = Modifier,
     isLoaded: Boolean = true,
 ) {
+    val motion = LocalUiMotion.current
     BoxWithConstraints(modifier.fillMaxSize().testTag("profile-selection")) {
         val wide = maxWidth >= 900.dp
         val short = maxHeight < 700.dp
@@ -242,7 +241,8 @@ internal fun ProfileSelectionContent(
         val columns = if (wide) {
             if (count > maximumColumns) minOf(3, maximumColumns) else count.coerceAtLeast(1)
         } else if (contentWidth < 292.dp) 1 else 2
-        val cardWidth = ((contentWidth - 20.dp * (columns - 1)) / columns).coerceIn(136.dp, 208.dp)
+        val cardWidth = ((contentWidth - 20.dp * (columns - 1)) / columns)
+            .coerceIn(136.dp, if (wide) 264.dp else 208.dp)
         Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
                 .padding(horizontal = horizontalPadding, vertical = if (short) 32.dp else 56.dp),
@@ -295,11 +295,23 @@ internal fun ProfileSelectionContent(
             Spacer(Modifier.height(if (short) 24.dp else 36.dp))
             val manageInteraction = remember { MutableInteractionSource() }
             val manageFocused by manageInteraction.collectIsFocusedAsState()
+            val manageHovered by manageInteraction.collectIsHoveredAsState()
+            val manageHighlighted = isEditMode || manageFocused || manageHovered
+            val manageBackground by animateColorAsState(
+                targetValue = if (manageHighlighted) Color(0xFF342B20) else Color(0xFF111B28),
+                animationSpec = tween(motion.durationMillis(180)),
+                label = "manageProfilesBackground",
+            )
+            val manageBorder by animateColorAsState(
+                targetValue = if (manageHighlighted) Color(0xFFE8BE72) else Color(0xFF354252),
+                animationSpec = tween(motion.durationMillis(180)),
+                label = "manageProfilesBorder",
+            )
             Box(Modifier.testTag("profile-manage").graphicsLayer { alpha = manageAlpha }
                 .clip(RoundedCornerShape(14.dp))
-                .background(if (isEditMode || manageFocused) Color(0xFF342B20) else Color(0xFF111B28))
-                .border(if (manageFocused) 2.dp else 1.dp,
-                    if (manageFocused || isEditMode) Color(0xFFE8BE72) else Color(0xFF354252), RoundedCornerShape(14.dp))
+                .background(manageBackground)
+                .border(if (manageFocused) 2.dp else 1.dp, manageBorder, RoundedCornerShape(14.dp))
+                .then(if (isDesktop) Modifier.hoverable(manageInteraction) else Modifier)
                 .clickable(enabled = enabled && isLoaded, interactionSource = manageInteraction, indication = null, onClick = onManage)
                 .padding(horizontal = 28.dp, vertical = 14.dp)) {
                 Text(stringResource(if (isEditMode) Res.string.action_done else Res.string.profile_manage_profiles),
@@ -346,12 +358,30 @@ private fun ProfileAvatarCard(
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isFocused by interactionSource.collectIsFocusedAsState()
     val currentOnHoverChange = rememberUpdatedState(onHoverChange)
-    val pressScale = motion.scale(if (isPressed) 0.95f else 1f)
+    val highlighted = isFocused || isHovered
+    val cardScale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> motion.scale(0.97f)
+            highlighted -> motion.scale(1.035f)
+            else -> 1f
+        },
+        animationSpec = tween(motion.durationMillis(170), easing = FastOutSlowInEasing),
+        label = "profileCardScale",
+    )
+    val cardBackground by animateColorAsState(
+        targetValue = if (highlighted) Color(0xFF1D2938) else Color(0xFF101B29),
+        animationSpec = tween(motion.durationMillis(180)),
+        label = "profileCardBackground",
+    )
+    val cardBorder by animateColorAsState(
+        targetValue = if (highlighted) Color(0xFFE8BE72) else Color(0xFF293746),
+        animationSpec = tween(motion.durationMillis(180)),
+        label = "profileCardBorder",
+    )
 
     LaunchedEffect(isHovered, isFocused, profile.profileIndex) {
-        if (isDesktop) {
-            currentOnHoverChange.value(isHovered || isFocused)
-        }
+        // Desktop hover and TV/keyboard focus both preview the profile backdrop.
+        currentOnHoverChange.value(isHovered || isFocused)
     }
 
     DisposableEffect(profile.profileIndex) {
@@ -369,14 +399,13 @@ private fun ProfileAvatarCard(
             .width(cardWidth)
             .graphicsLayer {
                 alpha = animAlpha.value
-                scaleX = motion.scale(animScale.value) * pressScale
-                scaleY = motion.scale(animScale.value) * pressScale
+                scaleX = motion.scale(animScale.value) * cardScale
+                scaleY = motion.scale(animScale.value) * cardScale
                 translationY = if (motion.allowsSpatialEffects) animOffset.value else 0f
             }
             .clip(RoundedCornerShape(24.dp))
-            .background(if (isFocused || isHovered) Color(0xFF1D2938) else Color(0xFF101B29))
-            .border(if (isFocused) 2.dp else 1.dp,
-                if (isFocused || isHovered) Color(0xFFE8BE72) else Color(0xFF293746), RoundedCornerShape(24.dp))
+            .background(cardBackground)
+            .border(if (isFocused) 2.dp else if (isHovered) 1.5.dp else 1.dp, cardBorder, RoundedCornerShape(24.dp))
             .then(
                 if (isDesktop) {
                     Modifier.hoverable(interactionSource)
@@ -393,7 +422,7 @@ private fun ProfileAvatarCard(
             .padding(horizontal = 12.dp, vertical = 20.dp),
     ) {
         Box(
-            modifier = Modifier.size((cardWidth - 24.dp).coerceAtMost(152.dp)),
+            modifier = Modifier.size((cardWidth - 24.dp).coerceAtMost(196.dp)),
             contentAlignment = Alignment.Center,
         ) {
             if (avatarImageUrl != null) {
@@ -524,8 +553,28 @@ private fun AddProfileCard(
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val isHovered by interactionSource.collectIsHoveredAsState()
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val pressScale = motion.scale(if (isPressed) 0.95f else 1f)
+    val highlighted = isHovered || isFocused
+    val cardScale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> motion.scale(0.97f)
+            highlighted -> motion.scale(1.035f)
+            else -> 1f
+        },
+        animationSpec = tween(motion.durationMillis(170), easing = FastOutSlowInEasing),
+        label = "addProfileCardScale",
+    )
+    val cardBackground by animateColorAsState(
+        targetValue = if (highlighted) Color(0xFF1D2938) else Color(0xFF101B29),
+        animationSpec = tween(motion.durationMillis(180)),
+        label = "addProfileCardBackground",
+    )
+    val cardBorder by animateColorAsState(
+        targetValue = if (highlighted) Color(0xFFE8BE72) else Color(0xFF293746),
+        animationSpec = tween(motion.durationMillis(180)),
+        label = "addProfileCardBorder",
+    )
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -534,14 +583,14 @@ private fun AddProfileCard(
             .width(cardWidth)
             .graphicsLayer {
                 alpha = animAlpha.value
-                scaleX = motion.scale(animScale.value) * pressScale
-                scaleY = motion.scale(animScale.value) * pressScale
+                scaleX = motion.scale(animScale.value) * cardScale
+                scaleY = motion.scale(animScale.value) * cardScale
                 translationY = if (motion.allowsSpatialEffects) animOffset.value else 0f
             }
             .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xFF101B29))
-            .border(if (isFocused) 2.dp else 1.dp,
-                if (isFocused) Color(0xFFE8BE72) else Color(0xFF293746), RoundedCornerShape(24.dp))
+            .background(cardBackground)
+            .border(if (isFocused) 2.dp else if (isHovered) 1.5.dp else 1.dp, cardBorder, RoundedCornerShape(24.dp))
+            .then(if (isDesktop) Modifier.hoverable(interactionSource) else Modifier)
             .clickable(
                 enabled = enabled,
                 interactionSource = interactionSource,
@@ -551,7 +600,7 @@ private fun AddProfileCard(
             .padding(horizontal = 12.dp, vertical = 20.dp),
     ) {
         Box(
-            modifier = Modifier.size((cardWidth - 24.dp).coerceAtMost(152.dp)),
+            modifier = Modifier.size((cardWidth - 24.dp).coerceAtMost(196.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Box(

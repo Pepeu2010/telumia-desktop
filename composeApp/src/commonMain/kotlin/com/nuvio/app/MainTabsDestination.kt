@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Tv
@@ -169,7 +168,7 @@ internal fun MainTabsDestination(
                 drawable = Res.drawable.sidebar_library,
                 label = stringResource(Res.string.compose_nav_library),
             ))
-            if (isDesktop) {
+            if (shouldExposeLiveTvDestination(isDesktop, isTelevisionDevice())) {
                 add(
                     FloatingNavigationItem(
                         selected = selectedTab == AppScreenTab.Tv,
@@ -301,22 +300,6 @@ internal fun MainTabsDestination(
                         hazeState = navBarHazeState,
                         scrollState = navBarScrollState,
                         windowWidth = screenWidth,
-                    )
-                }
-
-                if (isTabletLayout && !useNativeBottomTabs && !isDesktop) {
-                    val tabletNavBarScrollState = remember { NuvioNavBarScrollState().apply { collapse() } }
-                    FloatingNavigationBar(
-                        modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 416.dp),
-                        scrollState = tabletNavBarScrollState,
-                        hazeState = navBarHazeState,
-                        contentPadding = PaddingValues(
-                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 10.dp,
-                            bottom = 8.dp,
-                        ),
-                        compactSize = true,
-                        items = floatingNavigationItems,
-                        glowEnabled = navBarGlowEnabled,
                     )
                 }
 

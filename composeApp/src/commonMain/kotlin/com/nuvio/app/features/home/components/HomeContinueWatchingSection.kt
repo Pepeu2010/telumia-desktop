@@ -60,7 +60,7 @@ import com.nuvio.app.core.ui.ScopedDisintegrationTracker
 import com.nuvio.app.core.ui.landscapePosterHeightForWidth
 import com.nuvio.app.core.ui.landscapePosterWidth
 import com.nuvio.app.core.ui.posterCardClickable
-import com.nuvio.app.core.ui.desktopPosterHoverScale
+import com.nuvio.app.core.ui.posterHoverOrFocusScale
 import com.nuvio.app.core.ui.rememberPosterCardStyleUiState
 import com.nuvio.app.features.cloud.CloudLibraryContentType
 import com.nuvio.app.features.cloud.cloudLibraryDisplayArtworkUrl
@@ -1027,7 +1027,7 @@ private fun ContinueWatchingPosterCard(
     val imageUrl = item.continueWatchingPosterArtworkUrl(useEpisodeThumbnails)
     Column(
         modifier = Modifier
-            .desktopPosterHoverScale()
+            .posterHoverOrFocusScale()
             .width(layout.posterCardWidth),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

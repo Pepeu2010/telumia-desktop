@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -168,8 +169,11 @@ private val LargeAuthFormMetrics = AuthFormMetrics(
     fieldBackground = AuthFieldBackground,
 )
 
-private fun largeAuthScale(screenWidth: Dp): Float =
-    (screenWidth.value / 1194f).coerceIn(1f, 1.32f)
+private fun largeAuthScale(screenWidth: Dp, screenHeight: Dp): Float {
+    val widthScale = (screenWidth.value / 1194f).coerceIn(1f, 1.32f)
+    val heightScale = (screenHeight.value / 800f).coerceIn(0.88f, 1.32f)
+    return minOf(widthScale, heightScale)
+}
 
 private fun largeAuthFormMetrics(scale: Float): AuthFormMetrics = LargeAuthFormMetrics.copy(
     fieldHeight = 58.dp * scale,
@@ -263,6 +267,7 @@ fun AuthScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             val screenWidth = maxWidth
+            val screenHeight = maxHeight
             val largeScreen = screenWidth >= 900.dp
             val compactLargeScreen = screenWidth < 1100.dp
 
@@ -272,7 +277,7 @@ fun AuthScreen(
                     .authGradientBackground(largeScreen = largeScreen),
             ) {
                 if (largeScreen) {
-                    val largeScale = largeAuthScale(screenWidth)
+                    val largeScale = largeAuthScale(screenWidth, screenHeight)
                     val formPaneWidth = (screenWidth * 0.30f).coerceIn(460.dp * largeScale, 720.dp * largeScale)
                     val brandHorizontalPadding = (screenWidth * 0.055f).coerceIn(56.dp * largeScale, 128.dp * largeScale)
                     val formHorizontalPadding = (formPaneWidth * 0.14f).coerceIn(48.dp, 96.dp)
@@ -564,7 +569,7 @@ private fun AuthLargeLayout(
             )
         }
 
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .width(formPaneWidth)
                 .fillMaxHeight()
@@ -582,7 +587,9 @@ private fun AuthLargeLayout(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = formHorizontalPadding),
+                    .heightIn(max = maxHeight)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = formHorizontalPadding, vertical = 8.dp * scale),
             ) {
                 AuthHeading(
                     isSignUp = isSignUp,

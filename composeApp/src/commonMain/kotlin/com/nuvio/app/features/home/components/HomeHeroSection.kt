@@ -41,6 +41,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,11 +74,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import com.nuvio.app.isDesktop
+import com.nuvio.app.isTelevisionDevice
+import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.ui.FullscreenActionButton
 import com.nuvio.app.core.ui.DesktopBackdropVerticalBias
 import com.nuvio.app.core.ui.NuvioDesktopImageScaling
 import com.nuvio.app.core.ui.NuvioAsyncImage as AsyncImage
 import com.nuvio.app.core.ui.NuvioTokens
+import com.nuvio.app.core.ui.LocalScreenActive
+import com.nuvio.app.core.ui.PosterZoomOverlayCoordinator
+import com.nuvio.app.core.ui.rememberPosterCardStyleUiState
 import com.nuvio.app.core.ui.isFullscreenActionSupported
 import com.nuvio.app.core.format.formatReleaseDateForDisplay
 import com.nuvio.app.core.ui.heroStretchHeight
@@ -85,6 +92,7 @@ import com.nuvio.app.core.ui.heroStretchZoom
 import com.nuvio.app.core.ui.ultrawideViewportProgress
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.tmdb.originalTmdbImageUrl
+import com.nuvio.app.features.trailer.TrailerPlaybackSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -108,6 +116,8 @@ private const val MOBILE_HERO_VIEWPORT_RATIO = 0.82f
 private const val MOBILE_HERO_MIN_HEIGHT_DP = 360f
 private const val MOBILE_HERO_MAX_HEIGHT_DP = 760f
 private const val ULTRAWIDE_HERO_VIEWPORT_HEIGHT_RATIO = 1f
+private const val CINEMATIC_DESKTOP_HERO_VIEWPORT_RATIO = 0.68f
+private const val CINEMATIC_TV_MIN_WIDTH_DP = 1000f
 private const val DESKTOP_HERO_ULTRAWIDE_HORIZONTAL_PADDING_DP = 120f
 private const val DESKTOP_HERO_ULTRAWIDE_BOTTOM_PADDING_DP = 192f
 private const val DESKTOP_HERO_TOP_FADE_HEIGHT_DP = 160f
@@ -137,6 +147,7 @@ fun HomeHeroSection(
     listState: LazyListState? = null,
     stretchPx: () -> Float = { 0f },
     onItemClick: ((MetaPreview) -> Unit)? = null,
+    previewTrailersSupported: Boolean = AppFeaturePolicy.hoverTrailerPlaybackSupported,
 ) {
     if (items.isEmpty()) return
 
@@ -157,6 +168,65 @@ fun HomeHeroSection(
     val heroHovered by heroInteractionSource.collectIsHoveredAsState()
     var heroFocused by remember { mutableStateOf(false) }
     val autoScrollPage = pagerState.settledPage
+    val posterCardStyle = rememberPosterCardStyleUiState()
+    val previewAvailability = resolveHomePosterPreviewAvailability(
+        isDesktop = isDesktop,
+        isTelevision = isTelevisionDevice(),
+        platformSupportsTrailerPlayback = previewTrailersSupported &&
+            AppFeaturePolicy.hoverTrailerPlaybackSupported,
+    )
+    val isScreenActive = LocalScreenActive.current
+    val activeHeroItem = items[pagerState.settledPage % items.size]
+    val heroTrailerOwner = remember { Any() }
+    val activePreviewOwner by homePosterPreviewOwnership.active.collectAsState()
+    val ownsHeroTrailer = activePreviewOwner === heroTrailerOwner
+    var heroTrailerPlaybackSource by remember { mutableStateOf<TrailerPlaybackSource?>(null) }
+
+    DisposableEffect(heroTrailerOwner) {
+        onDispose { homePosterPreviewOwnership.release(heroTrailerOwner) }
+    }
+
+    LaunchedEffect(
+        activeHeroItem.type,
+        activeHeroItem.id,
+        heroHovered,
+        heroFocused,
+        pagerDragActive,
+        pagerState.isScrollInProgress,
+        posterCardStyle.hoverPreviewEnabled,
+        posterCardStyle.hoverPreviewTrailerEnabled,
+        posterCardStyle.hoverPreviewOpenDelayMillis,
+        isScreenActive,
+        PosterZoomOverlayCoordinator.isVisible,
+    ) {
+        heroTrailerPlaybackSource = null
+        val shouldStartPreview = shouldStartHomeHeroTrailerPreview(
+            availability = previewAvailability,
+            posterPreviewEnabled = posterCardStyle.hoverPreviewEnabled,
+            trailerPreferenceEnabled = posterCardStyle.hoverPreviewTrailerEnabled,
+            screenActive = isScreenActive,
+            pointerOrFocusActive = heroHovered || heroFocused,
+            pageSettled = !pagerDragActive && !pagerState.isScrollInProgress,
+            zoomOverlayVisible = PosterZoomOverlayCoordinator.isVisible,
+        )
+        if (!shouldStartPreview) {
+            homePosterPreviewOwnership.release(heroTrailerOwner)
+            return@LaunchedEffect
+        }
+
+        delay(posterCardStyle.hoverPreviewOpenDelayMillis.toLong())
+        homePosterPreviewOwnership.claim(heroTrailerOwner)
+        val source = resolveBoundedHoverPreview {
+            resolveHomePosterHoverTrailerPlaybackSource(activeHeroItem)
+        }
+        if (homePosterPreviewOwnership.active.value === heroTrailerOwner) {
+            heroTrailerPlaybackSource = source
+        }
+    }
+
+    LaunchedEffect(ownsHeroTrailer) {
+        if (!ownsHeroTrailer) heroTrailerPlaybackSource = null
+    }
 
     LaunchedEffect(pagerState) {
         pagerState.scrollToPage(pagerState.currentPage)
@@ -200,11 +270,16 @@ fun HomeHeroSection(
                 },
             ),
     ) {
+        val useCinematicLayout = shouldUseCinematicHomeLayout(
+            isDesktop = isDesktop,
+            isTelevision = isTelevisionDevice(),
+            maxWidthDp = maxWidth.value,
+        )
         val layout = homeHeroLayout(
             maxWidthDp = maxWidth.value,
             viewportHeightDp = viewportHeight?.value,
             mobileBelowSectionHeightHintDp = mobileBelowSectionHeightHint?.value,
-            preferDesktopLayout = isDesktop,
+            preferDesktopLayout = useCinematicLayout,
         )
         val heroWidthPx = with(LocalDensity.current) { maxWidth.toPx() }
         val heroHeightPx = with(LocalDensity.current) { layout.heroHeight.toPx() }
@@ -224,7 +299,7 @@ fun HomeHeroSection(
                 Box(modifier = Modifier.fillMaxSize())
             }
 
-            if (isDesktop) {
+            if (useCinematicLayout) {
                 DesktopHomeHeroFrame(
                     items = items,
                     pagerState = pagerState,
@@ -240,6 +315,9 @@ fun HomeHeroSection(
                     ),
                     coroutineScope = coroutineScope,
                     onItemClick = onItemClick,
+                    trailerPlaybackSource = heroTrailerPlaybackSource.takeIf { ownsHeroTrailer },
+                    trailerSoundEnabled = posterCardStyle.hoverPreviewTrailerSoundEnabled,
+                    trailerStartPositionSeconds = posterCardStyle.hoverPreviewTrailerStartSeconds,
                 )
             } else {
                 DefaultHomeHeroFrame(
@@ -253,6 +331,9 @@ fun HomeHeroSection(
                     includePagerNeighbors = pagerDragActive,
                     coroutineScope = coroutineScope,
                     onItemClick = onItemClick,
+                    trailerPlaybackSource = heroTrailerPlaybackSource.takeIf { ownsHeroTrailer },
+                    trailerSoundEnabled = posterCardStyle.hoverPreviewTrailerSoundEnabled,
+                    trailerStartPositionSeconds = posterCardStyle.hoverPreviewTrailerStartSeconds,
                 )
             }
         }
@@ -271,6 +352,34 @@ private fun HeroBackgroundLayers(
     includePagerNeighbors: Boolean,
     desktopFrame: Boolean = false,
 ) {
+    val backgroundColor = MaterialTheme.colorScheme.background
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(layout.heroHeight)
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        Color(0xFF263944),
+                        Color(0xFF192C33),
+                        Color(0xFF10191E),
+                        backgroundColor,
+                    ),
+                ),
+            ),
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(layout.heroHeight)
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(Color(0xFF45606A).copy(alpha = 0.32f), Color.Transparent),
+                    radius = maxOf(heroWidthPx, heroHeightPx) * 0.78f,
+                ),
+            ),
+    )
+
     val layerPages = rememberHeroLayerPages(
         pagerState = pagerState,
         itemCount = items.size,
@@ -346,14 +455,15 @@ private fun HeroContentLayers(
     )
 
     val allowsSpatialEffects = com.nuvio.app.core.ui.LocalUiMotion.current.allowsSpatialEffects
+    val contentLiftPx = with(LocalDensity.current) { 18.dp.toPx() }
     layerPages.forEach { page ->
         Box(
-            modifier = Modifier.graphicsLayer {
-                val pageOffset = heroPageOffset(pagerState, page)
-
-                alpha = heroPageVisibility(pageOffset)
-                translationX = if (allowsSpatialEffects) -pageOffset * heroWidthPx * HERO_CONTENT_PARALLAX else 0f
-            },
+            modifier = Modifier.homeHeroContentTransition(
+                pageOffset = heroPageOffset(pagerState, page),
+                heroWidthPx = heroWidthPx,
+                contentLiftPx = contentLiftPx,
+                allowsSpatialEffects = allowsSpatialEffects,
+            ),
         ) {
             HeroContentBlock(
                 item = items[page % items.size],
@@ -413,16 +523,17 @@ private fun HeroDesktopContentLayers(
     )
 
     val allowsSpatialEffects = com.nuvio.app.core.ui.LocalUiMotion.current.allowsSpatialEffects
+    val contentLiftPx = with(LocalDensity.current) { 18.dp.toPx() }
     layerPages.forEach { page ->
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .graphicsLayer {
-                    val pageOffset = heroPageOffset(pagerState, page)
-
-                    alpha = heroPageVisibility(pageOffset)
-                    translationX = if (allowsSpatialEffects) -pageOffset * heroWidthPx * HERO_CONTENT_PARALLAX else 0f
-                },
+                .homeHeroContentTransition(
+                    pageOffset = heroPageOffset(pagerState, page),
+                    heroWidthPx = heroWidthPx,
+                    contentLiftPx = contentLiftPx,
+                    allowsSpatialEffects = allowsSpatialEffects,
+                ),
         ) {
             DesktopHeroContentBlock(
                 item = items[page % items.size],
@@ -431,6 +542,23 @@ private fun HeroDesktopContentLayers(
             )
         }
     }
+}
+
+private fun Modifier.homeHeroContentTransition(
+    pageOffset: Float,
+    heroWidthPx: Float,
+    contentLiftPx: Float,
+    allowsSpatialEffects: Boolean,
+): Modifier = graphicsLayer {
+    val pageProgress = heroPageVisibility(pageOffset)
+    val distanceFromActivePage = abs(pageOffset).coerceIn(0f, 1f)
+    val contentScale = if (allowsSpatialEffects) 1f - (distanceFromActivePage * 0.018f) else 1f
+
+    alpha = pageProgress
+    translationX = if (allowsSpatialEffects) -pageOffset * heroWidthPx * HERO_CONTENT_PARALLAX else 0f
+    translationY = if (allowsSpatialEffects) distanceFromActivePage * contentLiftPx else 0f
+    scaleX = contentScale
+    scaleY = contentScale
 }
 
 @Composable
@@ -445,6 +573,9 @@ private fun DefaultHomeHeroFrame(
     includePagerNeighbors: Boolean,
     coroutineScope: CoroutineScope,
     onItemClick: ((MetaPreview) -> Unit)?,
+    trailerPlaybackSource: TrailerPlaybackSource?,
+    trailerSoundEnabled: Boolean,
+    trailerStartPositionSeconds: Int,
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -458,6 +589,13 @@ private fun DefaultHomeHeroFrame(
             heroHeightPx = heroHeightPx,
             stretchPx = stretchPx,
             includePagerNeighbors = includePagerNeighbors,
+        )
+
+        HomePosterHoverTrailer(
+            playbackSource = trailerPlaybackSource,
+            soundEnabled = trailerSoundEnabled,
+            startPositionSeconds = trailerStartPositionSeconds,
+            modifier = Modifier.fillMaxSize(),
         )
 
         Box(
@@ -565,6 +703,9 @@ private fun DesktopHomeHeroFrame(
     contentHorizontalPadding: Dp,
     coroutineScope: CoroutineScope,
     onItemClick: ((MetaPreview) -> Unit)?,
+    trailerPlaybackSource: TrailerPlaybackSource?,
+    trailerSoundEnabled: Boolean,
+    trailerStartPositionSeconds: Int,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val opacity = NuvioTokens.Opacity
@@ -586,6 +727,13 @@ private fun DesktopHomeHeroFrame(
             stretchPx = stretchPx,
             includePagerNeighbors = includePagerNeighbors,
             desktopFrame = true,
+        )
+
+        HomePosterHoverTrailer(
+            playbackSource = trailerPlaybackSource,
+            soundEnabled = trailerSoundEnabled,
+            startPositionSeconds = trailerStartPositionSeconds,
+            modifier = Modifier.fillMaxSize(),
         )
 
         Box(
@@ -1153,11 +1301,21 @@ internal fun homeHeroLayout(
     }
 }
 
+internal fun shouldUseCinematicHomeLayout(
+    isDesktop: Boolean,
+    isTelevision: Boolean,
+    maxWidthDp: Float,
+): Boolean = isDesktop || (isTelevision && maxWidthDp >= CINEMATIC_TV_MIN_WIDTH_DP)
+
+internal fun homeHeroRailOverlapForViewport(viewportHeightDp: Float): Dp =
+    (viewportHeightDp * 0.11f).coerceIn(72f, 128f).dp
+
 private fun desktopHeroHeight(
     maxWidthDp: Float,
     viewportHeightDp: Float?,
 ): Dp {
-    val baselineHeight = ((viewportHeightDp ?: (maxWidthDp * 0.56f)) * 0.72f).dp.coerceIn(560.dp, 1280.dp)
+    val baselineHeight = ((viewportHeightDp ?: (maxWidthDp * 0.56f)) * CINEMATIC_DESKTOP_HERO_VIEWPORT_RATIO)
+        .dp.coerceIn(560.dp, 1280.dp)
     val viewportHeight = viewportHeightDp ?: return baselineHeight
     val ultrawideProgress = ultrawideViewportProgress(
         widthDp = maxWidthDp,

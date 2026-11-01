@@ -1,6 +1,7 @@
 package com.nuvio.app.core.ui
 
 import com.nuvio.app.core.build.AppFeaturePolicy
+import com.nuvio.app.isDesktop
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,9 +22,11 @@ internal const val DefaultHoverPreviewTrailerStartSeconds = 0
 internal const val MinHoverPreviewTrailerStartSeconds = 0
 internal const val MaxHoverPreviewTrailerStartSeconds = 5
 internal const val HoverPreviewTrailerStartStepSeconds = 1
+private const val PosterCardStylePreferencesSchemaVersion = 1
 
 @Serializable
 private data class StoredPosterCardStylePreferences(
+    val schemaVersion: Int = 0,
     val widthDp: Int = DefaultPosterCardWidthDp,
     val heightDp: Int = DefaultPosterCardHeightDp,
     val cornerRadiusDp: Int = DefaultPosterCardCornerRadiusDp,
@@ -196,7 +199,12 @@ object PosterCardStyleRepository {
                 hoverPreviewOpenDelayMillis = normalizeHoverPreviewOpenDelayMillis(
                     stored.hoverPreviewOpenDelayMillis,
                 ),
-                hoverPreviewTrailerEnabled = stored.hoverPreviewTrailerEnabled,
+                hoverPreviewTrailerEnabled = migrateHoverPreviewTrailerPreference(
+                    storedEnabled = stored.hoverPreviewTrailerEnabled,
+                    schemaVersion = stored.schemaVersion,
+                    platformSupportsTrailerPlayback = AppFeaturePolicy.hoverTrailerPlaybackSupported,
+                    isDesktop = isDesktop,
+                ),
                 hoverPreviewTrailerSoundEnabled = stored.hoverPreviewTrailerSoundEnabled,
                 hoverPreviewTrailerStartSeconds = normalizeHoverPreviewTrailerStartSeconds(
                     stored.hoverPreviewTrailerStartSeconds,
@@ -206,12 +214,16 @@ object PosterCardStyleRepository {
         } else {
             PosterCardStyleUiState()
         }
+        if (stored != null && stored.schemaVersion < PosterCardStylePreferencesSchemaVersion) {
+            persist()
+        }
     }
 
     private fun persist() {
         PosterCardStyleStorage.savePayload(
             json.encodeToString(
                 StoredPosterCardStylePreferences(
+                    schemaVersion = PosterCardStylePreferencesSchemaVersion,
                     widthDp = _uiState.value.widthDp,
                     heightDp = _uiState.value.heightDp,
                     cornerRadiusDp = _uiState.value.cornerRadiusDp,
@@ -227,6 +239,21 @@ object PosterCardStyleRepository {
             ),
         )
     }
+}
+
+internal fun migrateHoverPreviewTrailerPreference(
+    storedEnabled: Boolean,
+    schemaVersion: Int,
+    platformSupportsTrailerPlayback: Boolean,
+    isDesktop: Boolean,
+): Boolean = if (
+    schemaVersion < PosterCardStylePreferencesSchemaVersion &&
+    platformSupportsTrailerPlayback &&
+    !isDesktop
+) {
+    true
+} else {
+    storedEnabled
 }
 
 private fun normalizeHoverPreviewOpenDelayMillis(delayMillis: Int): Int =

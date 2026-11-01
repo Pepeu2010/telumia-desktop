@@ -1959,12 +1959,12 @@
     <string name="telumia_profile_selection_hint">Escolha um perfil para continuar.</string>
     <string name="telumia_profile_selection_empty">Crie seu primeiro perfil para começar.</string>
     <string name="compose_settings_page_hover_preview">Prévia de capas</string>
-    <string name="settings_appearance_hover_preview_description">Configure prévias de capas ao passar o rato ou focá-las pelo teclado.</string>
+    <string name="settings_appearance_hover_preview_description">Configure prévias de capas ao passar o rato, usar o foco do teclado ou selecionar com o comando.</string>
     <string name="settings_hover_preview_section_behavior">COMPORTAMENTO</string>
     <string name="settings_hover_preview_enabled">Ativar prévia de capas</string>
-    <string name="settings_hover_preview_enabled_description">Mostra uma prévia ampliada enquanto o rato está sobre uma capa ou ela está focada pelo teclado.</string>
+    <string name="settings_hover_preview_enabled_description">Mostra uma prévia ampliada ao passar o rato, focar pelo teclado ou selecionar uma capa com o comando.</string>
     <string name="settings_hover_preview_delay">Atraso de ativação</string>
-    <string name="settings_hover_preview_delay_description">Tempo que o rato ou o foco do teclado precisa permanecer sobre a capa antes de abrir a prévia.</string>
+    <string name="settings_hover_preview_delay_description">Tempo que o rato, foco do teclado ou comando precisa permanecer na capa antes de abrir a prévia.</string>
     <string name="settings_hover_preview_delay_value">%1$s s</string>
     <string name="settings_hover_preview_section_trailer">TRAILER</string>
     <string name="settings_hover_preview_trailer_enabled">Reproduzir trailers</string>

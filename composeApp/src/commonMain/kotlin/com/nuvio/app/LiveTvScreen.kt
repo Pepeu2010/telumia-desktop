@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -397,8 +398,10 @@ private fun LiveTvChannelCard(channel: LiveTvChannelItem, onClick: () -> Unit) {
         label = "live_tv_channel_hover_scale",
     )
     val shape = RoundedCornerShape(22.dp)
-    val artwork = channel.meta.banner ?: channel.meta.poster
-    val centeredLogo = channel.meta.logo ?: channel.meta.poster.takeIf { artwork == null }
+    // Channel posters are commonly logo assets. Keep them contained in the foreground;
+    // only use an actual banner as the card's full-bleed artwork.
+    val artwork = channel.meta.banner
+    val centeredLogo = channel.meta.logo ?: channel.meta.poster
 
     Surface(
         onClick = onClick,
@@ -453,15 +456,19 @@ private fun LiveTvChannelCard(channel: LiveTvChannelItem, onClick: () -> Unit) {
             }
             if (!centeredLogo.isNullOrBlank()) {
                 Surface(
-                    modifier = Modifier.align(Alignment.Center).size(74.dp),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .widthIn(max = 176.dp)
+                        .height(88.dp)
+                        .padding(horizontal = 12.dp),
                     color = Color.Black.copy(alpha = 0.28f),
-                    shape = CircleShape,
+                    shape = RoundedCornerShape(18.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         NuvioAsyncImage(
                             model = centeredLogo,
                             contentDescription = channel.meta.name,
-                            modifier = Modifier.fillMaxSize().padding(14.dp),
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp),
                             contentScale = ContentScale.Fit,
                         )
                     }

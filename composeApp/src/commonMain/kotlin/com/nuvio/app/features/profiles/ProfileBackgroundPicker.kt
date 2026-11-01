@@ -1,8 +1,10 @@
 package com.nuvio.app.features.profiles
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,13 +29,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,6 +50,8 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.nuvio.app.core.ui.themePalette
 import com.nuvio.app.core.ui.accentBrush
+import com.nuvio.app.core.ui.LocalUiMotion
+import com.nuvio.app.isDesktop
 import com.nuvio.app.features.membership.ProfileBackgroundCatalogItem
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.profile_background_custom
@@ -55,7 +70,7 @@ internal fun ProfileBackgroundPicker(
     modifier: Modifier = Modifier,
 ) {
     FlowRow(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().focusGroup().selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -123,11 +138,38 @@ private fun ProfileBackgroundItem(
     content: @Composable () -> Unit,
 ) {
     val palette = MaterialTheme.themePalette
+    val motion = LocalUiMotion.current
     val shape = RoundedCornerShape(12.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val isEmphasized = isFocused || isHovered
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            isSelected || isFocused -> palette.secondary
+            isHovered -> palette.secondaryVariant
+            else -> MaterialTheme.colorScheme.outline
+        },
+        animationSpec = tween(motion.durationMillis(160)),
+        label = "profileBackgroundBorder",
+    )
+    val emphasisScale by animateFloatAsState(
+        targetValue = if (isEmphasized) motion.scale(1.035f) else 1f,
+        animationSpec = tween(motion.durationMillis(160)),
+        label = "profileBackgroundScale",
+    )
     Column(
         modifier = Modifier
             .width(144.dp)
-            .clickable(onClick = onClick),
+            .graphicsLayer { scaleX = emphasisScale; scaleY = emphasisScale }
+            .clip(shape)
+            .then(if (isDesktop) Modifier.hoverable(interactionSource) else Modifier)
+            .selectable(
+                selected = isSelected,
+                interactionSource = interactionSource,
+                role = Role.RadioButton,
+                onClick = onClick,
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -138,8 +180,8 @@ private fun ProfileBackgroundItem(
                 .clip(shape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .border(
-                    width = if (isSelected) 3.dp else 1.dp,
-                    color = if (isSelected) palette.secondary else MaterialTheme.colorScheme.outline,
+                    width = if (isSelected || isFocused) 3.dp else if (isHovered) 2.dp else 1.dp,
+                    color = borderColor,
                     shape = shape,
                 ),
         ) {

@@ -19,12 +19,15 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.AppScreenTab
 import com.nuvio.app.isDesktop
+import com.nuvio.app.isTelevisionDevice
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.network.NetworkCondition
@@ -55,6 +58,8 @@ import com.nuvio.app.features.home.components.HomeContinueWatchingSection
 import com.nuvio.app.features.home.components.HomeEmptyStateCard
 import com.nuvio.app.features.home.components.HomeHeroReservedSpace
 import com.nuvio.app.features.home.components.HomeHeroSection
+import com.nuvio.app.features.home.components.homeHeroRailOverlapForViewport
+import com.nuvio.app.features.home.components.shouldUseCinematicHomeLayout
 import com.nuvio.app.features.home.components.HomeSkeletonHero
 import com.nuvio.app.features.home.components.HomeSkeletonRow
 import com.nuvio.app.features.home.components.ContinueWatchingLayout
@@ -923,8 +928,20 @@ fun HomeScreen(
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val homeSectionPadding = homeSectionHorizontalPaddingForWidth(maxWidth.value)
+        val isCinematicHomeLayout = shouldUseCinematicHomeLayout(
+            isDesktop = isDesktop,
+            isTelevision = isTelevisionDevice(),
+            maxWidthDp = maxWidth.value,
+        )
+        val heroRailOverlap = if (isCinematicHomeLayout && showHeroSlot) {
+            homeHeroRailOverlapForViewport(maxHeight.value)
+        } else {
+            0.dp
+        }
+        val hasVisibleContinueWatchingRail = continueWatchingPreferences.isVisible &&
+            (continueWatchingItems.isNotEmpty() || upcomingItems.isNotEmpty())
         val posterCardStyle = rememberPosterCardStyleUiState()
-        val homeCatalogPreviewLimit = if (isDesktop) {
+        val homeCatalogPreviewLimit = if (isCinematicHomeLayout) {
             homeCatalogPreviewLimitForWidth(
                 maxWidthDp = maxWidth.value,
                 sectionPadding = homeSectionPadding,
@@ -996,7 +1013,7 @@ fun HomeScreen(
                                 modifier = Modifier,
                                 viewportHeight = maxHeight,
                                 mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
-                                sectionPadding = if (isDesktop) homeSectionPadding else null,
+                                sectionPadding = if (isCinematicHomeLayout) homeSectionPadding else null,
                             )
 
                             homeUiState.heroItems.isNotEmpty() -> HomeHeroSection(
@@ -1004,7 +1021,7 @@ fun HomeScreen(
                                 modifier = Modifier,
                                 viewportHeight = maxHeight,
                                 mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
-                                sectionPadding = if (isDesktop) homeSectionPadding else null,
+                                sectionPadding = if (isCinematicHomeLayout) homeSectionPadding else null,
                                 listState = homeListState,
                                 stretchPx = { heroStretchState.stretchPx },
                                 onItemClick = onPosterClick,
@@ -1028,6 +1045,7 @@ fun HomeScreen(
                         upcomingItems = upcomingItems,
                         dataSourceKey = effectiveWatchProgressSource,
                         sectionPadding = homeSectionPadding,
+                        heroOverlap = heroRailOverlap,
                         layout = continueWatchingLayout,
                         continueWatchingListState = continueWatchingListState,
                         upcomingListState = upcomingListState,
@@ -1041,7 +1059,12 @@ fun HomeScreen(
                         contentType = { "skeleton" },
                     ) {
                         HomeSkeletonRow(
-                            horizontalPadding = if (isDesktop) homeSectionPadding else 16.dp,
+                            modifier = if (it == 0 && !hasVisibleContinueWatchingRail) {
+                                Modifier.overlapHomeHeroRail(heroRailOverlap)
+                            } else {
+                                Modifier
+                            },
+                            horizontalPadding = if (isCinematicHomeLayout) homeSectionPadding else 16.dp,
                         )
                     }
                 }
@@ -1053,6 +1076,7 @@ fun HomeScreen(
                         upcomingItems = upcomingItems,
                         dataSourceKey = effectiveWatchProgressSource,
                         sectionPadding = homeSectionPadding,
+                        heroOverlap = heroRailOverlap,
                         layout = continueWatchingLayout,
                         continueWatchingListState = continueWatchingListState,
                         upcomingListState = upcomingListState,
@@ -1066,7 +1090,7 @@ fun HomeScreen(
                                 NuvioNetworkOfflineCard(
                                     condition = networkStatusUiState.condition,
                                     modifier = Modifier.padding(
-                                        horizontal = if (isDesktop) homeSectionPadding else 16.dp,
+                                        horizontal = if (isCinematicHomeLayout) homeSectionPadding else 16.dp,
                                     ),
                                     onRetry = {
                                         NetworkStatusRepository.requestRefresh(force = true)
@@ -1078,7 +1102,7 @@ fun HomeScreen(
                             addonManifestErrorMessage != null -> {
                                 HomeEmptyStateCard(
                                     modifier = Modifier.padding(
-                                        horizontal = if (isDesktop) homeSectionPadding else 16.dp,
+                                        horizontal = if (isCinematicHomeLayout) homeSectionPadding else 16.dp,
                                     ),
                                     title = stringResource(Res.string.home_load_failed_title),
                                     message = addonManifestErrorMessage,
@@ -1093,7 +1117,7 @@ fun HomeScreen(
                             else -> {
                                 HomeEmptyStateCard(
                                     modifier = Modifier.padding(
-                                        horizontal = if (isDesktop) homeSectionPadding else 16.dp,
+                                        horizontal = if (isCinematicHomeLayout) homeSectionPadding else 16.dp,
                                     ),
                                     title = stringResource(Res.string.compose_search_empty_no_active_addons_title),
                                     message = stringResource(Res.string.home_empty_no_active_addons_message),
@@ -1112,7 +1136,7 @@ fun HomeScreen(
                             NuvioNetworkOfflineCard(
                                 condition = networkStatusUiState.condition,
                                 modifier = Modifier.padding(
-                                    horizontal = if (isDesktop) homeSectionPadding else 16.dp,
+                                    horizontal = if (isCinematicHomeLayout) homeSectionPadding else 16.dp,
                                 ),
                                 onRetry = {
                                     NetworkStatusRepository.requestRefresh(force = true)
@@ -1122,7 +1146,7 @@ fun HomeScreen(
                         } else {
                             HomeEmptyStateCard(
                                 modifier = Modifier.padding(
-                                    horizontal = if (isDesktop) homeSectionPadding else 16.dp,
+                                    horizontal = if (isCinematicHomeLayout) homeSectionPadding else 16.dp,
                                 ),
                                 title = stringResource(
                                     if (loadFailed) {
@@ -1154,6 +1178,7 @@ fun HomeScreen(
                         upcomingItems = upcomingItems,
                         dataSourceKey = effectiveWatchProgressSource,
                         sectionPadding = homeSectionPadding,
+                        heroOverlap = heroRailOverlap,
                         layout = continueWatchingLayout,
                         continueWatchingListState = continueWatchingListState,
                         upcomingListState = upcomingListState,
@@ -1162,35 +1187,43 @@ fun HomeScreen(
                         disintegrationRequest = continueWatchingDisintegrationRequest,
                     )
 
+                    var overlapNextHomeShelf = heroRailOverlap > 0.dp && !hasVisibleContinueWatchingRail
                     keyedEnabledHomeItems.forEach { keyedSettingsItem ->
                         val settingsItem = keyedSettingsItem.value
                         if (settingsItem.isCollection) {
                             val collection = collectionsMap[settingsItem.key]
                             if (collection != null) {
+                                val overlapThisShelf = overlapNextHomeShelf
                                 item(key = keyedSettingsItem.lazyKey, contentType = "collection") {
                                     HomeCollectionRowSection(
                                         collection = collection,
-                                        modifier = Modifier.padding(bottom = 12.dp),
+                                        modifier = Modifier.padding(bottom = 12.dp).overlapHomeHeroRail(
+                                            if (overlapThisShelf) heroRailOverlap else 0.dp,
+                                        ),
                                         sectionPadding = homeSectionPadding,
                                         animateGifs = animateCollectionGifs,
                                         onFolderClick = onFolderClick,
                                     )
                                 }
+                                overlapNextHomeShelf = false
                             }
                         } else {
                             val section = sectionsMap[settingsItem.key]
                             if (section != null && section.items.isNotEmpty()) {
+                                val overlapThisShelf = overlapNextHomeShelf
                                 item(key = keyedSettingsItem.lazyKey, contentType = "catalog") {
                                     HomeCatalogRowSection(
                                         section = section,
-                                        entries = if (isDesktop) {
-                                            // The row is lazy, so desktop can expose the fetched catalog without
+                                        entries = if (isCinematicHomeLayout) {
+                                            // The row is lazy, so large screens can expose the fetched catalog without
                                             // composing every poster up front. Mobile keeps its compact preview.
                                             section.items
                                         } else {
                                             section.items.take(homeCatalogPreviewLimit)
                                         },
-                                        modifier = Modifier.padding(bottom = 12.dp),
+                                        modifier = Modifier.padding(bottom = 12.dp).overlapHomeHeroRail(
+                                            if (overlapThisShelf) heroRailOverlap else 0.dp,
+                                        ),
                                         sectionPadding = homeSectionPadding,
                                         onViewAllClick = if (section.canOpenCatalog(homeCatalogPreviewLimit)) {
                                             onCatalogClick?.let { { it(section) } }
@@ -1203,6 +1236,7 @@ fun HomeScreen(
                                         onPosterLongClick = onPosterLongClick,
                                     )
                                 }
+                                overlapNextHomeShelf = false
                             }
                         }
                     }
@@ -1218,6 +1252,7 @@ private fun LazyListScope.homeContinueWatchingSections(
     upcomingItems: List<ContinueWatchingItem>,
     dataSourceKey: WatchProgressSource,
     sectionPadding: Dp,
+    heroOverlap: Dp,
     layout: ContinueWatchingLayout,
     continueWatchingListState: LazyListState,
     upcomingListState: LazyListState,
@@ -1227,7 +1262,9 @@ private fun LazyListScope.homeContinueWatchingSections(
 ) {
     if (!preferences.isVisible) return
 
+    var shouldOverlapFirstSection = heroOverlap > 0.dp
     if (continueWatchingItems.isNotEmpty()) {
+        val overlapThisSection = shouldOverlapFirstSection
         item(key = HOME_CONTINUE_WATCHING_SECTION_KEY, contentType = "continue_watching") {
             HomeContinueWatchingSection(
                 items = continueWatchingItems,
@@ -1235,7 +1272,9 @@ private fun LazyListScope.homeContinueWatchingSections(
                 style = preferences.style,
                 useEpisodeThumbnails = preferences.useEpisodeThumbnails,
                 blurNextUp = preferences.blurNextUp,
-                modifier = Modifier.padding(bottom = 12.dp),
+                modifier = Modifier.padding(bottom = 12.dp).overlapHomeHeroRail(
+                    if (overlapThisSection) heroOverlap else 0.dp,
+                ),
                 sectionPadding = sectionPadding,
                 layout = layout,
                 listState = continueWatchingListState,
@@ -1244,9 +1283,11 @@ private fun LazyListScope.homeContinueWatchingSections(
                 disintegrationRequest = disintegrationRequest,
             )
         }
+        shouldOverlapFirstSection = false
     }
 
     if (upcomingItems.isNotEmpty()) {
+        val overlapThisSection = shouldOverlapFirstSection
         item(key = HOME_UPCOMING_SECTION_KEY, contentType = "continue_watching") {
             HomeContinueWatchingSection(
                 items = upcomingItems,
@@ -1254,7 +1295,9 @@ private fun LazyListScope.homeContinueWatchingSections(
                 style = preferences.style,
                 useEpisodeThumbnails = preferences.useEpisodeThumbnails,
                 blurNextUp = preferences.blurNextUp,
-                modifier = Modifier.padding(bottom = 12.dp),
+                modifier = Modifier.padding(bottom = 12.dp).overlapHomeHeroRail(
+                    if (overlapThisSection) heroOverlap else 0.dp,
+                ),
                 title = stringResource(Res.string.upcoming_section_title),
                 sectionPadding = sectionPadding,
                 layout = layout,
@@ -1266,6 +1309,20 @@ private fun LazyListScope.homeContinueWatchingSections(
         }
     }
 }
+
+internal fun Modifier.overlapHomeHeroRail(overlap: Dp): Modifier =
+    if (overlap <= 0.dp) {
+        this
+    } else {
+        layout { measurable, constraints ->
+            val placeable = measurable.measure(constraints)
+            val overlapPx = overlap.roundToPx().coerceAtMost(placeable.height)
+            val reportedHeight = (placeable.height - overlapPx).coerceAtLeast(constraints.minHeight)
+            layout(placeable.width, reportedHeight) {
+                placeable.placeRelative(x = 0, y = -overlapPx)
+            }
+        }.zIndex(1f)
+    }
 
 private const val HOME_CATALOG_PREVIEW_LIMIT = 18
 private const val HOME_CONTINUE_WATCHING_SECTION_KEY = "home_continue_watching"

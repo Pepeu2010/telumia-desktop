@@ -1,5 +1,7 @@
 package com.nuvio.app.features.profiles
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -40,6 +43,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.ui.NuvioAsyncImage as AsyncImage
 import com.nuvio.app.core.ui.NuvioAccentMarker
@@ -51,6 +57,7 @@ import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.NuvioSurfaceCard
+import com.nuvio.app.core.ui.LocalUiMotion
 import com.nuvio.app.core.ui.themePalette
 import com.nuvio.app.features.membership.CosmeticEntitlement
 import com.nuvio.app.features.membership.MemberAccessRepository
@@ -213,16 +220,28 @@ fun ProfileEditScreen(
             NuvioSurfaceCard {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     ProfileSectionHeading(stringResource(Res.string.profile_choose_avatar))
-                    Text(
-                        text = selectedAvatarItem?.displayName
-                            ?: if (avatars.isEmpty()) {
-                                stringResource(Res.string.profile_loading_avatars)
-                            } else {
-                                stringResource(Res.string.profile_select_avatar)
-                            },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (avatars.isEmpty()) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        Text(
+                            text = selectedAvatarItem?.displayName
+                                ?: if (avatars.isEmpty()) {
+                                    stringResource(Res.string.profile_loading_avatars)
+                                } else {
+                                    stringResource(Res.string.profile_select_avatar)
+                                },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
 
                     AvatarPicker(
                         avatars = avatars,
@@ -268,7 +287,16 @@ fun ProfileEditScreen(
 
         item {
             Spacer(modifier = Modifier.height(8.dp))
-            if (mutationFailed) Text(stringResource(Res.string.profile_mutation_failed), color = MaterialTheme.colorScheme.error)
+            if (mutationFailed) {
+                Text(
+                    text = stringResource(Res.string.profile_mutation_failed),
+                    modifier = Modifier.fillMaxWidth().semantics {
+                        liveRegion = LiveRegionMode.Polite
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
             NuvioPrimaryButton(
                 text = if (isSaving) {
                     stringResource(Res.string.profile_saving)
@@ -435,6 +463,12 @@ private fun ProfileIdentityCard(
     accentColor: Color,
     hasAvatarChoices: Boolean,
 ) {
+    val motion = LocalUiMotion.current
+    val previewAccent by animateColorAsState(
+        targetValue = accentColor,
+        animationSpec = tween(motion.durationMillis(240)),
+        label = "profileIdentityAccent",
+    )
     NuvioSurfaceCard {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(
@@ -448,15 +482,15 @@ private fun ProfileIdentityCard(
                         .clip(CircleShape)
                         .background(
                             if (selectedAvatar != null || customAvatarUrl != null) {
-                                accentColor
+                                previewAccent
                             } else {
-                                accentColor.copy(alpha = 0.18f)
+                                previewAccent.copy(alpha = 0.18f)
                             },
                         )
                         .border(
                             width = 2.dp,
                             color = if (selectedAvatar == null && customAvatarUrl == null) {
-                                accentColor.copy(alpha = 0.35f)
+                                previewAccent.copy(alpha = 0.35f)
                             } else {
                                 Color.Transparent
                             },
@@ -482,14 +516,14 @@ private fun ProfileIdentityCard(
                         Text(
                             text = name.take(1).uppercase(),
                             style = MaterialTheme.typography.displayLarge,
-                            color = accentColor,
+                            color = previewAccent,
                             fontWeight = FontWeight.Bold,
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Rounded.Person,
                             contentDescription = null,
-                            tint = accentColor,
+                            tint = previewAccent,
                             modifier = Modifier.size(40.dp),
                         )
                     }

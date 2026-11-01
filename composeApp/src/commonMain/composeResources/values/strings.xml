@@ -770,7 +770,7 @@
     <string name="settings_appearance_desktop_navigation_sidebar">Sidebar</string>
     <string name="settings_appearance_desktop_navigation_top_bar">Top Bar</string>
     <string name="settings_appearance_desktop_navigation_bottom_bar">Bottom Bar</string>
-    <string name="settings_appearance_hover_preview_description">Configure poster previews for mouse hover and keyboard focus.</string>
+    <string name="settings_appearance_hover_preview_description">Configure poster previews for mouse hover, keyboard focus, or remote selection.</string>
     <string name="settings_appearance_liquid_glass">Liquid Glass</string>
     <string name="settings_appearance_liquid_glass_description">Use the native iPhone tab bar on iOS 26 and later.</string>
     <string name="settings_appearance_poster_customization_description">Tune card width and corner radius.</string>
@@ -810,9 +810,9 @@
     <string name="settings_hide_secret">Hide value</string>
     <string name="settings_hover_preview_section_behavior">BEHAVIOR</string>
     <string name="settings_hover_preview_enabled">Enable Poster Preview</string>
-    <string name="settings_hover_preview_enabled_description">Show an expanded preview while a poster is hovered or has keyboard focus.</string>
+    <string name="settings_hover_preview_enabled_description">Show an expanded preview while a poster is hovered, focused with a keyboard, or selected with a remote.</string>
     <string name="settings_hover_preview_delay">Activation Delay</string>
-    <string name="settings_hover_preview_delay_description">How long the pointer or keyboard focus must stay on a poster before its preview opens.</string>
+    <string name="settings_hover_preview_delay_description">How long the pointer, keyboard focus, or remote selection must stay on a poster before its preview opens.</string>
     <string name="settings_hover_preview_delay_value">%1$s s</string>
     <string name="settings_hover_preview_section_trailer">TRAILER</string>
     <string name="settings_hover_preview_trailer_enabled">Preview Trailers</string>

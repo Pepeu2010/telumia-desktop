@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
@@ -101,6 +102,7 @@ import com.nuvio.app.features.tracking.TrackingMembershipApplyResult
 import com.nuvio.app.features.tracking.TrackingProviderId
 import com.nuvio.app.features.watching.application.WatchingActions
 import com.nuvio.app.isDesktop
+import com.nuvio.app.isTelevisionDevice
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ensureActive
@@ -120,7 +122,6 @@ private const val HoverPreviewCloseDelayMillis = 120L
 private const val HoverPreviewEnterDurationMillis = 260
 private const val HoverPreviewExitDurationMillis = 170
 private const val HoverTrailerExtractionDebounceMillis = 1_000L
-private val HoverPreviewWidth = 420.dp
 
 private class HomePosterHoverPreviewPortalEntry(
     val owner: Any,
@@ -186,14 +187,19 @@ internal fun HomePosterHoverPreview(
     onTrailerError: () -> Unit = {},
     content: @Composable (Modifier) -> Unit,
 ) {
-    if (!isDesktop) {
+    val availability = resolveHomePosterPreviewAvailability(
+        isDesktop = isDesktop,
+        isTelevision = isTelevisionDevice(),
+        platformSupportsTrailerPlayback = trailerPreviewSupported,
+    )
+    if (!availability.interactivePreview) {
         content(modifier)
         return
     }
 
     val posterCardStyle = previewSettings ?: rememberPosterCardStyleUiState()
     val motion = LocalUiMotion.current
-    val trailerPlaybackEnabled = trailerPreviewSupported && posterCardStyle.hoverPreviewTrailerEnabled
+    val trailerPlaybackEnabled = availability.trailerPlayback && posterCardStyle.hoverPreviewTrailerEnabled
     if (!posterCardStyle.hoverPreviewEnabled) {
         content(modifier)
         return
@@ -494,13 +500,18 @@ private fun HomePosterPreviewCard(
     val tokens = MaterialTheme.nuvio
     val shape = RoundedCornerShape(NuvioTokens.Radius.xl)
     val previewBackground = tokens.colors.background
+    val previewMaxWidth = homePosterPreviewWidthDp(
+        isDesktop = isDesktop,
+        isTelevision = isTelevisionDevice(),
+    ).dp
     val clickInteractionSource = remember { MutableInteractionSource() }
     var logoLoadError by remember(item.type, item.id, item.logo) { mutableStateOf(false) }
     val logoUrl = item.logo?.takeIf { it.isNotBlank() && !logoLoadError }
 
     Column(
         modifier = modifier
-            .width(HoverPreviewWidth)
+            .widthIn(max = previewMaxWidth)
+            .fillMaxWidth()
             .shadow(tokens.elevation.overlay, shape)
             .clip(shape)
             .background(previewBackground)
@@ -529,6 +540,31 @@ private fun HomePosterPreviewCard(
                     contentScale = ContentScale.Crop,
                     previewCache = true,
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    tokens.colors.surface,
+                                    previewBackground,
+                                    tokens.colors.surface.copy(alpha = 0.86f),
+                                ),
+                            ),
+                        ),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(260.dp)
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(tokens.colors.accent.copy(alpha = 0.26f), Color.Transparent),
+                                ),
+                            ),
+                    )
+                }
             }
 
             if (trailerEnabled) {

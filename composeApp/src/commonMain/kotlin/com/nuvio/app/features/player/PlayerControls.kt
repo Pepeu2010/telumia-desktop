@@ -68,7 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.LayoutDirection
 import com.nuvio.app.core.ui.AppIconResource
-import com.nuvio.app.core.ui.NuvioBackButton
+import com.nuvio.app.core.ui.LocalUiMotion
 import com.nuvio.app.core.ui.themePalette
 import com.nuvio.app.core.ui.accentBrush
 import com.nuvio.app.core.ui.appIconPainter
@@ -341,9 +341,10 @@ private fun PlayerHeader(
     modifier: Modifier = Modifier,
 ) {
     val typeScale = MaterialTheme.nuvioTypeScale
+    val motion = LocalUiMotion.current
     val metadataAlpha by animateFloatAsState(
         targetValue = if (!showParentalGuide && showActions) 1f else 0f,
-        animationSpec = tween(durationMillis = if (!showParentalGuide && showActions) 260 else 160),
+        animationSpec = tween(durationMillis = motion.durationMillis(if (!showParentalGuide && showActions) 260 else 160)),
         label = "playerHeaderMetadataAlpha",
     )
     Column(modifier = modifier) {
@@ -465,10 +466,8 @@ private fun PlayerHeader(
                             onClick = onVideoSettingsClick,
                         )
                     }
-                    NuvioBackButton(
+                    PlayerBackControlButton(
                         onClick = onBack,
-                        containerColor = Color.Black.copy(alpha = 0.35f),
-                        contentColor = Color.White,
                         buttonSize = metrics.headerIconSize + 16.dp,
                         iconSize = metrics.headerIconSize,
                         contentDescription = stringResource(Res.string.compose_player_close),
@@ -487,18 +486,10 @@ internal fun PlayerHeaderIconButton(
     iconSize: androidx.compose.ui.unit.Dp,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .size(buttonSize)
-            .clip(CircleShape)
-            .background(Color.Black.copy(alpha = 0.35f))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
+    PlayerControlButton(onClick = onClick, modifier = Modifier.size(buttonSize)) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Color.White,
             modifier = Modifier.size(iconSize),
         )
     }
@@ -546,18 +537,14 @@ private fun SideControlButton(
     metrics: PlayerLayoutMetrics,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .clip(CircleShape)
-            .clickable(onClick = onClick)
-            .padding(metrics.sideButtonPadding),
-        contentAlignment = Alignment.Center,
+    PlayerControlButton(
+        onClick = onClick,
+        modifier = Modifier.size(metrics.sideIconSize + metrics.sideButtonPadding * 2),
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Color.White,
-            modifier = Modifier.size(metrics.playIconSize),
+            modifier = Modifier.size(metrics.sideIconSize),
         )
     }
 }
@@ -572,17 +559,19 @@ internal fun PlayPauseControlButton(
     val playPausePainter = appIconPainter(
         if (isPlaying) AppIconResource.PlayerPause else AppIconResource.PlayerPlay,
     )
+    val palette = MaterialTheme.themePalette
 
-    Box(
+    PlayerControlButton(
+        onClick = onClick,
         modifier = Modifier
-            .clip(CircleShape)
-            .clickable(onClick = onClick)
-            .padding(metrics.playButtonPadding),
-        contentAlignment = Alignment.Center,
+            .size(metrics.playIconSize + metrics.playButtonPadding * 2),
+        containerColor = palette.secondary,
+        contentColor = palette.onSecondary,
     ) {
         if (isBuffering) {
             NuvioLoadingIndicator(
                 modifier = Modifier.size(metrics.playIconSize),
+                color = palette.onSecondary,
             )
         } else {
             Icon(
@@ -592,7 +581,6 @@ internal fun PlayPauseControlButton(
                 } else {
                     stringResource(Res.string.detail_btn_play)
                 },
-                tint = Color.White,
                 modifier = Modifier.size(metrics.playIconSize),
             )
         }

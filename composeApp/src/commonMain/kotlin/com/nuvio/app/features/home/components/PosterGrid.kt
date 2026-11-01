@@ -30,7 +30,7 @@ import com.nuvio.app.core.ui.NuvioAsyncImage
 import com.nuvio.app.core.ui.NuvioCardDepthSurface
 import com.nuvio.app.core.ui.NuvioPosterWatchedOverlay
 import com.nuvio.app.core.ui.SkeletonPoster
-import com.nuvio.app.core.ui.desktopPosterHoverScale
+import com.nuvio.app.core.ui.posterHoverOrFocusScale
 import com.nuvio.app.core.ui.nuvioCardDepth
 import com.nuvio.app.core.ui.posterCardClickable
 import com.nuvio.app.core.ui.rememberPosterCardStyleUiState
@@ -121,7 +121,7 @@ private fun PosterGridTile(
     ) {
         Column(
             modifier = Modifier
-                .desktopPosterHoverScale()
+                .posterHoverOrFocusScale()
                 .fillMaxWidth()
                 .then(it),
             verticalArrangement = Arrangement.spacedBy(8.dp),

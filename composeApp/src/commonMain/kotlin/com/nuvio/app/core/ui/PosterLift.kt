@@ -109,7 +109,7 @@ internal fun Modifier.posterCardClickable(
         }
     }
     return Modifier
-        .desktopPosterHoverScale(
+        .posterHoverOrFocusScale(
             enabled = hoverScaleEnabled,
             interactionSource = interactionSource,
         )

@@ -53,7 +53,7 @@ class HomeHeroSectionTest {
             preferDesktopLayout = true,
         )
 
-        assertEquals(1036.8f, layout.heroHeight.value, 0.001f)
+        assertEquals(979.2f, layout.heroHeight.value, 0.001f)
         assertEquals(2560f, layout.contentContainerMaxWidth.value, 0.001f)
         assertEquals(32f, layout.contentHorizontalPadding.value, 0.001f)
         assertEquals(40f, layout.contentVerticalPadding.value, 0.001f)
@@ -77,6 +77,22 @@ class HomeHeroSectionTest {
         assertEquals(160f, layout.topFadeHeight.value, 0.001f)
         assertEquals(300f, layout.bottomFadeHeight.value, 0.001f)
         assertEquals(0f, layout.backgroundMotionStrength, 0.001f)
+    }
+
+    @Test
+    fun `cinematic home is enabled for desktop and wide television layouts`() {
+        assertEquals(true, shouldUseCinematicHomeLayout(isDesktop = true, isTelevision = false, maxWidthDp = 800f))
+        assertEquals(true, shouldUseCinematicHomeLayout(isDesktop = false, isTelevision = true, maxWidthDp = 1920f))
+        assertEquals(false, shouldUseCinematicHomeLayout(isDesktop = false, isTelevision = true, maxWidthDp = 900f))
+        assertEquals(false, shouldUseCinematicHomeLayout(isDesktop = false, isTelevision = false, maxWidthDp = 1200f))
+    }
+
+    @Test
+    fun `cinematic home rail overlap scales with viewport and stays bounded`() {
+        assertEquals(79.2f, homeHeroRailOverlapForViewport(720f).value, 0.001f)
+        assertEquals(118.8f, homeHeroRailOverlapForViewport(1080f).value, 0.001f)
+        assertEquals(128f, homeHeroRailOverlapForViewport(2160f).value, 0.001f)
+        assertEquals(72f, homeHeroRailOverlapForViewport(400f).value, 0.001f)
     }
 
     @Test

@@ -1,11 +1,19 @@
 package com.nuvio.app.features.details.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -43,9 +51,15 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.nuvio.app.core.ui.AppIconResource
+import com.nuvio.app.core.ui.LocalUiMotion
+import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.appIconPainter
+import com.nuvio.app.core.ui.interactionEmphasisScale
 import com.nuvio.app.core.ui.secondaryClick
+import com.nuvio.app.isDesktop
+import com.nuvio.app.isTelevisionDevice
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_play
 import nuvio.composeapp.generated.resources.details_actions_menu_label
@@ -82,9 +96,13 @@ fun DetailActionButtons(
     val playPainter = appIconPainter(AppIconResource.PlayerPlay)
     val buttonHeight = if (isTablet) 56.dp else 52.dp
     val iconButtonSize = buttonHeight
-    val playShape = RoundedCornerShape(40.dp)
+    val playShape = RoundedCornerShape(NuvioTokens.Radius.full)
     val hapticFeedback = LocalHapticFeedback.current
     var actionsExpanded by remember { mutableStateOf(false) }
+    val playInteraction = remember { MutableInteractionSource() }
+    val playEmphasis = rememberDetailActionEmphasis(playInteraction)
+    val actionsMenuInteraction = remember { MutableInteractionSource() }
+    val actionsMenuEmphasis = rememberDetailActionEmphasis(actionsMenuInteraction)
     val menuProgress by animateFloatAsState(
         targetValue = if (actionsExpanded) 1f else 0f,
         animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
@@ -108,15 +126,23 @@ fun DetailActionButtons(
             Surface(
                 modifier = Modifier
                     .weight(1f)
-                    .height(buttonHeight),
+                    .height(buttonHeight)
+                    .graphicsLayer {
+                        scaleX = playEmphasis.scale
+                        scaleY = playEmphasis.scale
+                    }
+                    .zIndex(if (playEmphasis.isEmphasized) 1f else 0f),
                 shape = playShape,
                 color = if (playEnabled) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = if (playEnabled) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                border = playEmphasis.border,
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .hoverable(playInteraction)
                         .combinedClickable(
+                            interactionSource = playInteraction,
                             enabled = playEnabled,
                             onClick = {
                                 onPlayClick()
@@ -204,9 +230,16 @@ fun DetailActionButtons(
             }
 
             if (hasSecondaryActions) {
+                val menuShape = CircleShape
                 Surface(
-                    modifier = Modifier.size(iconButtonSize),
-                    shape = CircleShape,
+                    modifier = Modifier
+                        .size(iconButtonSize)
+                        .graphicsLayer {
+                            scaleX = actionsMenuEmphasis.scale
+                            scaleY = actionsMenuEmphasis.scale
+                        }
+                        .zIndex(if (actionsMenuEmphasis.isEmphasized) 1f else 0f),
+                    shape = menuShape,
                     color = if (actionsExpanded) {
                         MaterialTheme.colorScheme.onBackground
                     } else {
@@ -217,11 +250,17 @@ fun DetailActionButtons(
                     } else {
                         MaterialTheme.colorScheme.onSurface
                     },
+                    border = actionsMenuEmphasis.border,
                 ) {
                     Box(
                         modifier = Modifier
                             .size(iconButtonSize)
-                            .clickable(role = Role.Button) {
+                            .hoverable(actionsMenuInteraction)
+                            .clickable(
+                                interactionSource = actionsMenuInteraction,
+                                indication = null,
+                                role = Role.Button,
+                            ) {
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 actionsExpanded = !actionsExpanded
                             },
@@ -308,12 +347,16 @@ internal fun DetailIconAction(
     size: Dp,
     onLongClick: (() -> Unit)? = null,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val emphasis = rememberDetailActionEmphasis(interaction)
     Surface(
-        modifier = modifier.graphicsLayer {
-            alpha = progress
-            scaleX = 0.86f + (0.14f * progress)
-            scaleY = 0.86f + (0.14f * progress)
-        },
+        modifier = modifier
+            .graphicsLayer {
+                alpha = progress
+                scaleX = (0.86f + (0.14f * progress)) * emphasis.scale
+                scaleY = (0.86f + (0.14f * progress)) * emphasis.scale
+            }
+            .zIndex(if (emphasis.isEmphasized) 1f else 0f),
         shape = CircleShape,
         color = if (active) {
             MaterialTheme.colorScheme.onBackground
@@ -326,11 +369,14 @@ internal fun DetailIconAction(
             MaterialTheme.colorScheme.onSurface
         },
         tonalElevation = 6.dp,
+        border = emphasis.border,
     ) {
         Box(
             modifier = Modifier
                 .size(size)
+                .hoverable(interaction)
                 .combinedClickable(
+                    interactionSource = interaction,
                     onClick = onClick,
                     onLongClick = onLongClick,
                     role = Role.Button,
@@ -345,4 +391,49 @@ internal fun DetailIconAction(
             )
         }
     }
+}
+
+private data class DetailActionEmphasis(
+    val scale: Float,
+    val border: BorderStroke,
+    val isEmphasized: Boolean,
+)
+
+@Composable
+private fun rememberDetailActionEmphasis(
+    interactionSource: MutableInteractionSource,
+): DetailActionEmphasis {
+    val focused by interactionSource.collectIsFocusedAsState()
+    val hovered by interactionSource.collectIsHoveredAsState()
+    val emphasized = focused || (isDesktop && hovered)
+    val motionPolicy = LocalUiMotion.current
+    val colors = MaterialTheme.colorScheme
+    val scale by animateFloatAsState(
+        targetValue = interactionEmphasisScale(
+            isDesktop = isDesktop,
+            isTelevision = isTelevisionDevice(),
+            emphasized = emphasized,
+            motionPolicy = motionPolicy,
+        ),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "detail_action_emphasis_scale",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            focused -> colors.primary
+            isDesktop && hovered -> colors.primary.copy(alpha = 0.58f)
+            else -> colors.outline.copy(alpha = 0.48f)
+        },
+        animationSpec = tween(motionPolicy.durationMillis(160)),
+        label = "detail_action_emphasis_border",
+    )
+    val borderWidth = if (focused) NuvioTokens.Border.medium else NuvioTokens.Border.thin
+    return DetailActionEmphasis(
+        scale = scale,
+        border = BorderStroke(borderWidth, borderColor),
+        isEmphasized = emphasized,
+    )
 }

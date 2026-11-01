@@ -1,11 +1,11 @@
 package com.nuvio.app.features.player
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -24,7 +24,7 @@ import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,13 +40,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nuvio.app.core.ui.AppIconResource
-import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.nuvioTypeScale
 import nuvio.composeapp.generated.resources.*
@@ -68,10 +66,8 @@ internal fun PlayerToolbar(
             icon = if (isLocked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
             onClick = onLockToggle,
         )
-        NuvioBackButton(
+        PlayerBackControlButton(
             onClick = onBack,
-            containerColor = Color.Transparent,
-            contentColor = Color.White,
             buttonSize = 48.dp,
             iconSize = 24.dp,
             contentDescription = stringResource(Res.string.compose_player_close),
@@ -195,25 +191,29 @@ internal fun PlayerControlActions(
                     )
                 }
             }
-            Box(
-                modifier = Modifier.height(48.dp).widthIn(min = 48.dp).clickable(
-                    role = Role.Button,
-                    onClickLabel = stringResource(
-                        if (showRemainingTime) Res.string.compose_player_show_elapsed_time else Res.string.compose_player_show_remaining_time,
-                    ),
-                    onClick = {
-                        onRuntimeClick()
-                        onInteraction()
-                    },
+            PlayerControlButton(
+                modifier = Modifier.height(48.dp).widthIn(min = 48.dp),
+                onClickLabel = stringResource(
+                    if (showRemainingTime) Res.string.compose_player_show_elapsed_time else Res.string.compose_player_show_remaining_time,
                 ),
-                contentAlignment = Alignment.CenterEnd,
+                onClick = {
+                    onRuntimeClick()
+                    onInteraction()
+                },
+                containerColor = Color.Transparent,
+                contentColor = Color.White.copy(alpha = 0.9f),
             ) {
-                Text(
-                    text = formatPlaybackRuntime(displayedPositionMs, playbackSnapshot.durationMs, showRemainingTime),
-                    style = MaterialTheme.nuvioTypeScale.bodyMd.copy(fontSize = (metrics.timeSize.value + 2).sp),
-                    color = Color.White.copy(alpha = 0.9f),
-                    maxLines = 1,
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Text(
+                        text = formatPlaybackRuntime(displayedPositionMs, playbackSnapshot.durationMs, showRemainingTime),
+                        style = MaterialTheme.nuvioTypeScale.bodyMd.copy(fontSize = (metrics.timeSize.value + 2).sp),
+                        color = LocalContentColor.current,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
@@ -227,11 +227,11 @@ private fun PlayerAction(
     painter: Painter? = null,
     iconSize: Dp = 24.dp,
 ) {
-    IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
+    PlayerControlButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
         if (painter != null) {
-            Icon(painter, description, tint = Color.White, modifier = Modifier.size(iconSize))
+            Icon(painter, description, modifier = Modifier.size(iconSize))
         } else if (icon != null) {
-            Icon(icon, description, tint = Color.White, modifier = Modifier.size(iconSize))
+            Icon(icon, description, modifier = Modifier.size(iconSize))
         }
     }
 }

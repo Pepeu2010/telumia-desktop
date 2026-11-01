@@ -592,6 +592,30 @@ internal fun TabletFloatingTopBar(
                             )
                         },
                     )
+                    if (isTelevisionDevice()) {
+                        TabletTopPillItem(
+                            label = stringResource(Res.string.compose_nav_tv),
+                            selected = selectedTab == AppScreenTab.Tv,
+                            onClick = { onTabSelected(AppScreenTab.Tv) },
+                            labelFraction = labelFraction,
+                            pillHeight = pillHeight,
+                            expandedHorizontalPadding = expandedHorizontalPadding,
+                            collapsedHorizontalPadding = iconCollapsedPadding,
+                            textStyle = labelTextStyle,
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Filled.Tv,
+                                    contentDescription = stringResource(Res.string.compose_nav_tv),
+                                    modifier = Modifier.size(navIconSize),
+                                    tint = if (selectedTab == AppScreenTab.Tv) {
+                                        tokens.colors.textPrimary
+                                    } else {
+                                        Color.White.copy(alpha = 0.70f)
+                                    },
+                                )
+                            },
+                        )
+                    }
                     TabletTopPillItem(
                         label = stringResource(Res.string.compose_nav_settings),
                         selected = selectedTab == AppScreenTab.Settings,

@@ -63,7 +63,12 @@ class TelumiaHomeExperienceTest {
         var actionLabel = ""
         setContent { NuvioTheme(navigationMotion = NavigationMotion.OFF) {
             actionLabel = stringResource(Res.string.home_view_details)
-            HomeHeroSection(listOf(movie, series), viewportHeight = 768.dp, onItemClick = { selected = it })
+            HomeHeroSection(
+                listOf(movie, series),
+                viewportHeight = 768.dp,
+                onItemClick = { selected = it },
+                previewTrailersSupported = false,
+            )
         } }
         val selector = onNode(hasClickAction() and hasContentDescription(series.name))
         selector.performSemanticsAction(SemanticsActions.RequestFocus)

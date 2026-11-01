@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.CollectionsBookmark
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -430,7 +431,9 @@ fun LibraryScreen(
                     uiState.sections.isEmpty() -> {
                         item {
                             HomeEmptyStateCard(
-                                modifier = Modifier.padding(horizontal = 16.dp),
+                                modifier = Modifier
+                                    .fillParentMaxHeight(0.72f)
+                                    .padding(horizontal = 16.dp),
                                 title = when (uiState.sourceMode) {
                                     LibrarySourceMode.LOCAL -> stringResource(Res.string.library_empty_title)
                                     LibrarySourceMode.TRAKT -> stringResource(Res.string.library_trakt_empty_title)
@@ -443,6 +446,8 @@ fun LibraryScreen(
                                     LibrarySourceMode.SIMKL -> stringResource(Res.string.library_simkl_empty_message)
                                     LibrarySourceMode.MDBLIST -> stringResource(Res.string.library_mdblist_empty_message)
                                 },
+                                icon = Icons.Rounded.CollectionsBookmark,
+                                centered = true,
                             )
                         }
                     }

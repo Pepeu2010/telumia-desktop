@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -116,17 +117,20 @@ internal fun PlayerTimeline(
     val rangeEnd = durationMs.coerceAtLeast(1L).toFloat()
     val bufferedFraction = (snapshot.bufferedPositionMs.toFloat() / rangeEnd).coerceIn(0f, 1f)
     val accent = MaterialTheme.colorScheme.primary
-    val accentBrush = MaterialTheme.themePalette.accentBrush()
+    val palette = MaterialTheme.themePalette
+    val accentBrush = palette.accentBrush()
     val description = listOf(stringResource(Res.string.player_seek_position), timelineMarkerDescription(timedMarkers)).filter { it.isNotBlank() }.joinToString(" · ")
     val motion = com.nuvio.app.core.ui.LocalUiMotion.current
     var scrubPosition by remember { mutableStateOf<Long?>(null) }
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val isDragged by interactionSource.collectIsDraggedAsState()
+    val isFocused by interactionSource.collectIsFocusedAsState()
     val isInteracting = enabled && durationMs > 0L && (isPressed || isDragged)
+    val isEmphasized = isInteracting || (enabled && durationMs > 0L && isFocused)
     val trackThickness by animateDpAsState(
-        targetValue = if (isInteracting) 10.dp else 6.dp,
-        animationSpec = tween(durationMillis = motion.durationMillis(if (isInteracting) 140 else 180)),
+        targetValue = if (isEmphasized) 10.dp else 6.dp,
+        animationSpec = tween(durationMillis = motion.durationMillis(if (isEmphasized) 140 else 180)),
         label = "playerTimelineThickness",
     )
 
@@ -174,6 +178,27 @@ internal fun PlayerTimeline(
                                 cornerRadius = radius,
                             )
                             drawTimelineMarkers(timedMarkers, 35.dp.toPx())
+                            if (isEmphasized) {
+                                val thumbCenter = Offset(
+                                    x = size.width * (state.value / rangeEnd).coerceIn(0f, 1f),
+                                    y = trackOrigin.y + trackHeight / 2f,
+                                )
+                                drawCircle(
+                                    color = Color.Black.copy(alpha = 0.9f),
+                                    radius = 10.dp.toPx(),
+                                    center = thumbCenter,
+                                )
+                                drawCircle(
+                                    color = palette.focusRing,
+                                    radius = 7.dp.toPx(),
+                                    center = thumbCenter,
+                                )
+                                drawCircle(
+                                    color = Color.White,
+                                    radius = 3.dp.toPx(),
+                                    center = thumbCenter,
+                                )
+                            }
                         },
                 )
             },

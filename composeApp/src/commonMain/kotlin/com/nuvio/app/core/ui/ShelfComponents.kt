@@ -1,8 +1,11 @@
 package com.nuvio.app.core.ui
 
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -59,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.nuvio.app.isDesktop
+import com.nuvio.app.isTelevisionDevice
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.home_view_all
 import nuvio.composeapp.generated.resources.poster_logo_content_description
@@ -261,10 +265,35 @@ fun NuvioPosterCard(
     val cardHovered by cardInteractions.collectIsHoveredAsState()
     val cardFocused by cardInteractions.collectIsFocusedAsState()
     val emphasized = cardHovered || cardFocused
+    val motionPolicy = LocalUiMotion.current
+    val borderWidth by animateDpAsState(
+        targetValue = when {
+            cardFocused -> 3.dp
+            cardHovered -> 2.dp
+            else -> 1.dp
+        },
+        animationSpec = tween(
+            durationMillis = motionPolicy.durationMillis(NuvioTokens.Motion.fastMillis),
+            easing = NuvioTokens.Motion.emphasized,
+        ),
+        label = "poster_focus_border_width",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            cardFocused -> MaterialTheme.colorScheme.primary
+            cardHovered -> MaterialTheme.colorScheme.primary.copy(alpha = 0.78f)
+            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+        },
+        animationSpec = tween(
+            durationMillis = motionPolicy.durationMillis(NuvioTokens.Motion.fastMillis),
+            easing = NuvioTokens.Motion.emphasized,
+        ),
+        label = "poster_focus_border_color",
+    )
 
     Column(
         modifier = Modifier
-            .desktopPosterHoverScale(interactionSource = cardInteractions)
+            .posterHoverOrFocusScale(interactionSource = cardInteractions)
             .then(modifier)
             .width(cardWidth),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -276,9 +305,7 @@ fun NuvioPosterCard(
                 .clip(cardShape)
                 .background(tokens.colors.surface)
                 .hoverable(cardInteractions)
-                .border(if (cardFocused) 3.dp else 1.dp,
-                    if (emphasized) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                    cardShape)
+                .border(borderWidth, borderColor, cardShape)
                 .nuvioCardDepth(
                     shape = cardShape,
                     surface = NuvioCardDepthSurface.Posters,
@@ -473,7 +500,6 @@ private fun NuvioViewAllPill(
 }
 
 internal const val NuvioDesktopCatalogShelfPosterScale = 1.4f
-private const val DesktopPosterHoverScale = 1.045f
 
 internal fun desktopCatalogShelfPosterBaseWidthDp(
     basePosterWidthDp: Int,
@@ -566,25 +592,34 @@ private fun NuvioPosterShape.cardWidth(basePosterWidthDp: Int): Dp =
         NuvioPosterShape.Landscape -> landscapePosterWidth(basePosterWidthDp)
     }
 @Composable
-internal fun Modifier.desktopPosterHoverScale(
+internal fun Modifier.posterHoverOrFocusScale(
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
 ): Modifier {
-    if (!enabled || !isDesktop) return this
+    if (!enabled) return this
+    val isTelevision = isTelevisionDevice()
+    if (!isDesktop && !isTelevision) return this
     val motionPolicy = LocalUiMotion.current
     if (!motionPolicy.allowsSpatialEffects) return this.hoverable(interactionSource)
 
     val hovered by interactionSource.collectIsHoveredAsState()
+    val focused by interactionSource.collectIsFocusedAsState()
+    val emphasized = if (isDesktop) hovered || focused else isTelevision && focused
     val scale by animateFloatAsState(
-        targetValue = if (hovered) motionPolicy.scale(DesktopPosterHoverScale) else 1f,
+        targetValue = interactionEmphasisScale(
+            isDesktop = isDesktop,
+            isTelevision = isTelevision,
+            emphasized = emphasized,
+            motionPolicy = motionPolicy,
+        ),
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMediumLow,
         ),
-        label = "desktop_poster_hover_scale",
+        label = "poster_hover_focus_scale",
     )
 
-    val isScaling = hovered || scale != 1f
+    val isScaling = emphasized || scale != 1f
 
     return this
         .then(

@@ -1485,12 +1485,12 @@
     <string name="scene_info_close">Fechar</string>
     <string name="scene_info_empty">Não há informações verificadas disponíveis para este momento.</string>
     <string name="compose_settings_page_hover_preview">Prévia de capas</string>
-    <string name="settings_appearance_hover_preview_description">Configure as prévias de capas ao passar o mouse ou usar o foco do teclado.</string>
+    <string name="settings_appearance_hover_preview_description">Configure as prévias de capas ao passar o mouse, usar o foco do teclado ou selecionar com o controle remoto.</string>
     <string name="settings_hover_preview_section_behavior">COMPORTAMENTO</string>
     <string name="settings_hover_preview_enabled">Ativar prévia de capas</string>
-    <string name="settings_hover_preview_enabled_description">Mostra uma prévia ampliada ao passar o mouse sobre uma capa ou ao focá-la pelo teclado.</string>
+    <string name="settings_hover_preview_enabled_description">Mostra uma prévia ampliada ao passar o mouse, focar pelo teclado ou selecionar uma capa com o controle remoto.</string>
     <string name="settings_hover_preview_delay">Atraso para abrir</string>
-    <string name="settings_hover_preview_delay_description">Tempo que o mouse ou o foco do teclado precisa permanecer sobre a capa para abrir a prévia.</string>
+    <string name="settings_hover_preview_delay_description">Tempo que o mouse, foco do teclado ou controle remoto precisa permanecer na capa para abrir a prévia.</string>
     <string name="settings_hover_preview_delay_value">%1$s s</string>
     <string name="settings_hover_preview_section_trailer">TRAILER</string>
     <string name="settings_hover_preview_trailer_enabled">Reproduzir trailers</string>

@@ -3,9 +3,20 @@ package com.nuvio.app.core.format
 import androidx.compose.ui.text.intl.Locale
 import com.nuvio.app.core.time.parseEpisodeReleaseLocalDate
 
-fun formatReleaseDateForDisplay(raw: String): String = formatReleaseDate(raw, includeYear = true)
+fun formatReleaseDateForDisplay(raw: String): String =
+    formatReleaseDate(normalizePartialReleaseYear(raw), includeYear = true)
 
-fun formatReleaseDateWithoutYear(raw: String): String = formatReleaseDate(raw, includeYear = false)
+fun formatReleaseDateWithoutYear(raw: String): String =
+    formatReleaseDate(normalizePartialReleaseYear(raw), includeYear = false)
+
+private fun normalizePartialReleaseYear(raw: String): String {
+    val value = raw.trim()
+    return if (value.length == 5 && value.take(4).all(Char::isDigit) && value.last() in "-/.") {
+        value.dropLast(1)
+    } else {
+        value
+    }
+}
 
 internal fun formatReleaseDate(
     raw: String,

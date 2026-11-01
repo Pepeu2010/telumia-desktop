@@ -13,7 +13,7 @@ actual object AppFeaturePolicy {
     actual val externalPlayerSupported: Boolean = true
     actual val trailerPlaybackMode: TrailerPlaybackMode = TrailerPlaybackMode.EXTERNAL
     actual val heroTrailerPlaybackSupported: Boolean = false
-    actual val hoverTrailerPlaybackSupported: Boolean = false
+    actual val hoverTrailerPlaybackSupported: Boolean = true
     actual val hoverPreviewUsesRootOverlay: Boolean = false
     actual val inAppUpdaterEnabled: Boolean = false
     actual val imdbRatingLogoEnabled: Boolean = false

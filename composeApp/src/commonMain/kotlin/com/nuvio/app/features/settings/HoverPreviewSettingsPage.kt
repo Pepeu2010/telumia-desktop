@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.ui.HoverPreviewOpenDelayStepMillis
 import com.nuvio.app.core.ui.HoverPreviewTrailerStartStepSeconds
 import com.nuvio.app.core.ui.MaxHoverPreviewOpenDelayMillis
@@ -50,6 +49,7 @@ import kotlin.math.roundToInt
 internal fun LazyListScope.hoverPreviewSettingsContent(
     isTablet: Boolean,
     uiState: PosterCardStyleUiState,
+    showTrailerSettings: Boolean,
 ) {
     item {
         SettingsSection(
@@ -73,7 +73,7 @@ internal fun LazyListScope.hoverPreviewSettingsContent(
             }
         }
     }
-    if (AppFeaturePolicy.hoverTrailerPlaybackSupported) {
+    if (showTrailerSettings) {
         item {
             SettingsSection(
                 title = stringResource(Res.string.settings_hover_preview_section_trailer),

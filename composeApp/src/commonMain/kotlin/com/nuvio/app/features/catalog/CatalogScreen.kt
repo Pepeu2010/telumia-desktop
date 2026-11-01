@@ -58,7 +58,7 @@ import com.nuvio.app.core.ui.catalogPosterBaseWidthDp
 import com.nuvio.app.core.ui.desktopPageHorizontalPaddingForWidth
 import com.nuvio.app.core.ui.landscapePosterWidth
 import com.nuvio.app.core.ui.rememberPosterCardStyleUiState
-import com.nuvio.app.core.ui.desktopPosterHoverScale
+import com.nuvio.app.core.ui.posterHoverOrFocusScale
 import com.nuvio.app.core.ui.nuvioCardDepth
 import com.nuvio.app.core.ui.posterCardClickable
 import com.nuvio.app.core.ui.posterGridColumnCountForViewport
@@ -379,7 +379,7 @@ private fun CatalogPosterTile(
     ) {
         Column(
             modifier = Modifier
-                .desktopPosterHoverScale()
+                .posterHoverOrFocusScale()
                 .then(it),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {

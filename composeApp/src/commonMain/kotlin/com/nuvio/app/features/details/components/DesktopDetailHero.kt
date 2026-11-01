@@ -105,7 +105,16 @@ fun DesktopDetailBackdrop(
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val sideGradientColor = heroGradientColor ?: colorScheme.background
+    val sideGradientColor = heroGradientColor?.let { sampled ->
+        val background = colorScheme.background
+        val backgroundWeight = 0.72f
+        Color(
+            red = sampled.red * (1f - backgroundWeight) + background.red * backgroundWeight,
+            green = sampled.green * (1f - backgroundWeight) + background.green * backgroundWeight,
+            blue = sampled.blue * (1f - backgroundWeight) + background.blue * backgroundWeight,
+            alpha = 1f,
+        )
+    } ?: colorScheme.background
     val opacity = NuvioTokens.Opacity
     val trailerAlpha by animateFloatAsState(
         targetValue = if (heroTrailerReady) 1f else 0f,

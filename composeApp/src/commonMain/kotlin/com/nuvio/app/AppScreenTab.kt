@@ -20,10 +20,15 @@ internal fun AppScreenTab.toNativeNavigationTab(): NativeNavigationTab = when (t
     AppScreenTab.Home -> NativeNavigationTab.Home
     AppScreenTab.Search -> NativeNavigationTab.Search
     AppScreenTab.Library -> NativeNavigationTab.Library
-    // Live TV is a desktop-only destination; native tab bars keep their existing destinations.
+    // Live TV is exposed in desktop/TV navigation; native tab bars keep their existing destinations.
     AppScreenTab.Tv -> NativeNavigationTab.Home
     AppScreenTab.Settings -> NativeNavigationTab.Settings
 }
+
+internal fun shouldExposeLiveTvDestination(
+    isDesktop: Boolean,
+    isTelevision: Boolean,
+): Boolean = isDesktop || isTelevision
 
 internal fun NativeNavigationTab.toAppScreenTab(): AppScreenTab = when (this) {
     NativeNavigationTab.Home -> AppScreenTab.Home
