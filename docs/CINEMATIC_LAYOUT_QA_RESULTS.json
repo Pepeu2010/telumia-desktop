@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-01",
+  "desktop": {
+    "focusedTests": 38,
+    "failures": 0,
+    "packageTask": ":composeApp:createDistributable",
+    "result": "passed",
+    "log": "visual-desktop-final-validated.log",
+    "backend": "official public release workflow configuration"
+  },
+  "android": {
+    "previousInstrumentationTests": 17,
+    "previousFailures": 0,
+    "latestFocusFix": "validation in progress",
+    "fullSuitePriorKnownFailures": 11
+  },
+  "limitations": [
+    "No real account end-to-end validation",
+    "Desktop artwork fixture showed placeholders",
+    "No MXQ test"
+  ]
+}

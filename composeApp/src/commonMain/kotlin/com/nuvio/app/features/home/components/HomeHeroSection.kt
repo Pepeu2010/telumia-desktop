@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -889,32 +891,30 @@ internal fun DesktopSpotlightPager(
     val activeIndex = pagerState.settledPage % items.size
     val rowState = androidx.compose.foundation.lazy.rememberLazyListState()
     LaunchedEffect(activeIndex) { rowState.scrollToItem(activeIndex) }
-    LazyRow(
-        modifier = modifier,
-        state = rowState,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        itemsIndexed(items, key = { index, _ -> index }) { index, item ->
-            val isActive = index == activeIndex
-            val targetPage = heroPageForItem(pagerState.currentPage, index, items.size)
-            Box(
-                modifier = Modifier
-                    .clickable {
-                        coroutineScope.launch { pagerState.animateScrollToPage(targetPage) }
-                    }
-                    .semantics {
-                        selected = isActive
-                        contentDescription = item.name
-                    }
-                    .clip(CircleShape)
-                    .background(colors.onBackground)
-                    .graphicsLayer {
-                        val activeFraction = heroPageVisibility(pagerState, targetPage)
-                        alpha = 0.35f + (0.57f * activeFraction)
-                    }
-                    .heroPageIndicatorSize(pagerState, targetPage),
-            )
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("${activeIndex + 1} / ${items.size}", style = MaterialTheme.typography.labelMedium,
+            color = colors.onBackground.copy(alpha = 0.82f))
+        LazyRow(
+            modifier = Modifier.weight(1f, fill = false), state = rowState,
+            horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically,
+        ) {
+            itemsIndexed(items, key = { index, _ -> index }) { index, item ->
+                val isActive = index == activeIndex
+                val targetPage = heroPageForItem(pagerState.currentPage, index, items.size)
+                Box(Modifier.size(width = 36.dp, height = 28.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable { coroutineScope.launch { pagerState.animateScrollToPage(targetPage) } }
+                    .semantics { selected = isActive; contentDescription = item.name },
+                    contentAlignment = Alignment.Center) {
+                    Box(Modifier.clip(CircleShape).background(colors.onBackground)
+                        .graphicsLayer {
+                            val fraction = heroPageVisibility(pagerState, targetPage)
+                            alpha = 0.35f + (0.57f * fraction)
+                        }
+                        .heroPageIndicatorSize(pagerState, targetPage))
+                }
+            }
         }
     }
 }
@@ -1133,6 +1133,7 @@ private fun HeroContentBlock(
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 internal fun DesktopHeroContentBlock(
     item: MetaPreview,
     layout: HomeHeroLayout,
@@ -1141,35 +1142,28 @@ internal fun DesktopHeroContentBlock(
     val colors = MaterialTheme.colorScheme
     val compact = layout.heroHeight < 620.dp
     val titleSize = when {
-        layout.contentContainerMaxWidth >= 2800.dp -> 84.sp
-        layout.contentContainerMaxWidth >= 1800.dp -> 64.sp
-        else -> 46.sp
+        layout.contentContainerMaxWidth >= 2800.dp -> 88.sp
+        layout.contentContainerMaxWidth >= 1800.dp -> 72.sp
+        else -> 50.sp
     }
     var logoLoadError by remember(item.type, item.id, item.logo) { mutableStateOf(false) }
     val logoUrl = item.logo?.takeIf(String::isNotBlank)
-    val metadata = remember(item.type, item.releaseInfo, item.genres) {
+    val metadata = remember(item.type, item.releaseInfo, item.genres, compact) {
         buildList {
             item.releaseInfo?.takeIf(String::isNotBlank)?.let { add(formatReleaseDateForDisplay(it)) }
-            addAll(item.genres.filter(String::isNotBlank).take(2))
+            addAll(item.genres.filter(String::isNotBlank).take(if (compact) 1 else 2))
         }.joinToString("  ·  ")
     }
 
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (compact) 16.dp else 24.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 24.dp)) {
+        if (!compact) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.width(4.dp).height(20.dp).background(colors.primary, RoundedCornerShape(2.dp)))
             Text(stringResource(Res.string.home_spotlight), style = MaterialTheme.typography.labelLarge,
                 color = colors.onSurfaceVariant, letterSpacing = 2.sp)
-            item.imdbRating?.toFloatOrNull()?.takeIf { it.isFinite() && it in 0f..10f }?.let {
-                Surface(color = colors.primary.copy(alpha = 0.12f), contentColor = colors.onBackground,
-                    shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, colors.primary.copy(alpha = 0.25f))) {
-                    Text("IMDb ${item.imdbRating}", Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        style = MaterialTheme.typography.labelMedium)
-                }
-            }
         }
         if (logoUrl != null && !logoLoadError) {
             AsyncImage(model = logoUrl, contentDescription = item.name,
-                modifier = Modifier.fillMaxWidth(0.85f).height(if (compact) 104.dp else 160.dp),
+                modifier = Modifier.fillMaxWidth(0.90f).height(if (compact) 112.dp else 168.dp),
                 contentScale = ContentScale.Fit, alignment = Alignment.CenterStart,
                 onError = { logoLoadError = true })
         } else {
@@ -1177,21 +1171,31 @@ internal fun DesktopHeroContentBlock(
                 lineHeight = titleSize * 1.05f, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
                 color = colors.onBackground, maxLines = if (compact) 2 else 3, overflow = TextOverflow.Ellipsis)
         }
-        if (metadata.isNotBlank()) {
-            Text(metadata, style = MaterialTheme.typography.titleSmall, color = colors.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            item.imdbRating?.toFloatOrNull()?.takeIf { it.isFinite() && it in 0f..10f }?.let {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Surface(color = Color(0xFFF5CF68), contentColor = Color(0xFF141414), shape = RoundedCornerShape(4.dp)) {
+                        Text("IMDb", Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    }
+                    Text(item.imdbRating, style = MaterialTheme.typography.titleSmall, color = colors.onBackground)
+                }
+            }
+            if (metadata.isNotBlank()) Text(metadata, style = MaterialTheme.typography.titleSmall,
+                color = colors.onBackground.copy(alpha = 0.86f), maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         item.description?.takeIf(String::isNotBlank)?.let {
-            Text(it, modifier = Modifier.widthIn(max = 720.dp), style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 26.sp),
-                color = colors.onBackground.copy(alpha = 0.8f), maxLines = if (compact) 2 else 3,
+            Text(it, modifier = Modifier.widthIn(max = 720.dp), style = MaterialTheme.typography.bodyLarge.copy(
+                lineHeight = if (compact) 24.sp else 26.sp),
+                color = colors.onBackground.copy(alpha = 0.90f), maxLines = if (compact) 2 else 3,
                 overflow = TextOverflow.Ellipsis)
         }
         if (onItemClick != null) {
             Button(onClick = { onItemClick(item) }, modifier = Modifier
                 .align(Alignment.Start)
                 .width(188.dp)
-                .height(52.dp),
-                shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(
+                .height(if (compact) 48.dp else 52.dp),
+                shape = RoundedCornerShape(26.dp), colors = ButtonDefaults.buttonColors(
                     containerColor = colors.onBackground, contentColor = colors.background)) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(stringResource(Res.string.home_view_details), style = MaterialTheme.typography.titleSmall)

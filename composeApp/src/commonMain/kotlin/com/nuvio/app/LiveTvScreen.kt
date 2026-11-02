@@ -320,7 +320,7 @@ private fun LiveTvHero(channelCount: Int, sourceCount: Int, onRefresh: () -> Uni
             .clip(RoundedCornerShape(30.dp))
             .background(
                 Brush.linearGradient(
-                    listOf(Color(0xFF151820), Color(0xFF262032), Color(0xFF462723)),
+                    listOf(colors.surface, colors.surfaceVariant, colors.primary.copy(alpha = 0.16f)),
                 ),
             ),
     ) {
@@ -341,7 +341,7 @@ private fun LiveTvHero(channelCount: Int, sourceCount: Int, onRefresh: () -> Uni
                     Text(
                         text = stringResource(Res.string.compose_nav_tv).uppercase(),
                         style = MaterialTheme.typography.labelLarge,
-                        color = Color(0xFFFFB281),
+                        color = colors.primary,
                     )
                 }
                 Text(
