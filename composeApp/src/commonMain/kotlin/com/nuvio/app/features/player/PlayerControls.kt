@@ -153,7 +153,8 @@ internal fun PlayerControlsShell(
                     Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color.Black.copy(alpha = if (useLegacyLayout) 0.7f else 0.8f),
+                            Color.Black.copy(alpha = if (useLegacyLayout) 0.22f else 0.30f),
+                            Color.Black.copy(alpha = if (useLegacyLayout) 0.7f else 0.88f),
                         ),
                     ),
                 ),

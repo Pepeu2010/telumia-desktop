@@ -1,6 +1,10 @@
 package com.nuvio.app
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -52,7 +56,7 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 internal const val OpeningBeamWidthFraction = 0.7f
-private const val OpeningDurationMillis = 2_450
+private const val OpeningDurationMillis = 1_800
 
 /** Shared cinematic opening used while the real app startup/profile work is in progress. */
 @Composable
@@ -93,7 +97,16 @@ internal fun TelumiaOpeningMotion(modifier: Modifier = Modifier) {
         val logoHeight = minOf((maxHeight * 0.15f).coerceIn(64.dp, 126.dp), maxWidth * 0.17f)
         val logoWidth = logoHeight * 4.1f
         val fontScale = LocalDensity.current.fontScale
-        val sweepPosition = if (motion.allowsSpatialEffects) openingProgress else 0.5f
+        val sweepPosition = if (motion.allowsSpatialEffects) {
+            val loadingTransition = rememberInfiniteTransition(label = "openingLoading")
+            val loadingPosition by loadingTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(tween(1_500), repeatMode = RepeatMode.Restart),
+                label = "openingLoadingPosition",
+            )
+            loadingPosition
+        } else 0.5f
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -172,7 +185,7 @@ private fun OpeningAtmosphere(
 ) {
     Box(
         modifier = modifier.drawWithCache {
-        val maxDimension = maxOf(size.width, size.height)
+        val maxDimension = maxOf(size.width, size.height).coerceAtLeast(1f)
         val primaryGlow = Brush.radialGradient(
             colors = listOf(primary.copy(alpha = 0.32f), Color.Transparent),
             center = Offset(size.width * 0.23f, size.height * 0.47f),

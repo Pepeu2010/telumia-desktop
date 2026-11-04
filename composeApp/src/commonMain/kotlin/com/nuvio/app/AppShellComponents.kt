@@ -175,6 +175,8 @@ internal data class AppTabRequests(
 internal data class AppTabActions(
     val onCatalogClick: ((HomeCatalogSection) -> Unit)? = null,
     val onPosterClick: ((MetaPreview) -> Unit)? = null,
+    val onCompanyClick: ((Int, String) -> Unit)? = null,
+    val onNetworkClick: ((Int, String) -> Unit)? = null,
     val onLiveTvChannelClick: ((LiveTvChannelItem) -> Unit)? = null,
     val onPosterLongClick: ((MetaPreview) -> Unit)? = null,
     val onLibraryPosterClick: ((LibraryItem) -> Unit)? = null,
@@ -270,6 +272,8 @@ internal fun AppTabHost(
                     listState = state.searchListState,
                     onPosterClick = actions.onPosterClick,
                     onPosterLongClick = actions.onPosterLongClick,
+                    onCompanyClick = actions.onCompanyClick,
+                    onNetworkClick = actions.onNetworkClick,
                     searchFocusRequestCount = state.searchFocusRequestCount,
                     scrollToTopRequests = requests.searchScrollToTopRequests,
                 )

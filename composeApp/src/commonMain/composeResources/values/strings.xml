@@ -2592,4 +2592,6 @@
     <string name="home_preview_with_sound">Trailer • sound on</string>
     <string name="home_preview_enable_sound">Unmute trailer</string>
     <string name="home_preview_disable_sound">Mute trailer</string>
+    <string name="compose_search_companies">Production companies</string>
+    <string name="compose_search_networks">TV networks</string>
 </resources>

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -53,6 +54,11 @@ import com.nuvio.app.core.ui.nuvioConsumePointerEvents
 import com.nuvio.app.core.ui.rememberPosterCardStyleUiState
 import com.nuvio.app.core.ui.withDuplicateSafeLazyKeys
 import com.nuvio.app.core.ui.ScreenActivityEffect
+import com.nuvio.app.features.collection.TmdbCollectionSourceResolver
+import com.nuvio.app.features.collection.TmdbCompanySearchResult
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.addons.firstEnabledManifestError
 import com.nuvio.app.features.addons.hasPendingEnabledManifests
@@ -86,6 +92,8 @@ import nuvio.composeapp.generated.resources.compose_search_empty_no_results_mess
 import nuvio.composeapp.generated.resources.compose_search_empty_no_results_title
 import nuvio.composeapp.generated.resources.compose_search_empty_no_search_catalogs_message
 import nuvio.composeapp.generated.resources.compose_search_empty_no_search_catalogs_title
+import nuvio.composeapp.generated.resources.compose_search_companies
+import nuvio.composeapp.generated.resources.compose_search_networks
 import nuvio.composeapp.generated.resources.compose_search_placeholder
 import nuvio.composeapp.generated.resources.compose_search_recent_searches
 import nuvio.composeapp.generated.resources.compose_search_remove_recent_search
@@ -98,6 +106,8 @@ fun SearchScreen(
     listState: LazyListState = rememberLazyListState(),
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onPosterLongClick: ((MetaPreview) -> Unit)? = null,
+    onCompanyClick: ((Int, String) -> Unit)? = null,
+    onNetworkClick: ((Int, String) -> Unit)? = null,
     searchFocusRequestCount: Int = 0,
     scrollToTopRequests: Flow<Unit> = emptyFlow(),
 ) {
@@ -136,6 +146,28 @@ fun SearchScreen(
     val fullyWatchedSeriesKeys by WatchedRepository.fullyWatchedSeriesKeys.collectAsStateWithLifecycle()
     val networkStatusUiState by NetworkStatusRepository.uiState.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
+    var companies by remember { mutableStateOf<List<TmdbCompanySearchResult>>(emptyList()) }
+    var networks by remember { mutableStateOf<List<TvNetworkMatch>>(emptyList()) }
+    ScreenActivityEffect(query) { screenActive ->
+        networks = emptyList()
+        val search = query.trim()
+        if (!screenActive || search.length < 2) return@ScreenActivityEffect
+        delay(250)
+        networks = withContext(Dispatchers.Default) { TvNetworkDirectory.search(search) }
+    }
+    ScreenActivityEffect(query) { screenActive ->
+        companies = emptyList()
+        val search = query.trim()
+        if (!screenActive || search.length < 2) return@ScreenActivityEffect
+        delay(500)
+        companies = try {
+            TmdbCollectionSourceResolver.searchCompanies(search).filter { !it.name.isNullOrBlank() }.take(12)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
     var lastRequestedQuery by rememberSaveable { mutableStateOf<String?>(null) }
     var observedOfflineState by remember { mutableStateOf(false) }
     val discoverInFocus by remember(query, listState) {
@@ -351,6 +383,47 @@ fun SearchScreen(
                     onPosterLongClick = onPosterLongClick,
                 )
             } else {
+                if (companies.isNotEmpty() && onCompanyClick != null) {
+                    item(key = "search_companies") {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = homeSectionPadding, vertical = 8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                NuvioAccentMarker(height = 18.dp)
+                                Text(stringResource(Res.string.compose_search_companies), style = MaterialTheme.typography.titleMedium)
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                items(companies, key = { it.id }) { company ->
+                                    val name = company.name.orEmpty()
+                                    Box(Modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
+                                        .clickable { onCompanyClick(company.id, name) }
+                                        .padding(horizontal = 18.dp, vertical = 14.dp)) {
+                                        Text(name, maxLines = 1, style = MaterialTheme.typography.labelLarge)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (networks.isNotEmpty() && onNetworkClick != null) {
+                    item(key = "search_networks") {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = homeSectionPadding, vertical = 8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                NuvioAccentMarker(height = 18.dp)
+                                Text(stringResource(Res.string.compose_search_networks), style = MaterialTheme.typography.titleMedium)
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                items(networks, key = { it.id }) { network ->
+                                    Box(Modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
+                                        .clickable { onNetworkClick(network.id, network.name) }
+                                        .padding(horizontal = 18.dp, vertical = 14.dp)) {
+                                        Text(network.name, maxLines = 1, style = MaterialTheme.typography.labelLarge)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 val normalizedQuery = query.trim()
                 val isWaitingForSearch = normalizedQuery.isNotBlank() && lastRequestedQuery != normalizedQuery
                 when {
@@ -370,7 +443,7 @@ fun SearchScreen(
                         }
                     }
 
-                    uiState.sections.isEmpty() -> {
+                    uiState.sections.isEmpty() && companies.isEmpty() && networks.isEmpty() -> {
                         item {
                             SearchEmptyStateCard(
                                 reason = uiState.emptyStateReason,

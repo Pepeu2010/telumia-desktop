@@ -63,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.nuvio.app.core.ui.NuvioAccentMarker
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.NuvioActionLabel
 import com.nuvio.app.core.ui.NuvioBackButton
@@ -101,7 +102,8 @@ private fun SettingsCard(
     ) {
         Column(
             modifier = Modifier.background(Brush.verticalGradient(listOf(
-                tokens.colors.surfaceCard.copy(alpha = 0.55f),
+                tokens.colors.accent.copy(alpha = 0.08f),
+                tokens.colors.surfaceCard.copy(alpha = 0.62f),
                 tokens.colors.surface,
             ))),
             content = content,
@@ -165,6 +167,7 @@ internal fun TabletPageHeader(
                     iconSize = tokens.icons.md,
                 )
             }
+            NuvioAccentMarker(height = 28.dp, width = 3.dp)
             Text(
                 text = title,
                 modifier = Modifier.weight(1f),
@@ -194,7 +197,7 @@ internal fun SettingsSidebarItem(
     val shape = RoundedCornerShape(NuvioTokens.Space.s10)
     val background by animateColorAsState(
         targetValue = when {
-            selected -> primary.copy(alpha = tokens.opacity.hover)
+            selected -> primary.copy(alpha = 0.14f)
             focused -> primary.copy(alpha = 0.14f)
             pressed -> primary.copy(alpha = 0.11f)
             hovered -> primary.copy(alpha = 0.075f)
@@ -404,7 +407,7 @@ internal fun SettingsNavigationRow(
                 else -> 0.065f
             })
         } else {
-            Color.Transparent
+            tokens.colors.surfaceCard.copy(alpha = 0.16f)
         },
         animationSpec = tween(tokens.motion.fastMillis),
         label = "settings_navigation_background",

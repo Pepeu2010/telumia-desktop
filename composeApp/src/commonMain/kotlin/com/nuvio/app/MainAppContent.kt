@@ -1326,6 +1326,16 @@ internal fun MainAppContent(
                         ),
                         actions = { isTabletLayout ->
                             AppTabActions(
+                                onNetworkClick = { id, name ->
+                                    navController.navigate(com.nuvio.app.navigation.EntityBrowseRoute(
+                                        entityKind = "network", entityId = id, entityName = name, sourceType = "tv",
+                                    ))
+                                },
+                                onCompanyClick = { id, name ->
+                                    navController.navigate(com.nuvio.app.navigation.EntityBrowseRoute(
+                                        entityKind = "company", entityId = id, entityName = name, sourceType = "movie",
+                                    ))
+                                },
                                 onCatalogClick = onCatalogClick,
                                 onPosterClick = { meta ->
                                     navController.navigate(

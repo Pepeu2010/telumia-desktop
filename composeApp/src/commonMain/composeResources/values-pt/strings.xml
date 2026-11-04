@@ -1979,4 +1979,6 @@
     <string name="home_preview_with_sound">Trailer • com som</string>
     <string name="home_preview_enable_sound">Ativar som do trailer</string>
     <string name="home_preview_disable_sound">Silenciar trailer</string>
+    <string name="compose_search_companies">Produtoras</string>
+    <string name="compose_search_networks">Emissoras</string>
 </resources>
