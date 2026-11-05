@@ -2,7 +2,6 @@ package com.nuvio.app.core.ui.jelly
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -110,7 +109,7 @@ internal fun JellyNavigationBar(
                 ) {
                     Box(
                         Modifier.matchParentSize()
-                            .clip(RoundedCornerShape(50))
+                            .clip(MaterialTheme.nuvio.shapes.chip)
                             .drawWithContent {
                                 drawContent()
                                 drawJellyGlow(motion.frame, accentColor.copy(alpha = accentColor.alpha * glowStrength))

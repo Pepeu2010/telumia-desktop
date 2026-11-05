@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -50,7 +49,9 @@ internal fun DesktopNavigationBar(
     val uiMotion = LocalUiMotion.current
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val palette = MaterialTheme.themePalette
+    val theme = MaterialTheme.nuvio
+    val colors = theme.colors
+    val space = NuvioTokens.Space
     val isHomeSelected = items.first().selected
     val isSettingsSelected = items.last().selected
     val scrollOffset = scrollState?.totalScrollOffset ?: 0f
@@ -66,15 +67,15 @@ internal fun DesktopNavigationBar(
     )
     val surfaceColor by animateColorAsState(
         targetValue = if (isFrosted) {
-            palette.backgroundElevated.copy(alpha = 0.94f)
+            colors.surfaceElevated.copy(alpha = 0.94f)
         } else {
-            palette.background.copy(alpha = 0.76f)
+            colors.background.copy(alpha = 0.76f)
         },
         animationSpec = tween(uiMotion.durationMillis(240), easing = FastOutSlowInEasing),
         label = "desktop_nav_surface",
     )
     val outlineColor by animateColorAsState(
-        targetValue = palette.secondary.copy(alpha = if (isFrosted) 0.24f else 0.12f),
+        targetValue = colors.accent.copy(alpha = if (isFrosted) 0.24f else 0.12f),
         animationSpec = tween(uiMotion.durationMillis(240), easing = FastOutSlowInEasing),
         label = "desktop_nav_outline",
     )
@@ -89,7 +90,7 @@ internal fun DesktopNavigationBar(
         label = "desktop_nav_glow",
     )
     BoxWithConstraints(
-        modifier = modifier.fillMaxWidth().padding(contentPadding).padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxWidth().padding(contentPadding).padding(horizontal = space.s16),
         contentAlignment = Alignment.TopCenter,
     ) {
         val viewportWidth = windowWidth ?: maxWidth
@@ -98,18 +99,18 @@ internal fun DesktopNavigationBar(
             viewportWidth > 1600.dp -> 30.dp
             else -> 28.dp
         }
-        val trackWidth = ((iconSize + 20.dp + 64.dp * labelFraction) * items.size + 8.dp).coerceAtMost(maxWidth)
+        val trackWidth = ((iconSize + space.s20 + space.s64 * labelFraction) * items.size + space.s8).coerceAtMost(maxWidth)
         JellyNavigationBar(
             items = items,
             labelFraction = labelFraction,
             glowStrength = glowStrength,
             horizontalLabels = true,
             iconSize = iconSize,
-            modifier = Modifier.width(trackWidth).height(iconSize + 20.dp).hoverable(interactionSource),
+            modifier = Modifier.width(trackWidth).height(iconSize + space.s20).hoverable(interactionSource),
         ) {
             Box(
                 modifier = Modifier.matchParentSize()
-                    .clip(RoundedCornerShape(50))
+                    .clip(theme.shapes.chip)
                     .then(
                         if (isFrosted && hazeState != null) {
                             Modifier.hazeEffect(state = hazeState) { blurRadius = 14.dp }
@@ -121,13 +122,13 @@ internal fun DesktopNavigationBar(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.14f * sheenAlpha),
-                                Color.White.copy(alpha = 0.03f * sheenAlpha),
+                                colors.textPrimary.copy(alpha = 0.14f * sheenAlpha),
+                                colors.textPrimary.copy(alpha = 0.03f * sheenAlpha),
                                 Color.Transparent,
                             ),
                         ),
                     )
-                    .border(1.dp, outlineColor, RoundedCornerShape(50)),
+                    .border(theme.borders.thin, outlineColor, theme.shapes.chip),
             )
         }
     }
