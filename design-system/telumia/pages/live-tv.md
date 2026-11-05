@@ -17,9 +17,13 @@ Na aba TV, abra **Fontes e programação**, adicione o endereço M3U e, se dispo
 
 **Atualizar** recarrega a fonte selecionada. O guia é mantido em memória enquanto a janela está aberta. Se o XMLTV falhar, a lista M3U continua disponível.
 
+Quando a fonte tem programação, **Grade** mostra blocos proporcionais à duração em uma janela de duas horas no fuso do PC. Os intervalos entre programas ficam vazios. **Anterior**, **Agora** e **Próximo** mudam a janela. Selecione o programa para ler os detalhes ou o nome do canal para assistir. **Agora e depois** oferece a lista compacta.
+
 Compilação Desktop e 10 testes aprovados em 2026-11-05. Os testes HTTP usam servidor local e cobrem associação por fonte/canal e preservação da lista quando o guia falha.
+
+A grade passou em três testes de Desktop. O teste de interface cobre programa atual, detalhes, avanço de horário, retorno a Agora e seleção do canal. Os dois testes de timeline cobrem recorte, lacunas e sobreposições.
 
 ## Integração ainda necessária
 
-- Grade EPG com horários, cache do guia, favoritos, recentes e lembretes.
+- Cache do guia, favoritos, recentes e lembretes.
 - Validação de reprodução e retorno ao catálogo com uma fonte real.

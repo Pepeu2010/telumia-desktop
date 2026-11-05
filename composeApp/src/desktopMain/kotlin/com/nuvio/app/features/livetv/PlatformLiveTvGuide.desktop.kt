@@ -91,6 +91,7 @@ private fun DesktopLiveTvGuideDialog(
     }
 
     AlertDialog(
+        modifier = if (selected != null) Modifier.width(920.dp) else Modifier,
         onDismissRequest = onDismiss,
         title = { Text(selected?.name ?: "Fontes de TV") },
         text = {
@@ -154,6 +155,17 @@ private fun LiveTvImportedChannels(guide: ImportedLiveTvSource, onPlay: (LiveTvC
     }
     if (guide.guideFailed) Text("Programação indisponível. Os canais continuam acessíveis.")
     if (guide.channels.isEmpty()) Text("Nenhum canal válido nesta lista.")
+    if (guide.channels.isNotEmpty() && guide.programs.isNotEmpty()) {
+        var schedule by remember { mutableStateOf(true) }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = schedule, onClick = { schedule = true }, label = { Text("Grade") })
+            FilterChip(selected = !schedule, onClick = { schedule = false }, label = { Text("Agora e depois") })
+        }
+        if (schedule) {
+            DesktopLiveTvSchedule(guide.channels, guide.programs, now, onPlay)
+            return
+        }
+    }
     LazyColumn(Modifier.heightIn(max = 380.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(guide.channels, key = LiveTvChannel::id) { channel ->
             val programs = channel.tvgId?.let { programsByChannel[channel.sourceId to it] }.orEmpty()
