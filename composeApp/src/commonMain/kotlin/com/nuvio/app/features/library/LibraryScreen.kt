@@ -52,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -287,7 +288,10 @@ fun LibraryScreen(
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .background(MaterialTheme.colorScheme.background)
+                            .background(Brush.verticalGradient(listOf(
+                                MaterialTheme.colorScheme.surfaceContainerHigh,
+                                MaterialTheme.colorScheme.background,
+                            )))
                             .nuvioConsumePointerEvents(),
                     )
                     androidx.compose.foundation.layout.Column(
@@ -353,6 +357,8 @@ fun LibraryScreen(
                             modifier = Modifier.padding(horizontal = 16.dp),
                         )
                         Spacer(modifier = Modifier.height(6.dp))
+                        Box(Modifier.fillMaxWidth().height(1.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = .42f)))
                     }
                 }
             }
