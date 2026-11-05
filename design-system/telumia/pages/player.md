@@ -47,3 +47,10 @@ raios e hierarquia do restante do aplicativo.
 - Integracao Windows usa JNI/libmpv empacotado, videos locais e servidor HTTP de teste: capitulos UTF-8, extracao de frames e preservacao da posicao do player principal.
 - Isto nao comprova todos os formatos de addons, fluidez em hardware variado nem a navegacao completa de um filme da conta do usuario.
 
+## Preferencias e proximo episodio
+
+- Corrigida persistencia de subtitleIsForced no Desktop, alinhada aos armazenamentos Android/iOS: true, false e ausencia sao valores distintos.
+- Teste de gravacao/leitura confirma round-trip de pt-BR, audio e indicador forced, alem da limpeza de preferencia.
+- PlayerNextEpisodeStreamSelectionTest cobre espera pela fonte correspondente e selecao manual quando nao ha correspondencia.
+- Isolamento entre perfis e sincronizacao destas preferencias ainda exigem verificacao integrada.
+

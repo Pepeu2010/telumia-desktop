@@ -7,6 +7,7 @@ internal actual object PlayerTrackPreferenceStorage {
     private const val subtitleTypeKey = "subtitle_type"
     private const val subtitleLanguageKey = "subtitle_language"
     private const val subtitleNameKey = "subtitle_name"
+    private const val subtitleIsForcedKey = "subtitle_is_forced"
     private const val subtitleTrackIdKey = "subtitle_track_id"
     private const val addonSubtitleIdKey = "addon_subtitle_id"
     private const val addonSubtitleUrlKey = "addon_subtitle_url"
@@ -24,6 +25,7 @@ internal actual object PlayerTrackPreferenceStorage {
             subtitleType = loadString(subtitleTypeKey, id),
             subtitleLanguage = loadString(subtitleLanguageKey, id),
             subtitleName = loadString(subtitleNameKey, id),
+            subtitleIsForced = store.getBoolean(scopedKey(subtitleIsForcedKey, id)),
             subtitleTrackId = loadString(subtitleTrackIdKey, id),
             addonSubtitleId = loadString(addonSubtitleIdKey, id),
             addonSubtitleUrl = loadString(addonSubtitleUrlKey, id),
@@ -46,7 +48,7 @@ internal actual object PlayerTrackPreferenceStorage {
                 it.audioLanguage,
                 it.audioName,
                 it.audioTrackId,
-            ).any { value -> !value.isNullOrBlank() }
+            ).any { value -> !value.isNullOrBlank() } || it.subtitleIsForced != null
         }
     }
 
@@ -55,6 +57,9 @@ internal actual object PlayerTrackPreferenceStorage {
         putOptionalString(subtitleTypeKey, id, preference.subtitleType)
         putOptionalString(subtitleLanguageKey, id, preference.subtitleLanguage)
         putOptionalString(subtitleNameKey, id, preference.subtitleName)
+        val forcedKey = scopedKey(subtitleIsForcedKey, id)
+        preference.subtitleIsForced?.let { store.putBoolean(forcedKey, it) }
+            ?: store.remove(forcedKey)
         putOptionalString(subtitleTrackIdKey, id, preference.subtitleTrackId)
         putOptionalString(addonSubtitleIdKey, id, preference.addonSubtitleId)
         putOptionalString(addonSubtitleUrlKey, id, preference.addonSubtitleUrl)
