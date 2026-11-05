@@ -74,6 +74,7 @@ import com.nuvio.app.features.livetv.LiveTvCatalogResponse
 import com.nuvio.app.features.livetv.LiveTvChannelItem
 import com.nuvio.app.features.livetv.installedLiveTvCatalogs
 import com.nuvio.app.features.livetv.projectLiveTvChannels
+import com.nuvio.app.features.livetv.loadLiveTvCatalogPages
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -136,26 +137,33 @@ internal fun LiveTvScreen(
             }
             val requests = installedLiveTvCatalogs(readyState.addons)
             val limiter = Semaphore(LIVE_TV_PARALLEL_CATALOG_LIMIT)
+            val loadedPages = linkedMapOf<Int, LiveTvCatalogResponse>()
             val outcomes = coroutineScope {
-                requests.map { request ->
+                requests.mapIndexed { index, request ->
                     async {
                         limiter.withPermit {
                             try {
-                                LiveTvFetchOutcome(
-                                    response = LiveTvCatalogResponse(
-                                        request = request,
-                                        items = fetchCatalogPage(
+                                val response = loadLiveTvCatalogPages(
+                                    request = request,
+                                    fetchPage = { skip ->
+                                        fetchCatalogPage(
                                             manifestUrl = request.manifestUrl,
                                             type = request.catalog.type,
                                             catalogId = request.catalog.id,
+                                            skip = skip,
                                             forceRefresh = refreshVersion > 0,
-                                        ).items,
-                                    ),
+                                        )
+                                    },
+                                    onPage = { page ->
+                                        loadedPages[index] = page
+                                        channels = projectLiveTvChannels(loadedPages.entries.sortedBy { it.key }.map { it.value })
+                                    },
                                 )
+                                LiveTvFetchOutcome(response = response)
                             } catch (error: CancellationException) {
                                 throw error
                             } catch (_: Exception) {
-                                LiveTvFetchOutcome(failed = true)
+                                LiveTvFetchOutcome(response = loadedPages[index], failed = true)
                             }
                         }
                     }
@@ -239,7 +247,7 @@ internal fun LiveTvScreen(
         }
 
         when {
-            isLoading -> item(span = { GridItemSpan(maxLineSpan) }) {
+            isLoading && channels.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) {
                 LiveTvEmptyPanel(
                     title = stringResource(Res.string.live_tv_loading),
                     body = stringResource(Res.string.live_tv_subtitle),

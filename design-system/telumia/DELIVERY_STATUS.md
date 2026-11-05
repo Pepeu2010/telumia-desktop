@@ -22,6 +22,7 @@ Objetivo: concluir as recomendacoes aprovadas no Desktop e TV/APK e publicar os 
 - Home, detalhes, busca, biblioteca, player e perfis receberam melhorias visuais nas branches de desenvolvimento.
 - Testes focados de perfis, biblioteca e abertura passaram em marcos anteriores; isso nao prova os gates integrados acima.
 - TV possui pipeline M3U/XMLTV e guia; Desktop ainda apresenta catalogos de canais dos addons.
-- Desktop limitava o parsing da pagina recebida a 60 canais. Limite removido para preservar todos os canais retornados; paginacao de addons permanece uma necessidade separada.
+- Desktop limitava o parsing da pagina recebida a 60 canais. Limite removido para preservar todos os canais retornados.
+- Paginacao de TV implementada para addons que anunciam skip: publicacao progressiva, deduplicacao, encerramento apos paginas repetidas e preservacao de dados em falha posterior. LiveTvCatalogLoaderTest: 5 testes aprovados; LiveTvCatalogsTest: 3 aprovados. Fontes reais ainda precisam de validacao.
 
 Atualizar este documento com evidencia concreta a cada gate concluido. Nenhum gate acima esta declarado concluido por existencia de arquivos ou testes fora do seu escopo.
