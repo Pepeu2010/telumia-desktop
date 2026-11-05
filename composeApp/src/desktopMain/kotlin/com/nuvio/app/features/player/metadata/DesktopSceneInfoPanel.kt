@@ -1,11 +1,15 @@
 package com.nuvio.app.features.player.metadata
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -15,6 +19,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
@@ -51,10 +58,18 @@ internal fun DesktopSceneInfoPanel(
         },
         color = MaterialTheme.colorScheme.surface,
     ) {
-        Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.fillMaxSize()
+            .background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceContainerHigh,
+                MaterialTheme.colorScheme.surface, Color(0xFF090D12))))
+            .padding(28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(Res.string.scene_info_title), Modifier.weight(1f),
-                    style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.width(4.dp).height(34.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(99.dp)))
+                    Text(stringResource(Res.string.scene_info_title),
+                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                }
                 OutlinedButton(onClick = onDismiss, modifier = Modifier.focusRequester(closeFocus).testTag("scene-info-close")) {
                     Text(stringResource(Res.string.scene_info_close))
                 }
@@ -64,8 +79,10 @@ internal fun DesktopSceneInfoPanel(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(entries, key = SceneInfoEntry::id) { entry ->
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Column(Modifier.fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(14.dp))
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(5.dp)) {
                             Text(entry.kind.label(), style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary)
                             Text(entry.title, style = MaterialTheme.typography.titleMedium, maxLines = 3,

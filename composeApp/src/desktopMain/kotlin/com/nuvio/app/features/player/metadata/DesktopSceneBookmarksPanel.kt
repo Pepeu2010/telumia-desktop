@@ -1,6 +1,8 @@
 package com.nuvio.app.features.player.metadata
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -11,6 +13,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import nuvio.composeapp.generated.resources.*
@@ -47,8 +51,15 @@ internal fun DesktopSceneBookmarksPanel(
     Surface(Modifier.fillMaxSize().testTag("scene-bookmarks-panel").onPreviewKeyEvent {
         if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) { onDismiss(); true } else false
     }, color = MaterialTheme.colorScheme.surface) {
-        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(stringResource(Res.string.scene_bookmarks_title), style = MaterialTheme.typography.headlineSmall)
+        Column(Modifier.fillMaxSize()
+            .background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceContainerHigh,
+                MaterialTheme.colorScheme.surface, Color(0xFF090D12))))
+            .padding(28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.width(4.dp).height(34.dp)
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(99.dp)))
+                Text(stringResource(Res.string.scene_bookmarks_title), style = MaterialTheme.typography.headlineSmall)
+            }
             Text(stringResource(Res.string.scene_bookmarks_scope_notice), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (pendingJump != null) {
@@ -91,7 +102,8 @@ internal fun DesktopSceneBookmarksPanel(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(state.items, key = { it.id }) { item ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer,
+                        RoundedCornerShape(14.dp)).padding(5.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = {
                             jumpRejected = false
                             if (item.editionKey != state.scope?.editionKey) pendingJump = item.id

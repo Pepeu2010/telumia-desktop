@@ -3504,18 +3504,18 @@ svg {
 .timed-markers-summary { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* Decoded frames are shown only after a matching response; no poster stands in for a scene. */
-.timeline-preview { position: absolute; bottom: 26px; transform: translateX(-50%); padding: 8px; background: #111922; border: 1px solid rgba(255,255,255,.25); border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.55); pointer-events: none; z-index: 8; text-align: center; }
+.timeline-preview { position: absolute; bottom: 30px; transform: translateX(-50%); padding: 10px; background: linear-gradient(155deg, rgba(28,37,48,.98), rgba(7,11,16,.98)); border: 1px solid var(--theme-border-default); border-radius: 16px; box-shadow: 0 18px 48px rgba(0,0,0,.62), 0 0 0 1px rgba(255,255,255,.035) inset; pointer-events: none; z-index: 8; text-align: center; overflow: hidden; }
 .timeline-preview[hidden], .timeline-preview img[hidden] { display: none; }
-.timeline-preview img { display: block; width: 100%; max-height: 180px; object-fit: contain; border-radius: 6px; }
-.timeline-preview output { display: block; padding: 5px 0 1px; font-variant-numeric: tabular-nums; color: #f8fafc; font-size: 14px; }
+.timeline-preview img { display: block; width: 100%; max-height: 180px; object-fit: contain; border-radius: 10px; }
+.timeline-preview output { display: inline-block; margin-top: 8px; padding: 4px 10px; font-variant-numeric: tabular-nums; color: var(--theme-text-primary); background: var(--theme-surface-card); border: 1px solid var(--theme-border-default); border-radius: 999px; font-size: 13px; font-weight: 650; letter-spacing: .02em; }
 .player.pip .timeline-preview { display: none; }
 
-.timeline-preview > img { max-width: 320px; margin: 0 auto; }
-.timeline-filmstrip { display: flex; gap: 4px; margin-top: 8px; }
+.timeline-preview > img { max-width: 336px; margin: 0 auto; box-shadow: 0 8px 24px rgba(0,0,0,.38); }
+.timeline-filmstrip { display: flex; gap: 6px; margin-top: 10px; }
 .timeline-filmstrip[hidden] { display: none; }
-.timeline-filmstrip-frame { flex: 1; min-width: 0; padding: 3px; border: 1px solid transparent; border-radius: 5px; }
-.timeline-filmstrip-frame.selected { border-color: var(--theme-focus); background: var(--theme-selected-surface); }
-.timeline-filmstrip-frame img { width: 100%; max-height: 72px; border-radius: 3px; }
+.timeline-filmstrip-frame { flex: 1; min-width: 0; padding: 4px; border: 1px solid transparent; border-radius: 9px; opacity: .7; }
+.timeline-filmstrip-frame.selected { border-color: var(--theme-focus); background: var(--theme-selected-surface); opacity: 1; box-shadow: 0 0 0 2px var(--theme-selected-ring); }
+.timeline-filmstrip-frame img { width: 100%; max-height: 72px; border-radius: 6px; }
 .timeline-filmstrip-frame span { display: block; padding-top: 4px; color: #eef3f8; font-size: 11px; font-variant-numeric: tabular-nums; }
 
 /* The playback dock stays compact in PiP; the regular desktop layout keeps its own hierarchy. */
