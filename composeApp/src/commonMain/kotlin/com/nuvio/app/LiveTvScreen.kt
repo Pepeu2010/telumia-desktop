@@ -100,7 +100,6 @@ import nuvio.composeapp.generated.resources.compose_nav_tv
 import nuvio.composeapp.generated.resources.live_tv_retry
 import org.jetbrains.compose.resources.stringResource
 
-private const val LIVE_TV_CATALOG_ITEM_LIMIT = 60
 private const val LIVE_TV_PARALLEL_CATALOG_LIMIT = 4
 
 private data class LiveTvFetchOutcome(
@@ -149,7 +148,6 @@ internal fun LiveTvScreen(
                                             manifestUrl = request.manifestUrl,
                                             type = request.catalog.type,
                                             catalogId = request.catalog.id,
-                                            maxItems = LIVE_TV_CATALOG_ITEM_LIMIT,
                                             forceRefresh = refreshVersion > 0,
                                         ).items,
                                     ),

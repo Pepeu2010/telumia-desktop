@@ -9,6 +9,19 @@ import kotlin.test.assertEquals
 
 class LiveTvCatalogsTest {
     @Test
+    fun fullCatalogPagePreservesChannelsBeyondTheOldHomePreviewLimit() {
+        val payload = (1..85).joinToString(prefix = "{\"metas\":[", postfix = "]}") {
+            "{\"id\":\"channel:$it\",\"type\":\"tv\",\"name\":\"Canal $it\"}"
+        }
+        val parsed = com.nuvio.app.features.home.HomeCatalogParser.parseCatalogResponse(payload)
+        val channels = projectLiveTvChannels(listOf(
+            LiveTvCatalogResponse(request("tv", "TV source", "channels"), parsed.items),
+        ))
+        assertEquals(85, channels.size)
+        assertEquals("Canal 85", channels.last().meta.name)
+    }
+
+    @Test
     fun installedCatalogsIncludeOnlyEnabledTvAndChannelCatalogs() {
         val enabled = addon(
             url = "https://tv.example/manifest.json",
