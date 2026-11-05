@@ -8,10 +8,12 @@
 - Testes de M3U, XMLTV e recorte de timeline portados junto com o codigo.
 - Validacao em 2026-11-05: compilacao Desktop e suites XmlTvParserTest, M3uPlaylistParserTest e GuideTimelineTest aprovadas.
 - Corrigida preferencia de descricao pt-BR quando uma traducao inglesa vem depois no XMLTV; mesmo caso de regressao validado na TV.
+- Armazenamento local de fontes implementado no Desktop: isolamento por perfil, URL M3U e XMLTV, ativacao/remocao, limites de configuracao e preservacao de dados ilegíveis durante edicao. Ainda sem formulario conectado na interface.
+- LiveTvSourceStoreTest (3) e GuideTimelineTest (2) aprovados em 2026-11-05: armazenamento em arquivo temporario reaberto, dois perfis, limite de fontes e preservacao de payload corrompido.
 
 ## Integracao ainda necessaria
 
-- Configuracao e armazenamento de fontes por perfil.
+- Formulario de configuracao conectado ao armazenamento por perfil.
 - Importacao/atualizacao de fontes e cache do guia.
 - Associacao explicita de tvg-id entre canais e programas.
 - Grade EPG na interface, agora/depois, favoritos, recentes e lembretes.

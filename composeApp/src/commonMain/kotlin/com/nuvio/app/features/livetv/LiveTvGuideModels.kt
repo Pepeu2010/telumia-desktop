@@ -3,6 +3,16 @@ package com.nuvio.app.features.livetv
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
+/** URLs are local configuration of one profile and must not be included in diagnostics. */
+@Serializable
+data class LiveTvSource(
+    val id: String,
+    val name: String,
+    val playlistUrl: String,
+    val epgUrl: String? = null,
+    val enabled: Boolean = true,
+)
+
 /** A channel imported from a user-configured playlist; credentials stay only in its stream URL. */
 @Serializable
 data class LiveTvChannel(
