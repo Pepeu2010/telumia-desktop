@@ -41,3 +41,9 @@ raios e hierarquia do restante do aplicativo.
 - Superfícies usam gradientes estáticos e evitam blur em tempo real, especialmente em TV Box.
 - Extração é suspensa quando o player perde primeiro plano, entra em PiP ou abre outro modal.
 
+## Validacao em 2026-11-05
+
+- 34 testes aprovados: NativeTimelineFramesTest (6, sem skips), DesktopTimelineFramesTest (5), PlayerSceneInfoDesktopTest (2) e PlayerTrackSelectionTest (21).
+- Integracao Windows usa JNI/libmpv empacotado, videos locais e servidor HTTP de teste: capitulos UTF-8, extracao de frames e preservacao da posicao do player principal.
+- Isto nao comprova todos os formatos de addons, fluidez em hardware variado nem a navegacao completa de um filme da conta do usuario.
+
