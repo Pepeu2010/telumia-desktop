@@ -263,17 +263,17 @@ internal fun ProfileSelectionContent(
                         letterSpacing = (-1.4).sp,
                         fontWeight = FontWeight.SemiBold,
                     ),
-                    color = Color(0xFFF4EEDD),
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
                 Spacer(Modifier.height(10.dp))
                 Text(stringResource(Res.string.telumia_profile_selection_hint),
-                    style = MaterialTheme.typography.bodyLarge, color = Color(0xFFB7BCC5))
+                    style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(if (short) 24.dp else 40.dp))
-            if (!isLoaded) CircularProgressIndicator(Modifier.testTag("profile-loading"), color = Color(0xFFE8BE72))
+            if (!isLoaded) CircularProgressIndicator(Modifier.testTag("profile-loading"), color = MaterialTheme.colorScheme.primary)
             if (isLoaded && profiles.isEmpty()) {
                 Text(stringResource(Res.string.telumia_profile_selection_empty),
-                    color = Color(0xFFB7BCC5), style = MaterialTheme.typography.bodyLarge)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.height(16.dp))
             }
             Column(Modifier.widthIn(max = 1600.dp).fillMaxWidth().focusGroup(),
@@ -298,12 +298,14 @@ internal fun ProfileSelectionContent(
             val manageHovered by manageInteraction.collectIsHoveredAsState()
             val manageHighlighted = isEditMode || manageFocused || manageHovered
             val manageBackground by animateColorAsState(
-                targetValue = if (manageHighlighted) Color(0xFF342B20) else Color(0xFF111B28),
+                targetValue = if (manageHighlighted) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceContainerHigh,
                 animationSpec = tween(motion.durationMillis(180)),
                 label = "manageProfilesBackground",
             )
             val manageBorder by animateColorAsState(
-                targetValue = if (manageHighlighted) Color(0xFFE8BE72) else Color(0xFF354252),
+                targetValue = if (manageHighlighted) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.outlineVariant,
                 animationSpec = tween(motion.durationMillis(180)),
                 label = "manageProfilesBorder",
             )
@@ -316,7 +318,7 @@ internal fun ProfileSelectionContent(
                 .padding(horizontal = 28.dp, vertical = 14.dp)) {
                 Text(stringResource(if (isEditMode) Res.string.action_done else Res.string.profile_manage_profiles),
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color(0xFFF4EEDD), fontWeight = FontWeight.SemiBold)
+                    color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -369,12 +371,14 @@ private fun ProfileAvatarCard(
         label = "profileCardScale",
     )
     val cardBackground by animateColorAsState(
-        targetValue = if (highlighted) Color(0xFF1D2938) else Color(0xFF101B29),
+        targetValue = if (highlighted) MaterialTheme.colorScheme.surfaceContainerHigh
+            else MaterialTheme.colorScheme.surfaceContainer,
         animationSpec = tween(motion.durationMillis(180)),
         label = "profileCardBackground",
     )
     val cardBorder by animateColorAsState(
-        targetValue = if (highlighted) Color(0xFFE8BE72) else Color(0xFF293746),
+        targetValue = if (highlighted) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.outlineVariant,
         animationSpec = tween(motion.durationMillis(180)),
         label = "profileCardBorder",
     )
@@ -522,7 +526,7 @@ private fun ProfileAvatarCard(
                 stringResource(Res.string.profile_label_number, profile.profileIndex)
             },
             style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-            color = Color(0xFFF4EEDD),
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             maxLines = 2,
@@ -566,12 +570,14 @@ private fun AddProfileCard(
         label = "addProfileCardScale",
     )
     val cardBackground by animateColorAsState(
-        targetValue = if (highlighted) Color(0xFF1D2938) else Color(0xFF101B29),
+        targetValue = if (highlighted) MaterialTheme.colorScheme.surfaceContainerHigh
+            else MaterialTheme.colorScheme.surfaceContainer,
         animationSpec = tween(motion.durationMillis(180)),
         label = "addProfileCardBackground",
     )
     val cardBorder by animateColorAsState(
-        targetValue = if (highlighted) Color(0xFFE8BE72) else Color(0xFF293746),
+        targetValue = if (highlighted) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.outlineVariant,
         animationSpec = tween(motion.durationMillis(180)),
         label = "addProfileCardBorder",
     )
@@ -629,7 +635,7 @@ private fun AddProfileCard(
         Text(
             text = stringResource(Res.string.compose_profile_add_profile),
             style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-            color = Color(0xFFF4EEDD),
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             maxLines = 2,
