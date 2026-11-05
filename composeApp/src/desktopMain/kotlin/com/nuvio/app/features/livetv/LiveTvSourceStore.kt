@@ -17,7 +17,6 @@ internal class LiveTvSourceStore(
         DesktopStorage.store("telumia_live_tv_sources").putString("sources_v1_$id", value)
     },
 ) {
-    private val lock = Any()
     private val json = Json { ignoreUnknownKeys = true }
 
     fun list(): List<LiveTvSource> = synchronized(lock) { decode(read(profileId())) }
@@ -72,5 +71,8 @@ internal class LiveTvSourceStore(
         return value
     }
 
-    private companion object { const val MAX_CONFIG_CHARS = 64 * 1024 }
+    private companion object {
+        val lock = Any()
+        const val MAX_CONFIG_CHARS = 64 * 1024
+    }
 }

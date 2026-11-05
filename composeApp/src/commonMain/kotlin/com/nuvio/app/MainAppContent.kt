@@ -1342,6 +1342,28 @@ internal fun MainAppContent(
                                         DetailRoute(type = meta.type, id = meta.id, title = meta.name),
                                     )
                                 },
+                                onLiveTvPlaylistChannelClick = { channel ->
+                                    channel.streamUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                                        val launch = PlayerLaunch(
+                                            profileId = activePlaybackProfileId,
+                                            title = channel.displayName,
+                                            sourceUrl = url,
+                                            streamTitle = channel.displayName,
+                                            providerName = "TV ao vivo",
+                                            streamType = "tv",
+                                            contentType = "tv",
+                                            parentMetaId = channel.id,
+                                            parentMetaType = "tv",
+                                            logo = channel.logoUrl,
+                                        )
+                                        if (playerSettingsUiState.externalPlayerEnabled) {
+                                            coroutineScope.launch { openExternalPlayback(launch) }
+                                        } else {
+                                            val launchId = PlayerLaunchStore.put(launch)
+                                            navController.navigate(PlayerRoute(launchId = launchId, title = launch.title))
+                                        }
+                                    }
+                                },
                                 onLiveTvChannelClick = { channel ->
                                     val launch = StreamLaunch(
                                         profileId = activePlaybackProfileId,

@@ -8,15 +8,18 @@
 - Testes de M3U, XMLTV e recorte de timeline portados junto com o codigo.
 - Validacao em 2026-11-05: compilacao Desktop e suites XmlTvParserTest, M3uPlaylistParserTest e GuideTimelineTest aprovadas.
 - Corrigida preferencia de descricao pt-BR quando uma traducao inglesa vem depois no XMLTV; mesmo caso de regressao validado na TV.
-- Armazenamento local de fontes implementado no Desktop: isolamento por perfil, URL M3U e XMLTV, ativacao/remocao, limites de configuracao e preservacao de dados ilegíveis durante edicao. Ainda sem formulario conectado na interface.
+- O cadastro de fontes usa armazenamento local por perfil. Aceita M3U com XMLTV opcional, ativação e remoção. Edições preservam configurações ilegíveis.
 - LiveTvSourceStoreTest (3) e GuideTimelineTest (2) aprovados em 2026-11-05: armazenamento em arquivo temporario reaberto, dois perfis, limite de fontes e preservacao de payload corrompido.
 
-## Integracao ainda necessaria
+## Uso
 
-- Formulario de configuracao conectado ao armazenamento por perfil.
-- Importacao/atualizacao de fontes e cache do guia.
-- Associacao explicita de tvg-id entre canais e programas.
-- Grade EPG na interface, agora/depois, favoritos, recentes e lembretes.
-- Encaminhamento de canais importados ao player e validacao de fluxo completo.
+Na aba TV, abra **Fontes e programação**, adicione o endereço M3U e, se disponível, o XMLTV. Selecione uma fonte ativa para carregar os canais. A programação usa o `tvg-id` da lista e o identificador do canal no XMLTV da mesma fonte. A ação **Assistir** encaminha a URL ao player configurado.
 
-Esta base ainda nao e um guia funcional exposto ao usuario. Nao anunciar EPG Desktop concluido antes destas integracoes.
+**Atualizar** recarrega a fonte selecionada. O guia é mantido em memória enquanto a janela está aberta. Se o XMLTV falhar, a lista M3U continua disponível.
+
+Compilação Desktop e 10 testes aprovados em 2026-11-05. Os testes HTTP usam servidor local e cobrem associação por fonte/canal e preservação da lista quando o guia falha.
+
+## Integração ainda necessária
+
+- Grade EPG com horários, cache do guia, favoritos, recentes e lembretes.
+- Validação de reprodução e retorno ao catálogo com uma fonte real.

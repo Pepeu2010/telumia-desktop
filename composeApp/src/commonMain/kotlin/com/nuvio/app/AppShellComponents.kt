@@ -72,6 +72,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.ui.DisintegrationRequest
 import com.nuvio.app.core.ui.LocalNuvioNavBarScrollState
 import com.nuvio.app.features.livetv.LiveTvChannelItem
+import com.nuvio.app.features.livetv.LiveTvChannel
 import com.nuvio.app.core.ui.LocalUiMotion
 import com.nuvio.app.core.ui.NuvioNavBarScrollState
 import com.nuvio.app.core.ui.NuvioTokens
@@ -178,6 +179,7 @@ internal data class AppTabActions(
     val onCompanyClick: ((Int, String) -> Unit)? = null,
     val onNetworkClick: ((Int, String) -> Unit)? = null,
     val onLiveTvChannelClick: ((LiveTvChannelItem) -> Unit)? = null,
+    val onLiveTvPlaylistChannelClick: ((LiveTvChannel) -> Unit)? = null,
     val onPosterLongClick: ((MetaPreview) -> Unit)? = null,
     val onLibraryPosterClick: ((LibraryItem) -> Unit)? = null,
     val onLibraryPosterLongClick: ((LibraryItem, LibrarySection) -> Unit)? = null,
@@ -300,6 +302,7 @@ internal fun AppTabHost(
                     topChromePadding = state.topChromePadding,
                     isSelectedTab = selectedTab == AppScreenTab.Tv,
                     onChannelClick = actions.onLiveTvChannelClick,
+                    onPlaylistChannelClick = actions.onLiveTvPlaylistChannelClick,
                     onManageAddonsClick = actions.onAddonsSettingsClick,
                 )
             }

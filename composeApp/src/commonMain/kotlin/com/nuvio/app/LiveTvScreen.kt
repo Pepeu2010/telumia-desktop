@@ -72,6 +72,8 @@ import com.nuvio.app.features.catalog.fetchCatalogPage
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.livetv.LiveTvCatalogResponse
 import com.nuvio.app.features.livetv.LiveTvChannelItem
+import com.nuvio.app.features.livetv.LiveTvChannel
+import com.nuvio.app.features.livetv.PlatformLiveTvGuide
 import com.nuvio.app.features.livetv.installedLiveTvCatalogs
 import com.nuvio.app.features.livetv.projectLiveTvChannels
 import com.nuvio.app.features.livetv.loadLiveTvCatalogPages
@@ -115,6 +117,7 @@ internal fun LiveTvScreen(
     isSelectedTab: Boolean,
     onChannelClick: ((LiveTvChannelItem) -> Unit)?,
     onManageAddonsClick: () -> Unit,
+    onPlaylistChannelClick: ((LiveTvChannel) -> Unit)? = null,
 ) {
     val addonState by AddonRepository.uiState.collectAsStateWithLifecycle()
     var channels by remember { mutableStateOf(emptyList<LiveTvChannelItem>()) }
@@ -200,6 +203,9 @@ internal fun LiveTvScreen(
                     sourceCount = sourceCount,
                     onRefresh = { refreshVersion++ },
                 )
+                if (isSelectedTab && onPlaylistChannelClick != null) {
+                    PlatformLiveTvGuide(onPlaylistChannelClick)
+                }
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                     if (maxWidth < 720.dp) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
