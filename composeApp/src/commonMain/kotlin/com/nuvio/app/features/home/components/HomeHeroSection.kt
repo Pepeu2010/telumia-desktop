@@ -56,7 +56,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -66,6 +68,7 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -355,32 +358,10 @@ private fun HeroBackgroundLayers(
     includePagerNeighbors: Boolean,
     desktopFrame: Boolean = false,
 ) {
-    val backgroundColor = MaterialTheme.colorScheme.background
-    Box(
+    CinematicHeroFallback(
         modifier = Modifier
             .fillMaxWidth()
-            .height(layout.heroHeight)
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(
-                        Color(0xFF263944),
-                        Color(0xFF192C33),
-                        Color(0xFF10191E),
-                        backgroundColor,
-                    ),
-                ),
-            ),
-    )
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(layout.heroHeight)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(Color(0xFF45606A).copy(alpha = 0.32f), Color.Transparent),
-                    radius = maxOf(heroWidthPx, heroHeightPx) * 0.78f,
-                ),
-            ),
+            .height(layout.heroHeight),
     )
 
     val layerPages = rememberHeroLayerPages(
@@ -440,6 +421,58 @@ private fun HeroBackgroundLayers(
             desktopImageScaling = NuvioDesktopImageScaling.Disabled,
         )
     }
+}
+
+/**
+ * A zero-network first frame for the hero. It keeps the composition intentional while artwork is
+ * loading or unavailable, without blur, bitmap generation, or a continuously running animation.
+ */
+@Composable
+private fun CinematicHeroFallback(modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val background = colors.background
+    val primary = colors.primary
+    val secondary = colors.secondary
+    Box(
+        modifier = modifier
+            .background(
+                Brush.horizontalGradient(
+                    colorStops = arrayOf(
+                        0f to background,
+                        0.38f to colors.surface,
+                        0.72f to colors.surfaceVariant.copy(alpha = 0.92f),
+                        1f to background,
+                    ),
+                ),
+            )
+            .drawWithCache {
+                val ambient = Brush.radialGradient(
+                    colors = listOf(secondary.copy(alpha = 0.24f), Color.Transparent),
+                    center = Offset(size.width * 0.72f, size.height * 0.26f),
+                    radius = maxOf(size.width, size.height) * 0.62f,
+                )
+                val warmEdge = Brush.radialGradient(
+                    colors = listOf(primary.copy(alpha = 0.16f), Color.Transparent),
+                    center = Offset(size.width * 0.42f, size.height * 0.88f),
+                    radius = maxOf(size.width, size.height) * 0.48f,
+                )
+                val rayColor = colors.onSurface.copy(alpha = 0.035f)
+                onDrawBehind {
+                    drawRect(ambient)
+                    drawRect(warmEdge)
+                    val rayStart = size.width * 0.47f
+                    repeat(4) { index ->
+                        val x = rayStart + index * size.width * 0.075f
+                        drawLine(
+                            color = rayColor,
+                            start = Offset(x, 0f),
+                            end = Offset(x + size.width * 0.20f, size.height),
+                            strokeWidth = size.width * 0.018f,
+                        )
+                    }
+                }
+            },
+    )
 }
 
 @Composable
@@ -1193,6 +1226,7 @@ internal fun DesktopHeroContentBlock(
         if (onItemClick != null) {
             Button(onClick = { onItemClick(item) }, modifier = Modifier
                 .align(Alignment.Start)
+                .testTag("home-hero-details-action")
                 .width(188.dp)
                 .height(if (compact) 48.dp else 52.dp),
                 shape = RoundedCornerShape(26.dp), colors = ButtonDefaults.buttonColors(

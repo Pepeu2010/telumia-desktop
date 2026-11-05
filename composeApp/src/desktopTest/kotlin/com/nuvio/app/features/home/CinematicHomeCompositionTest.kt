@@ -70,7 +70,7 @@ class CinematicHomeCompositionTest {
             val output = File("build/reports/telumia-cinematic/home-full-hd.png")
             output.parentFile.mkdirs()
             ImageIO.write(onNodeWithTag("cinematic-home").captureToImage().toAwtImage(), "png", output)
-            onNodeWithText("View Details").assertIsDisplayed().performClick()
+            onNodeWithTag("home-hero-details-action").assertIsDisplayed().performClick()
             runOnIdle { assertEquals(featured, selectedMovie) }
             onNodeWithContentDescription("TV").assertIsDisplayed().performClick()
             runOnIdle { assertEquals("TV", destination.value) }
