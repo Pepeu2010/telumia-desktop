@@ -252,7 +252,7 @@ fun DesktopDetailHero(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .widthIn(max = 760.dp)
+                .widthIn(max = 820.dp)
                 .padding(
                     start = pageHorizontalPadding,
                     end = space.s32,
@@ -333,7 +333,7 @@ fun DesktopDetailHero(
                     onSaveLongClick = onSaveLongClick,
                     onWatched = onWatchedClick,
                     onTrailer = onTrailerClick,
-                    modifier = Modifier.widthIn(max = 680.dp),
+                    modifier = Modifier.widthIn(max = 820.dp),
                 )
             } else DetailActionButtons(
                 modifier = Modifier.widthIn(max = 520.dp),

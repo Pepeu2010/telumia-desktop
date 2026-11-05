@@ -10,9 +10,11 @@ import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.NavigationMotion
 import com.nuvio.app.core.ui.NuvioTheme
 import com.nuvio.app.features.details.components.DesktopDetailHero
+import com.nuvio.app.features.details.components.DesktopDetailBackdrop
 import org.jetbrains.compose.resources.stringResource
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.hero_add_to_library
+import nuvio.composeapp.generated.resources.hero_mark_watched
 import java.io.File
 import javax.imageio.ImageIO
 import kotlin.test.Test
@@ -26,13 +28,27 @@ class CinematicMovieHeroViewportTest {
 
     private fun verifyViewport(width:Int, height:Int) = runDesktopComposeUiTest(width=width, height=height) {
         var saveLabel = ""
+        var watchedLabel = ""
         val meta = MetaDetails(id="fixture:movie", type="movie", name="Uma jornada pelo Brasil",
             releaseInfo="2026", runtime="124 min", ageRating="12", genres=listOf("Drama", "Aventura"),
             description="Uma viagem entre cidades, paisagens e histórias que mudam a vida de uma família. ".repeat(12))
         setContent {
             NuvioTheme(navigationMotion = NavigationMotion.OFF) {
                 saveLabel = stringResource(Res.string.hero_add_to_library)
+                watchedLabel = stringResource(Res.string.hero_mark_watched)
                 Box(Modifier.fillMaxSize().testTag("cinematic-film-hero")) {
+                    DesktopDetailBackdrop(
+                        meta = meta,
+                        viewportHeight = height.dp,
+                        heroTrailerSourceUrl = null,
+                        heroTrailerSourceAudioUrl = null,
+                        heroTrailerReady = false,
+                        heroTrailerPlayWhenReady = false,
+                        heroTrailerMuted = true,
+                        onHeroTrailerReady = {},
+                        onHeroTrailerEnded = {},
+                        onHeroTrailerError = {},
+                    )
                     DesktopDetailHero(meta=meta, viewportHeight=height.dp, showOverallRatings=false,
                         isMdbListActive=false, playButtonLabel="Assistir", isPrimaryPlayEnabled=true,
                         isSaved=false, isWatched=false, onHeightChanged={}, heroTrailerSourceUrl=null,
@@ -45,6 +61,14 @@ class CinematicMovieHeroViewportTest {
         onNodeWithText("Assistir").assertIsDisplayed()
         onNodeWithText(saveLabel).assertIsDisplayed()
         onNodeWithText("Trailer").assertIsDisplayed()
+        onNodeWithText(watchedLabel).assertIsDisplayed()
+        if (width >= 1920) {
+            val actions = listOf("Assistir", saveLabel, "Trailer", watchedLabel)
+                .map { label -> onNodeWithText(label).fetchSemanticsNode().boundsInRoot }
+            val top = actions.first().top
+            kotlin.test.assertTrue(actions.all { kotlin.math.abs(it.top - top) < 2f },
+                "Full HD actions should share one visual row: $actions")
+        }
         val directory=File("build/reports/cinematic-details").apply { mkdirs() }
         ImageIO.write(onNodeWithTag("cinematic-film-hero").captureToImage().toAwtImage(),
             "png", File(directory,"movie-hero-$width.png"))
