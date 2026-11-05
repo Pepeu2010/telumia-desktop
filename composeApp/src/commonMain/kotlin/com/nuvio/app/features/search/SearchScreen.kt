@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
@@ -19,9 +20,12 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Business
+import androidx.compose.material.icons.rounded.LiveTv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -394,11 +398,7 @@ fun SearchScreen(
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 items(companies, key = { it.id }) { company ->
                                     val name = company.name.orEmpty()
-                                    Box(Modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
-                                        .clickable { onCompanyClick(company.id, name) }
-                                        .padding(horizontal = 18.dp, vertical = 14.dp)) {
-                                        Text(name, maxLines = 1, style = MaterialTheme.typography.labelLarge)
-                                    }
+                                    SearchEntityChip(name, Icons.Rounded.Business) { onCompanyClick(company.id, name) }
                                 }
                             }
                         }
@@ -414,10 +414,8 @@ fun SearchScreen(
                             Spacer(Modifier.height(12.dp))
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 items(networks, key = { it.id }) { network ->
-                                    Box(Modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
-                                        .clickable { onNetworkClick(network.id, network.name) }
-                                        .padding(horizontal = 18.dp, vertical = 14.dp)) {
-                                        Text(network.name, maxLines = 1, style = MaterialTheme.typography.labelLarge)
+                                    SearchEntityChip(network.name, Icons.Rounded.LiveTv) {
+                                        onNetworkClick(network.id, network.name)
                                     }
                                 }
                             }
@@ -493,6 +491,25 @@ fun SearchScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SearchEntityChip(name: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+    Surface(onClick = onClick, shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = .14f), RoundedCornerShape(10.dp))
+                .padding(7.dp)) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.width(18.dp).height(18.dp))
+            }
+            Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
         }
     }
 }
