@@ -12,14 +12,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -74,6 +80,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_retry
+import nuvio.composeapp.generated.resources.details_browse_kind_company
 import nuvio.composeapp.generated.resources.compose_nav_search
 import nuvio.composeapp.generated.resources.compose_search_clear
 import nuvio.composeapp.generated.resources.compose_search_discover_title
@@ -97,17 +104,27 @@ fun SearchScreen(
     listState: LazyListState = rememberLazyListState(),
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onPosterLongClick: ((MetaPreview) -> Unit)? = null,
+    onCompanyClick: ((SearchCompanyResult) -> Unit)? = null,
     searchFocusRequestCount: Int = 0,
     scrollToTopRequests: Flow<Unit> = emptyFlow(),
 ) {
     val focusRequester = remember { FocusRequester() }
-    var isSearchFocused by remember { mutableStateOf(false) }
+    val companyFocusRequesters = remember { mutableMapOf<Int, FocusRequester>() }
+    var restoreCompanyFocusId by remember { mutableStateOf<Int?>(null) }
+    var focusedCompanyId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var hasOpenedRecentSearches by remember { mutableStateOf(false) }
 
     ScreenActivityEffect(listState) { screenActive ->
         if (!screenActive) {
-            isSearchFocused = false
+            hasOpenedRecentSearches = false
             focusRequester.freeFocus()
             listState.stopScroll()
+        } else {
+            (restoreCompanyFocusId ?: focusedCompanyId)?.let { tmdbId ->
+                repeat(2) { withFrameNanos { } }
+                companyFocusRequesters[tmdbId]?.let { requester -> runCatching { requester.requestFocus() } }
+                restoreCompanyFocusId = null
+            }
         }
     }
 
@@ -134,6 +151,11 @@ fun SearchScreen(
     val watchedUiState by WatchedRepository.uiState.collectAsStateWithLifecycle()
     val fullyWatchedSeriesKeys by WatchedRepository.fullyWatchedSeriesKeys.collectAsStateWithLifecycle()
     val networkStatusUiState by NetworkStatusRepository.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(uiState.companyResults) {
+        val visibleIds = uiState.companyResults.mapTo(mutableSetOf(), SearchCompanyResult::tmdbId)
+        companyFocusRequesters.keys.retainAll(visibleIds)
+        if (focusedCompanyId?.let { it !in visibleIds } == true) focusedCompanyId = null
+    }
     var query by rememberSaveable { mutableStateOf("") }
     var lastRequestedQuery by rememberSaveable { mutableStateOf<String?>(null) }
     var observedOfflineState by remember { mutableStateOf(false) }
@@ -191,12 +213,23 @@ fun SearchScreen(
             }
     }
 
-    ScreenActivityEffect(query, lastRequestedQuery, uiState.isLoading, uiState.sections) { screenActive ->
+    ScreenActivityEffect(
+        query,
+        lastRequestedQuery,
+        uiState.isLoading,
+        uiState.sections,
+        uiState.isCompanySearchLoading,
+        uiState.companyResults,
+    ) { screenActive ->
         if (!screenActive) return@ScreenActivityEffect
         val normalizedQuery = query.trim()
         if (normalizedQuery.isBlank()) return@ScreenActivityEffect
         if (lastRequestedQuery != normalizedQuery) return@ScreenActivityEffect
-        if (uiState.isLoading || uiState.sections.isEmpty()) return@ScreenActivityEffect
+        if (
+            uiState.isLoading ||
+            uiState.isCompanySearchLoading ||
+            (uiState.sections.isEmpty() && uiState.companyResults.isEmpty())
+        ) return@ScreenActivityEffect
         SearchHistoryRepository.recordSearch(normalizedQuery)
     }
 
@@ -284,15 +317,15 @@ fun SearchScreen(
                         NuvioInputField(
                             value = query,
                             onValueChange = {
-                                focusRequester.captureFocus()
                                 query = it
                             },
                             placeholder = stringResource(Res.string.compose_search_placeholder),
                             modifier = Modifier
                                 .focusRequester(focusRequester)
                                 .onFocusChanged {
-                                    isSearchFocused = it.isFocused
-                                    if (query.isNotBlank()) focusRequester.captureFocus()
+                                    if (it.isFocused) {
+                                        hasOpenedRecentSearches = true
+                                    }
                                 },
                             trailingContent = if (query.isNotBlank()) {
                                 {
@@ -315,8 +348,7 @@ fun SearchScreen(
         }
 
         if (query.isBlank()) {
-            if (isSearchFocused && recentSearches.isNotEmpty()) {
-                focusRequester.captureFocus()
+            if (shouldShowSearchRecents(query, hasOpenedRecentSearches, recentSearches.size)) {
                 item(key = "recent_searches") {
                     SearchRecentSection(
                         recentSearches = recentSearches,
@@ -352,6 +384,39 @@ fun SearchScreen(
             } else {
                 val normalizedQuery = query.trim()
                 val isWaitingForSearch = normalizedQuery.isNotBlank() && lastRequestedQuery != normalizedQuery
+                if (
+                    uiState.companyResults.isNotEmpty() ||
+                    uiState.isCompanySearchLoading ||
+                    (uiState.companySearchError != null && uiState.sections.isNotEmpty())
+                ) {
+                    item(key = "tmdb_company_search") {
+                        CompanySearchResultsSection(
+                            results = uiState.companyResults,
+                            isLoading = uiState.isCompanySearchLoading,
+                            error = uiState.companySearchError,
+                            focusRequesters = companyFocusRequesters,
+                            onFocused = { focusedCompanyId = it },
+                            onCompanyClick = { result ->
+                                focusedCompanyId = result.tmdbId
+                                restoreCompanyFocusId = result.tmdbId
+                                onCompanyClick?.invoke(result)
+                            },
+                            onRetry = {
+                                NetworkStatusRepository.requestRefresh(force = true)
+                                if (addonsUiState.addons.firstEnabledManifestError() != null) {
+                                    AddonRepository.refreshAll()
+                                } else {
+                                    SearchRepository.search(
+                                        query = normalizedQuery,
+                                        addons = addonsUiState.addons,
+                                        forceRefresh = true,
+                                    )
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = homeSectionPadding),
+                        )
+                    }
+                }
                 when {
                     isWaitingForSearch -> {
                         items(2) {
@@ -361,7 +426,7 @@ fun SearchScreen(
                         }
                     }
 
-                    (uiState.isLoading || addonManifestsLoading) && uiState.sections.isEmpty() -> {
+                    (uiState.isLoading || uiState.isCompanySearchLoading || addonManifestsLoading) && uiState.sections.isEmpty() -> {
                         items(2) {
                             HomeSkeletonRow(
                                 horizontalPadding = homeSectionPadding,
@@ -369,11 +434,15 @@ fun SearchScreen(
                         }
                     }
 
-                    uiState.sections.isEmpty() -> {
+                    uiState.sections.isEmpty() && uiState.companyResults.isEmpty() && !uiState.isCompanySearchLoading -> {
                         item {
                             SearchEmptyStateCard(
-                                reason = uiState.emptyStateReason,
-                                errorMessage = uiState.errorMessage,
+                                reason = if (uiState.companySearchError != null) {
+                                    SearchEmptyStateReason.RequestFailed
+                                } else {
+                                    uiState.emptyStateReason
+                                },
+                                errorMessage = uiState.companySearchError ?: uiState.errorMessage,
                                 networkCondition = networkStatusUiState.condition,
                                 onRetry = {
                                     if (normalizedQuery.isNotBlank()) {
@@ -417,6 +486,80 @@ fun SearchScreen(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompanySearchResultsSection(
+    results: List<SearchCompanyResult>,
+    isLoading: Boolean,
+    error: String?,
+    focusRequesters: MutableMap<Int, FocusRequester>,
+    onFocused: (Int) -> Unit,
+    onCompanyClick: (SearchCompanyResult) -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.details_browse_kind_company),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (isLoading) CircularProgressIndicator(modifier = Modifier.size(18.dp))
+        }
+
+        if (results.isNotEmpty()) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                itemsIndexed(results, key = { _, result -> result.tmdbId }) { _, result ->
+                    val requester = focusRequesters.getOrPut(result.tmdbId) { FocusRequester() }
+                    OutlinedButton(
+                        onClick = { onCompanyClick(result) },
+                        modifier = Modifier
+                            .height(76.dp)
+                            .focusRequester(requester)
+                            .onFocusChanged { if (it.isFocused) onFocused(result.tmdbId) },
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(text = result.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            result.originCountry?.let { country ->
+                                Text(
+                                    text = country,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (error != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = error,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                OutlinedButton(onClick = onRetry) {
+                    Text(text = stringResource(Res.string.action_retry))
                 }
             }
         }

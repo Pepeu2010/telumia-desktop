@@ -49,10 +49,7 @@ import com.nuvio.app.features.search.SearchHistoryStorage
 import com.nuvio.app.features.settings.SentrySettingsStorage
 import com.nuvio.app.features.settings.AppIconPlatform
 import com.nuvio.app.features.settings.ThemeSettingsStorage
-import com.nuvio.app.features.trakt.TraktAuthStorage
-import com.nuvio.app.features.trakt.TraktCommentsStorage
-import com.nuvio.app.features.trakt.TraktLibraryStorage
-import com.nuvio.app.features.trakt.TraktSettingsStorage
+import com.nuvio.app.features.tracking.TrackingSettingsStorage
 import com.nuvio.app.features.mdblist.PlatformMdbListAuthPersistence
 import com.nuvio.app.features.mdblist.PlatformMdbListSyncStorage
 import com.nuvio.app.features.simkl.SimklAuthStorage
@@ -117,10 +114,10 @@ open class MainActivity : AppCompatActivity() {
         DebridSettingsStorage.initialize(applicationContext)
         TmdbSettingsStorage.initialize(applicationContext)
         MdbListSettingsStorage.initialize(applicationContext)
-        TraktAuthStorage.initialize(applicationContext)
-        TraktCommentsStorage.initialize(applicationContext)
-        TraktLibraryStorage.initialize(applicationContext)
-        TraktSettingsStorage.initialize(applicationContext)
+        TrackingSettingsStorage.initialize(applicationContext)
+        // Credentials and caches left behind by the retired Trakt integration.
+        listOf("nuvio_trakt_auth", "nuvio_trakt_library", "nuvio_trakt_comments")
+            .forEach { name -> applicationContext.deleteSharedPreferences(name) }
         PlatformMdbListAuthPersistence.initialize(applicationContext)
         PlatformMdbListSyncStorage.initialize(applicationContext)
         SimklAuthStorage.initialize(applicationContext)

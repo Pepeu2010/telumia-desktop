@@ -22,7 +22,7 @@ import nuvio.composeapp.generated.resources.settings_simkl_sync_info_docs
 import nuvio.composeapp.generated.resources.settings_simkl_sync_info_library_statuses
 import nuvio.composeapp.generated.resources.settings_simkl_sync_info_manual
 import nuvio.composeapp.generated.resources.settings_simkl_sync_info_title
-import nuvio.composeapp.generated.resources.settings_trakt_failed_open_browser
+import nuvio.composeapp.generated.resources.settings_tracking_failed_open_browser
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -49,7 +49,7 @@ internal fun SimklSyncInfoDialog(onDismiss: () -> Unit) {
         }
         if (browserError) {
             Text(
-                text = stringResource(Res.string.settings_trakt_failed_open_browser),
+                text = stringResource(Res.string.settings_tracking_failed_open_browser),
                 style = MaterialTheme.typography.bodySmall,
                 color = tokens.colors.danger,
             )

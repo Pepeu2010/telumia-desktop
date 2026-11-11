@@ -5,14 +5,12 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class WatchProgressSource {
-    TRAKT,
     SIMKL,
     NUVIO_SYNC,
     MDBLIST;
 
     val providerId: TrackingProviderId?
         get() = when (this) {
-            TRAKT -> TrackingProviderId.TRAKT
             SIMKL -> TrackingProviderId.SIMKL
             MDBLIST -> TrackingProviderId.MDBLIST
             NUVIO_SYNC -> null
@@ -24,8 +22,8 @@ enum class WatchProgressSource {
     }
 }
 
-val DEFAULT_WATCH_PROGRESS_SOURCE: WatchProgressSource = WatchProgressSource.TRAKT
-val DEFAULT_LIBRARY_SOURCE_MODE: LibrarySourceMode = LibrarySourceMode.TRAKT
+val DEFAULT_WATCH_PROGRESS_SOURCE: WatchProgressSource = WatchProgressSource.NUVIO_SYNC
+val DEFAULT_LIBRARY_SOURCE_MODE: LibrarySourceMode = LibrarySourceMode.LOCAL
 
 fun librarySourceModeFromStorage(value: String?): LibrarySourceMode =
     LibrarySourceMode.entries.firstOrNull { it.name == value } ?: DEFAULT_LIBRARY_SOURCE_MODE
@@ -33,7 +31,6 @@ fun librarySourceModeFromStorage(value: String?): LibrarySourceMode =
 val LibrarySourceMode.providerId: TrackingProviderId?
     get() = when (this) {
         LibrarySourceMode.LOCAL -> null
-        LibrarySourceMode.TRAKT -> TrackingProviderId.TRAKT
         LibrarySourceMode.SIMKL -> TrackingProviderId.SIMKL
         LibrarySourceMode.MDBLIST -> TrackingProviderId.MDBLIST
     }

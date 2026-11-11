@@ -47,7 +47,7 @@ class WatchProgressMetadataProjectionTest {
         )
 
         val projected = overlay.project(
-            source = WatchProgressSource.TRAKT,
+            source = WatchProgressSource.MDBLIST,
             entries = listOf(raw),
         ).single()
 

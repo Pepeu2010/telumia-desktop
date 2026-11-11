@@ -59,6 +59,7 @@ struct mpv_node_list { int num; mpv_node *values; char **keys; };
 typedef enum mpv_event_id {
     MPV_EVENT_NONE = 0,
     MPV_EVENT_SHUTDOWN = 1,
+    MPV_EVENT_FILE_LOADED = 8,
 } mpv_event_id;
 
 typedef struct mpv_event {
@@ -77,6 +78,7 @@ namespace {
 HMODULE gModule = nullptr;
 constexpr UINT WM_NUVIO_TASK = WM_APP + 0x4E50;
 constexpr UINT_PTR NUVIO_TIMER_ID = 0x4E50;
+constexpr UINT_PTR NUVIO_CURSOR_TIMER_ID = 0x4E51;
 
 // Caps on waiting for the player's own UI thread during teardown. Exceeding these means that
 // thread is wedged; shutdown gives up rather than blocking the caller forever.
@@ -511,6 +513,7 @@ struct MpvApi {
     using mpv_set_property_string_fn = int (*)(mpv_handle *, const char *, const char *);
     using mpv_get_property_fn = int (*)(mpv_handle *, const char *, mpv_format, void *);
     using mpv_command_fn = int (*)(mpv_handle *, const char **);
+    using mpv_command_async_fn = int (*)(mpv_handle *, uint64_t, const char **);
     using mpv_command_ret_fn = int (*)(mpv_handle *, const char **, mpv_node *);
     using mpv_free_node_fn = void (*)(mpv_node *);
     using mpv_error_string_fn = const char *(*)(int);
@@ -531,6 +534,7 @@ struct MpvApi {
     mpv_set_property_string_fn setPropertyString = nullptr;
     mpv_get_property_fn getProperty = nullptr;
     mpv_command_fn command = nullptr;
+    mpv_command_async_fn commandAsync = nullptr;
     mpv_command_ret_fn commandRet = nullptr;
     mpv_free_node_fn freeNode = nullptr;
     mpv_error_string_fn errorString = nullptr;
@@ -592,6 +596,7 @@ struct MpvApi {
         setPropertyString = loadSymbol<mpv_set_property_string_fn>("mpv_set_property_string");
         getProperty = loadSymbol<mpv_get_property_fn>("mpv_get_property");
         command = loadSymbol<mpv_command_fn>("mpv_command");
+        commandAsync = loadSymbol<mpv_command_async_fn>("mpv_command_async");
         commandRet = reinterpret_cast<mpv_command_ret_fn>(GetProcAddress(library, "mpv_command_ret"));
         freeNode = reinterpret_cast<mpv_free_node_fn>(GetProcAddress(library, "mpv_free_node_contents"));
         errorString = loadSymbol<mpv_error_string_fn>("mpv_error_string");
@@ -999,6 +1004,25 @@ public:
         syncControls();
     }
 
+    void onCursorTimer() {
+        if (shuttingDown.load() || !containerHwnd || !IsWindow(containerHwnd)) return;
+        POINT cursor{};
+        if (!GetCursorPos(&cursor)) return;
+
+        HWND target = WindowFromPoint(cursor);
+        const bool overPlayer = target == containerHwnd || (target && IsChild(containerHwnd, target));
+        const bool moved = !hasCursorPosition || cursor.x != lastCursorPosition.x || cursor.y != lastCursorPosition.y;
+        const bool mouseButtonDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0 ||
+            (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0 ||
+            (GetAsyncKeyState(VK_MBUTTON) & 0x8000) != 0;
+        if (overPlayer && (moved || (mouseButtonDown && !lastMouseButtonDown))) {
+            notifyCursorActivity();
+        }
+        lastCursorPosition = cursor;
+        hasCursorPosition = true;
+        lastMouseButtonDown = mouseButtonDown;
+    }
+
     void updateControlsJson(const std::string &controlsJson) {
         if (controlsJson.empty()) return;
         {
@@ -1100,6 +1124,7 @@ public:
     }
 
     void setPaused(bool paused) {
+        requestedPaused.store(paused);
         std::lock_guard<std::mutex> lock(mpvMutex);
         if (!mpv) return;
         int flag = paused ? 1 : 0;
@@ -1240,6 +1265,14 @@ public:
         command({"sub-add", url, "select"});
     }
 
+    bool addAudioUrlAsync(const std::string &url) {
+        if (url.empty()) return false;
+        std::lock_guard<std::mutex> lock(mpvMutex);
+        if (!mpv || !mpvApi().commandAsync) return false;
+        const char *args[] = {"audio-add", url.c_str(), "select", nullptr};
+        return mpvApi().commandAsync(mpv, 0, args) >= 0;
+    }
+
     void removeExternalSubtitles() {
         removeExternalSubtitleTracks();
         setStringProperty("sid", "no");
@@ -1360,6 +1393,13 @@ public:
         appliedSubtitleStripSdh = stripSdh;
     }
 
+    void notifyCursorActivity() {
+        const ULONGLONG now = GetTickCount64();
+        if (now - lastCursorActivityAtMs < 100) return;
+        lastCursorActivityAtMs = now;
+        sendPlayerEvent("cursorActivity", 0.0);
+    }
+
 private:
     HWND hostHwnd = nullptr;
     HWND containerHwnd = nullptr;
@@ -1383,6 +1423,7 @@ private:
     std::atomic_bool stopping = false;
     std::atomic_bool shuttingDown = false;
     std::atomic_bool hwdecLogged = false;  // one-shot log for hwdec-current
+    std::atomic_bool requestedPaused = true;
 
     bool hasAppliedSubtitleStyle = false;
     bool appliedSubtitleUseLibass = false;
@@ -1404,6 +1445,10 @@ private:
     std::mutex controlsMutex;
     std::string pendingControlsJson;
     double initialStartSeconds = 0.0;
+    ULONGLONG lastCursorActivityAtMs = 0;
+    POINT lastCursorPosition{};
+    bool hasCursorPosition = false;
+    bool lastMouseButtonDown = false;
 
     friend LRESULT CALLBACK messageWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
     friend LRESULT CALLBACK containerWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -1528,11 +1573,15 @@ private:
         if (!SetTimer(messageHwnd, NUVIO_TIMER_ID, 500, nullptr)) {
             throw std::runtime_error("Unable to start native player timer.");
         }
+        if (!SetTimer(messageHwnd, NUVIO_CURSOR_TIMER_ID, 50, nullptr)) {
+            throw std::runtime_error("Unable to start native player cursor timer.");
+        }
     }
 
     void cleanupUiResources() {
         if (messageHwnd) {
             KillTimer(messageHwnd, NUVIO_TIMER_ID);
+            KillTimer(messageHwnd, NUVIO_CURSOR_TIMER_ID);
         }
         if (webView && messageToken.value != 0) {
             webView->remove_WebMessageReceived(messageToken);
@@ -1721,6 +1770,7 @@ private:
         bool nvidiaRtxSuperResolutionEnabled
     ) {
         MpvApi &api = mpvApi();
+        requestedPaused.store(!playWhenReady);
         {
             std::lock_guard<std::mutex> lock(mpvMutex);
             mpv = api.create();
@@ -1730,6 +1780,10 @@ private:
             initialStartSeconds = initialPositionMs > 0 ? (double)initialPositionMs / 1000.0 : 0.0;
 
             setMpvOptionStringLocked("config", "no");
+            // loadfile starts playback immediately by default. Keep it paused from
+            // initialization so short hover trailers cannot reach EOF before the
+            // Kotlin surface has finished attaching and applying playWhenReady.
+            setMpvOptionStringLocked("pause", "yes");
             setMpvOptionStringLocked("osc", "no");
             setMpvOptionStringLocked("input-default-bindings", "yes");
             setMpvOptionStringLocked("input-vo-keyboard", "no");
@@ -1785,13 +1839,22 @@ private:
                 throw std::runtime_error(std::string("mpv_initialize failed: ") + api.errorText(initResult));
             }
 
-            std::vector<const char *> loadCommand = {"loadfile", sourceUrl.c_str()};
             std::string loadOptions;
             if (initialPositionMs > 0) {
                 char startBuffer[64];
                 std::snprintf(startBuffer, sizeof(startBuffer), "start=%.3f", (double)initialPositionMs / 1000.0);
                 loadOptions = startBuffer;
+            }
+            if (!playWhenReady) {
+                if (!loadOptions.empty()) loadOptions.push_back(',');
+                loadOptions += "pause=yes";
+            }
+
+            std::vector<const char *> loadCommand = {"loadfile", sourceUrl.c_str()};
+            if (!loadOptions.empty()) {
                 loadCommand.push_back("replace");
+                // mpv added the insertion-index argument in 0.38.0; -1 keeps
+                // the normal replace behavior while allowing per-file options.
                 loadCommand.push_back("-1");
                 loadCommand.push_back(loadOptions.c_str());
             }
@@ -2012,6 +2075,12 @@ private:
             if (!event) continue;
             if (event->event_id == MPV_EVENT_SHUTDOWN) {
                 return;
+            }
+            if (event->event_id == MPV_EVENT_FILE_LOADED) {
+                // loadfile returns before the new media is loaded. libmpv may
+                // reset pause as loading completes, so re-apply the most
+                // recent requested state at the file-loaded boundary.
+                setPaused(requestedPaused.load());
             }
         }
     }
@@ -2300,6 +2369,7 @@ LRESULT CALLBACK messageWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             return 0;
         case WM_TIMER:
             if (player && wParam == NUVIO_TIMER_ID) player->onTimer();
+            else if (player && wParam == NUVIO_CURSOR_TIMER_ID) player->onCursorTimer();
             return 0;
         case WM_NCDESTROY:
             SetWindowLongPtrW(hwnd, GWLP_USERDATA, 0);
@@ -2317,6 +2387,13 @@ LRESULT CALLBACK containerWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPA
     }
     auto *player = reinterpret_cast<WindowsMpvWebPlayer *>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
     switch (message) {
+        case WM_MOUSEMOVE:
+        case WM_LBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        case WM_MBUTTONDOWN:
+        case WM_XBUTTONDOWN:
+            if (player) player->notifyCursorActivity();
+            return DefWindowProcW(hwnd, message, wParam, lParam);
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
             if (wParam == VK_F11) {
@@ -2893,6 +2970,12 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_nuvio_app_features_player_desktop_NativePlayerBridge_addSubtitleUrl(JNIEnv *env, jobject, jlong handle, jstring url) {
     auto player = playerFromHandle(handle);
     if (player) player->addSubtitleUrl(jstringToUtf8(env, url));
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_nuvio_app_features_player_desktop_NativePlayerBridge_addAudioUrlAsync(JNIEnv *env, jobject, jlong handle, jstring url) {
+    auto player = playerFromHandle(handle);
+    return player && player->addAudioUrlAsync(jstringToUtf8(env, url)) ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT void JNICALL

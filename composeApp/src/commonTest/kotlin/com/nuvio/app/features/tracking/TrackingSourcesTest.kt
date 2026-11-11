@@ -7,10 +7,13 @@ import kotlin.test.assertNull
 
 class TrackingSourcesTest {
     @Test
-    fun `stored legacy source names retain their meaning`() {
-        assertEquals(WatchProgressSource.TRAKT, WatchProgressSource.fromStorage("TRAKT"))
+    fun `stored source names keep their meaning and retired names fall back to local sources`() {
+        assertEquals(WatchProgressSource.SIMKL, WatchProgressSource.fromStorage("SIMKL"))
         assertEquals(WatchProgressSource.NUVIO_SYNC, WatchProgressSource.fromStorage("NUVIO_SYNC"))
-        assertEquals(LibrarySourceMode.TRAKT, librarySourceModeFromStorage("TRAKT"))
+        // Values persisted by the retired Trakt integration must resolve to local data without crashing.
+        assertEquals(WatchProgressSource.NUVIO_SYNC, WatchProgressSource.fromStorage("TRAKT"))
+        assertEquals(LibrarySourceMode.LOCAL, librarySourceModeFromStorage("TRAKT"))
+        assertNull(TrackingProviderId.fromStorage("trakt"))
     }
 
     @Test

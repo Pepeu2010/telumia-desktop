@@ -62,6 +62,7 @@ internal fun BoxScope.PlayerPlaybackOverlays(
     onPlayNextEpisode: () -> Unit,
     onDismissNextEpisode: () -> Unit,
     errorMessage: String?,
+    errorDiagnostics: PlaybackErrorDiagnostics?,
     onDismissError: () -> Unit,
 ) {
     val motion = LocalUiMotion.current
@@ -153,6 +154,7 @@ internal fun BoxScope.PlayerPlaybackOverlays(
     if (errorMessage != null) {
         ErrorModal(
             message = errorMessage,
+            diagnostics = errorDiagnostics,
             onDismiss = onDismissError,
         )
     }

@@ -75,11 +75,11 @@ class LibraryCatalogStateTest {
     fun `live tracking list updates keep section identity and selected sort`() = runBlocking {
         val alpha = item("alpha")
         val zulu = item("zulu")
-        val sectionKey = "trakt:watchlist"
-        val otherSection = LibrarySection("trakt:collection", "Collection", listOf(zulu))
+        val sectionKey = "mdblist:watchlist"
+        val otherSection = LibrarySection("mdblist:collection", "Collection", listOf(zulu))
         val library = MutableStateFlow(
             state(listOf(alpha, zulu, alpha), sectionKey).copy(
-                sourceMode = LibrarySourceMode.TRAKT,
+                sourceMode = LibrarySourceMode.MDBLIST,
             ).let { it.copy(sections = it.sections + otherSection) },
         )
         val emissions = mutableListOf<CatalogUiState>()

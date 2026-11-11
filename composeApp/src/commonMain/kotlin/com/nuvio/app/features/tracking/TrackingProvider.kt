@@ -17,7 +17,6 @@ enum class TrackingProviderId(
     val storageId: String,
     val displayName: String,
 ) {
-    TRAKT("trakt", "Trakt"),
     SIMKL("simkl", "Simkl"),
     MDBLIST("mdblist", "MDBList");
 

@@ -8,7 +8,6 @@ import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_MAL
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_METACRITIC
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_TMDB
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_TOMATOES
-import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_TRAKT
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -50,7 +49,7 @@ private data class MediaRatings(
                 "popcorn", "audience", "tomatoesaudience" -> PROVIDER_AUDIENCE
                 "myanimelist", "mal" -> PROVIDER_MAL
                 PROVIDER_IMDB, PROVIDER_TMDB, PROVIDER_TOMATOES, PROVIDER_METACRITIC,
-                PROVIDER_TRAKT, PROVIDER_LETTERBOXD -> rating.source
+                PROVIDER_LETTERBOXD -> rating.source
                 else -> return@mapNotNull null
             }
             val maximum = when (source) {

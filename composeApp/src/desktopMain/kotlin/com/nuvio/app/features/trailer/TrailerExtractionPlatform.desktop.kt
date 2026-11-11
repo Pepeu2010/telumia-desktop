@@ -130,32 +130,31 @@ internal object TrailerExtractionPlatform {
         } else {
             null
         }
-        val videoUrl = if (useSeparatedStreams) separatedVideoUrl else combinedCandidateUrl ?: separatedVideoUrl
+        val videoUrl = if (useSeparatedStreams) separatedVideoUrl else combinedCandidateUrl
         if (videoUrl == null) {
-            diagnostic("blocked stage=source reason=no_reachable_video")
+            diagnostic("blocked stage=source reason=no_reachable_audio_video_pair")
             return@withContext null
         }
         val audioUrl = separatedAudioUrl.takeIf { useSeparatedStreams }
         val mode = when {
             useSeparatedStreams -> "adaptive_separate"
             combinedCandidateUrl != null && bestCombinedIsManifest -> "hls"
-            combinedCandidateUrl != null -> "combined_fallback"
-            else -> "adaptive_video_only"
+            else -> "combined_fallback"
         }
         val videoSummary = when {
             useSeparatedStreams -> bestVideo.diagnosticSummary()
             combinedCandidateUrl != null && bestCombinedIsManifest -> bestManifest.diagnosticSummary()
-            combinedCandidateUrl != null -> bestProgressive.diagnosticSummary()
-            else -> bestVideo.diagnosticSummary()
+            else -> bestProgressive.diagnosticSummary()
         }
         diagnostic(
             "selected mode=$mode video=[$videoSummary] audio=[${bestAudio.takeIf { useSeparatedStreams }.diagnosticSummary()}]",
         )
-        diagnostic("source videoUrl=$videoUrl")
-        diagnostic("source audioUrl=${audioUrl ?: "none"}")
+        diagnostic("source video ${describeUrl(videoUrl)}")
+        diagnostic("source audio ${audioUrl?.let(::describeUrl) ?: "none"}")
         TrailerPlaybackSource(
             videoUrl = videoUrl,
             audioUrl = audioUrl,
+            fallbackVideoUrl = combinedUrl?.takeIf { useSeparatedStreams && it != videoUrl },
         )
     }
 

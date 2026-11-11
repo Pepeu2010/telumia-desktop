@@ -50,7 +50,7 @@ class TrackingReadsTest {
 
         assertTrue(seriesOnly.supportsContentType("SERIES"))
         assertFalse(seriesOnly.supportsContentType("movie"))
-        assertTrue(tab("trakt:watchlist").supportsContentType("movie"))
+        assertTrue(tab("mdblist:watchlist").supportsContentType("movie"))
     }
 
     @Test

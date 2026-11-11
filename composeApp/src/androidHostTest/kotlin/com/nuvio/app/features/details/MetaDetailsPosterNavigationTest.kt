@@ -9,7 +9,7 @@ import com.nuvio.app.features.mdblist.MdbListSettings
 import com.nuvio.app.features.mdblist.MdbListSettingsRepository
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import com.nuvio.app.features.tracking.TrackingSettingsRepository
-import com.nuvio.app.features.trakt.MoreLikeThisSourcePreference
+import com.nuvio.app.features.tracking.MoreLikeThisSourcePreference
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment

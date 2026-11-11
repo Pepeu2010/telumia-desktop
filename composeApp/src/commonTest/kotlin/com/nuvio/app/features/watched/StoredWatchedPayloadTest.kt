@@ -32,12 +32,12 @@ class StoredWatchedPayloadTest {
             dirtyWatchedKeys = setOf("movie:tt1234567:-1:-1"),
         )
         val payload = StoredWatchedPayload(
-            providerPayloads = mapOf("trakt" to providerPayload),
+            providerPayloads = mapOf("mdblist" to providerPayload),
         )
 
         val restored = json.decodeFromString<StoredWatchedPayload>(json.encodeToString(payload))
 
-        assertEquals(providerPayload, restored.providerPayloads["trakt"])
+        assertEquals(providerPayload, restored.providerPayloads["mdblist"])
     }
 
     @Test
@@ -59,9 +59,9 @@ class StoredWatchedPayloadTest {
                 season = 1,
                 episode = 1,
                 videoId = "video-1",
-                trackingProviderId = "trakt",
+                trackingProviderId = "mdblist",
                 trackingProviderItemId = "123",
-                trackingSourceUrl = "https://trakt.tv/shows/123",
+                trackingSourceUrl = "https://mdblist.com/show/123",
                 markedAtEpochMs = 1_000L,
             ),
             WatchedItem(
@@ -73,9 +73,9 @@ class StoredWatchedPayloadTest {
                 season = 1,
                 episode = 2,
                 videoId = "video-2",
-                trackingProviderId = "trakt",
+                trackingProviderId = "mdblist",
                 trackingProviderItemId = "123",
-                trackingSourceUrl = "https://trakt.tv/shows/123",
+                trackingSourceUrl = "https://mdblist.com/show/123",
                 markedAtEpochMs = 2_000L,
             ),
         )
@@ -90,7 +90,7 @@ class StoredWatchedPayloadTest {
         val keys = setOf(
             watchedItemKey("series", "tmdb:123", 1, 1),
             watchedItemKey("series", "tmdb:123", 1, 2),
-            watchedItemKey("series", "trakt:456", 1, 1),
+            watchedItemKey("series", "mdblist:456", 1, 1),
             watchedItemKey("movie", "tmdb:789"),
         )
 
@@ -126,7 +126,7 @@ class StoredWatchedPayloadTest {
                     item.id,
                     "tmdb:${showIndex + 100}",
                     "tvdb:${showIndex + 200}",
-                    "trakt:${showIndex + 300}",
+                    "mdblist:${showIndex + 300}",
                     "show-$showIndex",
                 )
                 watchedItemTypeAliases(item.type).forEach { type ->

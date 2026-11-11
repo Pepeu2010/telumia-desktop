@@ -42,7 +42,6 @@ import org.jetbrains.compose.resources.stringResource
 
 private const val TmdbUrl = "https://www.themoviedb.org"
 private const val ImdbDatasetsUrl = "https://developer.imdb.com/non-commercial-datasets/"
-private const val TraktUrl = "https://trakt.tv"
 private const val SimklUrl = "https://simkl.com"
 private const val PremiumizeUrl = "https://www.premiumize.me"
 private const val TorboxUrl = "https://torbox.app"
@@ -343,12 +342,6 @@ private fun attributionItems(): List<AttributionItem> = listOf(
         bodyRes = Res.string.settings_licenses_attributions_tmdb_body,
         logo = IntegrationLogo.Tmdb,
         link = TmdbUrl,
-    ),
-    AttributionItem(
-        titleRes = Res.string.settings_licenses_attributions_trakt_title,
-        bodyRes = Res.string.settings_licenses_attributions_trakt_body,
-        logo = IntegrationLogo.Trakt,
-        link = TraktUrl,
     ),
     AttributionItem(
         titleRes = Res.string.settings_licenses_attributions_simkl_title,

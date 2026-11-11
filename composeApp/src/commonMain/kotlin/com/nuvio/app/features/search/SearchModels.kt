@@ -15,6 +15,39 @@ data class SearchUiState(
     val sections: List<HomeCatalogSection> = emptyList(),
     val emptyStateReason: SearchEmptyStateReason? = null,
     val errorMessage: String? = null,
+    val companyResults: List<SearchCompanyResult> = emptyList(),
+    val isCompanySearchLoading: Boolean = false,
+    val companySearchError: String? = null,
+)
+
+data class SearchCompanyResult(
+    val tmdbId: Int,
+    val name: String,
+    val originCountry: String? = null,
+)
+
+internal fun deduplicateCompanySearchResults(results: Iterable<SearchCompanyResult>): List<SearchCompanyResult> =
+    results.mapNotNull { result ->
+        val name = result.name.trim().takeIf(String::isNotEmpty) ?: return@mapNotNull null
+        if (result.tmdbId <= 0) return@mapNotNull null
+        result.copy(name = name, originCountry = result.originCountry?.trim()?.takeIf(String::isNotEmpty))
+    }.distinctBy(SearchCompanyResult::tmdbId)
+
+internal fun SearchUiState.withCompanySearchLoading(clearResults: Boolean): SearchUiState = copy(
+    companyResults = if (clearResults) emptyList() else companyResults,
+    isCompanySearchLoading = true,
+    companySearchError = null,
+)
+
+internal fun SearchUiState.withCompanySearchResults(results: Iterable<SearchCompanyResult>): SearchUiState = copy(
+    companyResults = deduplicateCompanySearchResults(results),
+    isCompanySearchLoading = false,
+    companySearchError = null,
+)
+
+internal fun SearchUiState.withCompanySearchError(message: String): SearchUiState = copy(
+    isCompanySearchLoading = false,
+    companySearchError = message,
 )
 
 enum class DiscoverEmptyStateReason {

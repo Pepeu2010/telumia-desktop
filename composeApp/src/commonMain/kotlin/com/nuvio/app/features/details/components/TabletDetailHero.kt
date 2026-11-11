@@ -8,24 +8,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.VolumeOff
-import androidx.compose.material.icons.rounded.VolumeUp
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -74,7 +65,6 @@ fun TabletDetailBackdrop(
     heroTrailerSourceAudioUrl: String?,
     heroTrailerReady: Boolean,
     heroTrailerPlayWhenReady: () -> Boolean,
-    heroTrailerMuted: Boolean,
     heroGradientColor: Color?,
     onBackdropLoaded: (Painter, ImageBitmap?) -> Unit,
     onHeroTrailerReady: () -> Unit,
@@ -95,7 +85,6 @@ fun TabletDetailBackdrop(
             heroTrailerSourceAudioUrl = heroTrailerSourceAudioUrl,
             heroTrailerReady = heroTrailerReady,
             heroTrailerPlayWhenReady = heroTrailerPlayWhenReady,
-            heroTrailerMuted = heroTrailerMuted,
             onBackdropLoaded = onBackdropLoaded,
             onHeroTrailerReady = onHeroTrailerReady,
             onHeroTrailerFinished = onHeroTrailerFinished,
@@ -129,7 +118,6 @@ private fun BackdropArtwork(
     heroTrailerSourceAudioUrl: String? = null,
     heroTrailerReady: Boolean = false,
     heroTrailerPlayWhenReady: () -> Boolean = { false },
-    heroTrailerMuted: Boolean = true,
     onBackdropLoaded: (Painter, ImageBitmap?) -> Unit = { _, _ -> },
     onHeroTrailerReady: () -> Unit = {},
     onHeroTrailerFinished: () -> Unit = {},
@@ -189,7 +177,7 @@ private fun BackdropArtwork(
                 sourceUrl = heroTrailerSourceUrl,
                 sourceAudioUrl = heroTrailerSourceAudioUrl,
                 playWhenReady = heroTrailerPlayWhenReady(),
-                muted = heroTrailerMuted,
+                muted = false,
                 modifier = artworkModifier.graphicsLayer {
                     alpha = trailerAlpha
                     scaleX = TrailerZoom
@@ -242,20 +230,11 @@ fun TabletDetailHero(
     showOverallRatings: Boolean,
     isMdbListActive: Boolean,
     horizontalPadding: Dp,
-    heroTrailerSourceUrl: String?,
-    heroTrailerReady: Boolean,
-    heroTrailerMuted: Boolean,
-    onHeroTrailerMuteToggle: () -> Unit,
     onHeightChanged: (Int) -> Unit,
     actions: (@Composable () -> Unit)?,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val space = NuvioTokens.Space
-    val trailerAlpha by animateFloatAsState(
-        targetValue = if (heroTrailerReady) 1f else 0f,
-        animationSpec = tween(durationMillis = NuvioTokens.Motion.sheetEnterMillis),
-        label = "tablet_detail_hero_controls_alpha",
-    )
     var logoLoadError by remember(meta.id, meta.logo) { mutableStateOf(false) }
     val logoUrl = meta.logo?.takeIf { it.isNotBlank() }
 
@@ -352,32 +331,6 @@ fun TabletDetailHero(
             if (actions != null) {
                 Spacer(modifier = Modifier.height(space.s28))
                 actions()
-            }
-        }
-
-        if (heroTrailerSourceUrl != null) {
-            Surface(
-                onClick = onHeroTrailerMuteToggle,
-                enabled = heroTrailerReady,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(
-                        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + space.s8,
-                        end = horizontalPadding,
-                    )
-                    .size(40.dp)
-                    .graphicsLayer { alpha = trailerAlpha },
-                shape = CircleShape,
-                color = colorScheme.surfaceVariant.copy(alpha = 0.82f),
-                contentColor = colorScheme.onSurface,
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = if (heroTrailerMuted) Icons.Rounded.VolumeOff else Icons.Rounded.VolumeUp,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
             }
         }
     }

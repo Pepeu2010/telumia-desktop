@@ -7,7 +7,7 @@ import java.nio.ByteBuffer
 import javax.imageio.ImageIO
 
 /** Original generated JPEG frames and chapter text. No downloaded video or external encoder. */
-internal fun originalChapterMatroska(): ByteArray {
+internal fun originalChapterMatroska(withAudio: Boolean = false): ByteArray {
     fun unsigned(value: Long): ByteArray {
         val bytes = ByteBuffer.allocate(8).putLong(value).array().dropWhile { it == 0.toByte() }.toByteArray()
         return if (bytes.isEmpty()) byteArrayOf(0) else bytes
@@ -28,8 +28,13 @@ internal fun originalChapterMatroska(): ByteArray {
         element(0x4489, ByteBuffer.allocate(8).putDouble(6000.0).array()) +
         text(0x4D80, "Telumia original fixture") + text(0x5741, "Telumia original fixture"))
     val video = element(0xE0, number(0xB0, 96) + number(0xBA, 54))
-    val tracks = element(0x1654AE6B, element(0xAE, number(0xD7, 1) + number(0x73C5, 1) +
-        number(0x83, 1) + text(0x86, "V_MJPEG") + number(0x23E383, 500_000_000) + video))
+    val videoTrack = element(0xAE, number(0xD7, 1) + number(0x73C5, 1) +
+        number(0x83, 1) + text(0x86, "V_MJPEG") + number(0x23E383, 500_000_000) + video)
+    val audioTrack = if (withAudio) element(0xAE, number(0xD7, 2) + number(0x73C5, 2) +
+        number(0x83, 2) + text(0x86, "A_PCM/INT/LIT") + element(0xE1,
+            element(0xB5, ByteBuffer.allocate(8).putDouble(8000.0).array()) + number(0x9F, 1) + number(0x6264, 16)))
+        else byteArrayOf()
+    val tracks = element(0x1654AE6B, videoTrack + audioTrack)
     fun chapter(uid: Long, start: Long, end: Long, title: String) = element(0xB6,
         number(0x73C4, uid) + number(0x91, start) + number(0x92, end) +
             element(0x80, text(0x85, title) + text(0x437C, "por")))
@@ -47,6 +52,10 @@ internal fun originalChapterMatroska(): ByteArray {
         val jpeg = ByteArrayOutputStream().also { check(ImageIO.write(image, "jpeg", it)) }.toByteArray()
         val prefix = ByteBuffer.allocate(4).put(0x81.toByte()).putShort((index * 500).toShort()).put(0x80.toByte()).array()
         blocks += element(0xA3, prefix + jpeg)
+        if (withAudio) {
+            val audioPrefix = ByteBuffer.allocate(4).put(0x82.toByte()).putShort((index * 500).toShort()).put(0x80.toByte()).array()
+            blocks += element(0xA3, audioPrefix + ByteArray(8000))
+        }
     }
     return header + element(0x18538067, info + tracks + chapters + element(0x1F43B675, blocks))
 }

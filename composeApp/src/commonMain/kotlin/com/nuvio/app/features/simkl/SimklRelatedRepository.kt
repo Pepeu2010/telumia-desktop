@@ -5,8 +5,8 @@ import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.PosterShape
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.player.skip.SimklIdResolver
-import com.nuvio.app.features.trakt.TraktPlatformClock
-import com.nuvio.app.features.trakt.TraktSettingsRepository
+import com.nuvio.app.features.tracking.TrackingPlatformClock
+import com.nuvio.app.features.tracking.TrackingSettingsRepository
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -156,7 +156,7 @@ object SimklRelatedRepository {
     private fun resolveContentId(ids: SimklRelatedIdsDto?, type: String?): String? {
         if (ids == null) return null
         if (type?.trim()?.lowercase() == "anime") {
-            when (TraktSettingsRepository.uiState.value.simklAnimeIdPreference) {
+            when (TrackingSettingsRepository.uiState.value.simklAnimeIdPreference) {
                 SimklAnimeIdPreference.MAL -> {
                     ids.mal?.takeIf(String::isNotBlank)?.let { return "mal:$it" }
                     ids.kitsu?.takeIf(String::isNotBlank)?.let { return "kitsu:$it" }
@@ -185,7 +185,7 @@ object SimklRelatedRepository {
     }
 
     private data class TimedCache(val items: List<MetaPreview>, val updatedAtMs: Long)
-    private fun currentTimeMs(): Long = TraktPlatformClock.nowEpochMs()
+    private fun currentTimeMs(): Long = TrackingPlatformClock.nowEpochMs()
 }
 
 private fun simklFanartUrl(path: String?): String? = path?.trim()?.trim('/')

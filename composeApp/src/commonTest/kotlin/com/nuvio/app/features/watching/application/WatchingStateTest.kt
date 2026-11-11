@@ -5,7 +5,7 @@ import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.watched.WatchedItem
 import com.nuvio.app.features.watched.watchedItemKey
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
-import com.nuvio.app.features.watchprogress.WatchProgressSourceTraktPlayback
+import com.nuvio.app.features.watchprogress.WatchProgressSourceSimklPlayback
 import com.nuvio.app.features.watching.domain.WatchingCompletedEpisode
 import com.nuvio.app.features.watching.domain.WatchingContentRef
 import kotlin.test.Test
@@ -41,7 +41,7 @@ class WatchingStateTest {
             seasonNumber = 1,
             episodeNumber = 4,
             progressPercent = 94f,
-            source = WatchProgressSourceTraktPlayback,
+            source = WatchProgressSourceSimklPlayback,
         )
 
         val result = WatchingState.latestCompletedBySeries(

@@ -87,9 +87,6 @@ import com.nuvio.app.features.player.AndroidPlaybackEngine
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.simkl.SimklAuthRepository
 import com.nuvio.app.features.simkl.SimklAuthUiState
-import com.nuvio.app.features.trakt.TraktAuthUiState
-import com.nuvio.app.features.trakt.TraktAuthRepository
-import com.nuvio.app.features.trakt.TraktCommentsSettings
 import com.nuvio.app.features.tracking.TrackingSettingsRepository
 import com.nuvio.app.features.tracking.TrackingSettingsUiState
 import com.nuvio.app.features.tmdb.TmdbSettings
@@ -191,17 +188,9 @@ fun SettingsScreen(
             DebridSettingsRepository.ensureLoaded()
             DebridSettingsRepository.uiState
         }.collectAsStateWithLifecycle()
-        val traktAuthUiState by remember {
-            TraktAuthRepository.ensureLoaded()
-            TraktAuthRepository.uiState
-        }.collectAsStateWithLifecycle()
         val simklAuthUiState by remember {
             SimklAuthRepository.ensureLoaded()
             SimklAuthRepository.uiState
-        }.collectAsStateWithLifecycle()
-        val traktCommentsEnabled by remember {
-            TraktCommentsSettings.ensureLoaded()
-            TraktCommentsSettings.enabled
         }.collectAsStateWithLifecycle()
         val trackingSettingsUiState by remember {
             TrackingSettingsRepository.ensureLoaded()
@@ -388,9 +377,7 @@ fun SettingsScreen(
                 tmdbSettings = tmdbSettings,
                 mdbListSettings = mdbListSettings,
                 debridSettings = debridSettings,
-                traktAuthUiState = traktAuthUiState,
                 simklAuthUiState = simklAuthUiState,
-                traktCommentsEnabled = traktCommentsEnabled,
                 trackingSettingsUiState = trackingSettingsUiState,
                 homescreenHeroEnabled = homescreenSettingsUiState.heroEnabled,
                 homescreenShowCatalogType = homescreenSettingsUiState.showCatalogType,
@@ -455,9 +442,7 @@ fun SettingsScreen(
                 tmdbSettings = tmdbSettings,
                 mdbListSettings = mdbListSettings,
                 debridSettings = debridSettings,
-                traktAuthUiState = traktAuthUiState,
                 simklAuthUiState = simklAuthUiState,
-                traktCommentsEnabled = traktCommentsEnabled,
                 trackingSettingsUiState = trackingSettingsUiState,
                 homescreenHeroEnabled = homescreenSettingsUiState.heroEnabled,
                 homescreenShowCatalogType = homescreenSettingsUiState.showCatalogType,
@@ -534,9 +519,7 @@ private fun MobileSettingsScreen(
     tmdbSettings: TmdbSettings,
     mdbListSettings: MdbListSettings,
     debridSettings: DebridSettings,
-    traktAuthUiState: TraktAuthUiState,
     simklAuthUiState: SimklAuthUiState,
-    traktCommentsEnabled: Boolean,
     trackingSettingsUiState: TrackingSettingsUiState,
     homescreenHeroEnabled: Boolean,
     homescreenShowCatalogType: Boolean,
@@ -679,7 +662,7 @@ private fun MobileSettingsScreen(
                             onNotificationsClick = { onPageChange(SettingsPage.Notifications) },
                             onContentDiscoveryClick = { onPageChange(SettingsPage.ContentDiscovery) },
                             onIntegrationsClick = { onPageChange(SettingsPage.Integrations) },
-                            onTrackingClick = { onPageChange(SettingsPage.TraktAuthentication) },
+                            onTrackingClick = { onPageChange(SettingsPage.TrackingAccounts) },
                             onSupportersContributorsClick = onSupportersContributorsClick,
                             onLicensesAttributionsClick = onLicensesAttributionsClick,
                             onCheckForUpdatesClick = onCheckForUpdatesClick,
@@ -819,13 +802,10 @@ private fun MobileSettingsScreen(
                     isTablet = false,
                     settings = debridSettings,
                 )
-                SettingsPage.TraktAuthentication -> trackingSettingsContent(
+                SettingsPage.TrackingAccounts -> trackingSettingsContent(
                     isTablet = false,
-                    traktUiState = traktAuthUiState,
                     simklUiState = simklAuthUiState,
                     settingsUiState = trackingSettingsUiState,
-                    commentsEnabled = traktCommentsEnabled,
-                    onCommentsEnabledChange = TraktCommentsSettings::setEnabled,
                 )
             }
         }
@@ -920,9 +900,7 @@ private fun TabletSettingsScreen(
     tmdbSettings: TmdbSettings,
     mdbListSettings: MdbListSettings,
     debridSettings: DebridSettings,
-    traktAuthUiState: TraktAuthUiState,
     simklAuthUiState: SimklAuthUiState,
-    traktCommentsEnabled: Boolean,
     trackingSettingsUiState: TrackingSettingsUiState,
     homescreenHeroEnabled: Boolean,
     homescreenShowCatalogType: Boolean,
@@ -1129,7 +1107,7 @@ private fun TabletSettingsScreen(
                                         onNotificationsClick = { openInlinePage(SettingsPage.Notifications) },
                                         onContentDiscoveryClick = { openInlinePage(SettingsPage.ContentDiscovery) },
                                         onIntegrationsClick = { openInlinePage(SettingsPage.Integrations) },
-                                        onTrackingClick = { openInlinePage(SettingsPage.TraktAuthentication) },
+                                        onTrackingClick = { openInlinePage(SettingsPage.TrackingAccounts) },
                                         onSupportersContributorsClick = { openInlinePage(SettingsPage.SupportersContributors) },
                                         onLicensesAttributionsClick = { openInlinePage(SettingsPage.LicensesAttributions) },
                                         onCheckForUpdatesClick = onCheckForUpdatesClick,
@@ -1274,13 +1252,10 @@ private fun TabletSettingsScreen(
                                 isTablet = true,
                                 settings = debridSettings,
                             )
-                            SettingsPage.TraktAuthentication -> trackingSettingsContent(
+                            SettingsPage.TrackingAccounts -> trackingSettingsContent(
                                 isTablet = true,
-                                traktUiState = traktAuthUiState,
                                 simklUiState = simklAuthUiState,
                                 settingsUiState = trackingSettingsUiState,
-                                commentsEnabled = traktCommentsEnabled,
-                                onCommentsEnabledChange = TraktCommentsSettings::setEnabled,
                             )
                         }
                     }

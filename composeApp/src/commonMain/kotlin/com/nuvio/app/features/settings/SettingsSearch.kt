@@ -204,7 +204,7 @@ internal fun settingsSearchEntries(
         icon = Icons.Rounded.AccountCircle,
     )
     addPage(
-        page = SettingsPage.TraktAuthentication,
+        page = SettingsPage.TrackingAccounts,
         key = "tracking",
         title = trackingPage,
         description = stringResource(Res.string.compose_settings_root_tracking_description),
@@ -295,7 +295,6 @@ internal fun settingsSearchEntries(
     listOf(
         PlaybackSearchRow("nuvio-license", stringResource(appLicense.titleRes), stringResource(appLicense.licenseRes)),
         PlaybackSearchRow("tmdb-attribution", stringResource(Res.string.settings_licenses_attributions_tmdb_title), stringResource(Res.string.settings_licenses_attributions_tmdb_body)),
-        PlaybackSearchRow("trakt-attribution", stringResource(Res.string.settings_licenses_attributions_trakt_title), stringResource(Res.string.settings_licenses_attributions_trakt_body)),
         PlaybackSearchRow("simkl-attribution", stringResource(Res.string.settings_licenses_attributions_simkl_title), stringResource(Res.string.settings_licenses_attributions_simkl_body)),
         PlaybackSearchRow("premiumize-attribution", stringResource(Res.string.settings_licenses_attributions_premiumize_title), stringResource(Res.string.settings_licenses_attributions_premiumize_body)),
         PlaybackSearchRow("torbox-attribution", stringResource(Res.string.settings_licenses_attributions_torbox_title), stringResource(Res.string.settings_licenses_attributions_torbox_body)),
@@ -877,7 +876,6 @@ internal fun settingsSearchEntries(
         PlaybackSearchRow("meta-production", stringResource(Res.string.settings_meta_production), stringResource(Res.string.settings_meta_production_description)),
         PlaybackSearchRow("meta-more-like-this", stringResource(Res.string.settings_meta_more_like_this), stringResource(Res.string.settings_meta_more_like_this_description)),
         PlaybackSearchRow("meta-collection", stringResource(Res.string.settings_meta_collection), stringResource(Res.string.settings_meta_collection_description)),
-        PlaybackSearchRow("meta-comments", stringResource(Res.string.settings_meta_comments), stringResource(Res.string.settings_meta_comments_description)),
     ).forEach { row ->
         addRow(
             page = SettingsPage.MetaScreen,
@@ -939,7 +937,6 @@ internal fun settingsSearchEntries(
         PlaybackSearchRow("mdb-tmdb", stringResource(Res.string.source_tmdb), "", stringResource(Res.string.settings_mdb_section_rating_providers)),
         PlaybackSearchRow("mdb-tomatoes", stringResource(Res.string.source_rotten_tomatoes), "", stringResource(Res.string.settings_mdb_section_rating_providers)),
         PlaybackSearchRow("mdb-metacritic", stringResource(Res.string.source_metacritic), "", stringResource(Res.string.settings_mdb_section_rating_providers)),
-        PlaybackSearchRow("mdb-trakt", stringResource(Res.string.source_trakt), "", stringResource(Res.string.settings_mdb_section_rating_providers)),
         PlaybackSearchRow("mdb-letterboxd", stringResource(Res.string.source_letterboxd), "", stringResource(Res.string.settings_mdb_section_rating_providers)),
         PlaybackSearchRow("mdb-audience", stringResource(Res.string.source_audience_score), "", stringResource(Res.string.settings_mdb_section_rating_providers)),
     ).forEach { row ->
@@ -976,17 +973,7 @@ internal fun settingsSearchEntries(
     }
 
     addRow(
-        page = SettingsPage.TraktAuthentication,
-        key = "trakt-authentication",
-        title = stringResource(Res.string.trakt_library_source_trakt),
-        description = stringResource(Res.string.settings_trakt_intro_description),
-        pageLabel = trackingPage,
-        section = stringResource(Res.string.settings_tracking_services),
-        category = accountCategory,
-        icon = Icons.Rounded.Link,
-    )
-    addRow(
-        page = SettingsPage.TraktAuthentication,
+        page = SettingsPage.TrackingAccounts,
         key = "simkl-authentication",
         title = stringResource(Res.string.tracking_source_simkl),
         description = stringResource(Res.string.settings_simkl_sign_in_description),
@@ -996,7 +983,7 @@ internal fun settingsSearchEntries(
         icon = Icons.Rounded.Link,
     )
     addRow(
-        page = SettingsPage.TraktAuthentication,
+        page = SettingsPage.TrackingAccounts,
         key = "mdblist-authentication",
         title = stringResource(Res.string.tracking_source_mdblist),
         description = stringResource(Res.string.settings_mdblist_sign_in_description),
@@ -1006,14 +993,13 @@ internal fun settingsSearchEntries(
         icon = Icons.Rounded.Link,
     )
     listOf(
-        PlaybackSearchRow("trakt-library-source", stringResource(Res.string.trakt_library_source_title), stringResource(Res.string.trakt_library_source_subtitle)),
-        PlaybackSearchRow("trakt-watch-progress", stringResource(Res.string.trakt_watch_progress_title), stringResource(Res.string.trakt_watch_progress_subtitle)),
-        PlaybackSearchRow("trakt-continue-watching-window", stringResource(Res.string.trakt_continue_watching_window), stringResource(Res.string.trakt_continue_watching_subtitle)),
-        PlaybackSearchRow("trakt-comments", stringResource(Res.string.settings_trakt_comments), stringResource(Res.string.settings_trakt_comments_description)),
-        PlaybackSearchRow("trakt-more-like-this-source", stringResource(Res.string.trakt_more_like_this_source_title), stringResource(Res.string.trakt_more_like_this_source_subtitle)),
+        PlaybackSearchRow("tracking-library-source", stringResource(Res.string.tracking_library_source_title), stringResource(Res.string.tracking_library_source_subtitle)),
+        PlaybackSearchRow("tracking-watch-progress", stringResource(Res.string.tracking_watch_progress_title), stringResource(Res.string.tracking_watch_progress_subtitle)),
+        PlaybackSearchRow("tracking-continue-watching-window", stringResource(Res.string.tracking_continue_watching_window), stringResource(Res.string.tracking_continue_watching_subtitle)),
+        PlaybackSearchRow("tracking-more-like-this-source", stringResource(Res.string.tracking_more_like_this_source_title), stringResource(Res.string.tracking_more_like_this_source_subtitle)),
     ).forEach { row ->
         addRow(
-            page = SettingsPage.TraktAuthentication,
+            page = SettingsPage.TrackingAccounts,
             key = row.key,
             title = row.title,
             description = row.description,

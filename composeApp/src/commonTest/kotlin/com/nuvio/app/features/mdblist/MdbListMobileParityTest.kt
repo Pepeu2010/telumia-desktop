@@ -34,10 +34,10 @@ class MdbListMobileParityTest {
         assertEquals(LibrarySourceMode.MDBLIST, effectiveLibrarySourceMode(LibrarySourceMode.MDBLIST) { it == TrackingProviderId.MDBLIST })
         assertEquals(WatchProgressSource.NUVIO_SYNC, effectiveWatchProgressSource(WatchProgressSource.MDBLIST) { false })
         assertEquals(WatchProgressSource.MDBLIST, effectiveWatchProgressSource(WatchProgressSource.MDBLIST) { it == TrackingProviderId.MDBLIST })
-        val names = listOf(TrackingProviderId.TRAKT, TrackingProviderId.MDBLIST).map {
+        val names = listOf(TrackingProviderId.SIMKL, TrackingProviderId.MDBLIST).map {
             TrackingLibraryTab(it.storageId, "Watchlist", it, TrackingLibraryTabKind.WATCHLIST).membershipTitle()
         }
-        assertEquals(listOf("Trakt · Watchlist", "MDBList · Watchlist"), names)
+        assertEquals(listOf("Simkl · Watchlist", "MDBList · Watchlist"), names)
     }
 
     @Test

@@ -37,7 +37,9 @@ internal object WatchProgressCodec {
     fun decodePayload(payload: String): StoredWatchProgressPayload =
         runCatching {
             json.decodeFromString<StoredWatchProgressPayload>(payload).let { storedPayload ->
+                // Rows cached by the retired Trakt integration are dropped; local progress is untouched.
                 val migratedEntries = storedPayload.entries
+                    .filterNot { entry -> entry.source.startsWith("trakt_") }
                     .map { entry -> entry.normalizedCompletion().withResolvedProgressKey() }
                     .newestByProgressKey()
                     .values
@@ -141,8 +143,7 @@ internal fun WatchProgressEntry.shouldTreatAsInProgressForContinueWatching(): Bo
         entry.normalizedProgressPercent?.let { it > 0f } == true
     if (!hasStartedPlayback) return false
 
-    return entry.source != WatchProgressSourceTraktHistory &&
-        entry.source != WatchProgressSourceTraktShowProgress
+    return true
 }
 
 internal fun WatchProgressEntry.shouldUseAsCompletedSeedForContinueWatching(): Boolean {
@@ -181,7 +182,7 @@ internal fun isMalformedNextUpSeedContentId(contentId: String?): Boolean {
     val trimmed = contentId?.trim().orEmpty()
     if (trimmed.isEmpty()) return true
     return when (trimmed.lowercase()) {
-        "tmdb", "imdb", "trakt", "tmdb:", "imdb:", "trakt:" -> true
+        "tmdb", "imdb", "tmdb:", "imdb:" -> true
         else -> false
     }
 }

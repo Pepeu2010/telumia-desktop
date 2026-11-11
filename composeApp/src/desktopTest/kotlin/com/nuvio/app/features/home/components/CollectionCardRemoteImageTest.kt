@@ -18,6 +18,7 @@ import java.net.InetSocketAddress
 import java.util.Base64
 import java.util.concurrent.atomic.AtomicInteger
 import javax.imageio.ImageIO
+import org.junit.Assume.assumeTrue
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -75,11 +76,10 @@ class CollectionCardRemoteImageTest {
                 }
             }
             waitForColor(2)
-            assertEquals(0, requests.get(), "The focus asset should not load before hover")
             card.performMouseInput { enter(center) }
             waitForColor(0)
             waitForColor(1)
-            assertEquals(1, requests.get())
+            assertEquals(1, requests.get(), "Hover should reuse the visible-card prefetch")
             card.performMouseInput { exit() }
             waitForColor(2)
         } finally {

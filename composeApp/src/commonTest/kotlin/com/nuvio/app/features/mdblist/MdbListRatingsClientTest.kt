@@ -124,7 +124,7 @@ class MdbListRatingsClientTest {
         assertFalse(MdbListMetadataService.shouldFetchForMeta(meta, meta.id, connected.copy(enabled = false)))
         assertFalse(MdbListMetadataService.shouldFetchForMeta(meta, meta.id, connected.copy(
             useImdb = false, useTmdb = false, useTomatoes = false, useAudience = false,
-            useMetacritic = false, useTrakt = false, useLetterboxd = false, useMal = false,
+            useMetacritic = false, useLetterboxd = false, useMal = false,
         )))
         assertFalse(connected.withAccount(harness.store.state.value, 2).hasCredentials)
         harness.store.clearAuth()

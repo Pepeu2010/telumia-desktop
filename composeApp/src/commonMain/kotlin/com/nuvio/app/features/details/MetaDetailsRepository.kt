@@ -14,12 +14,8 @@ import com.nuvio.app.features.mdblist.MdbListSettingsRepository
 import com.nuvio.app.features.tmdb.TmdbMetadataService
 import com.nuvio.app.features.tmdb.TmdbService
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
-import com.nuvio.app.features.trakt.TraktAuthRepository
-import com.nuvio.app.features.trakt.TraktConnectionMode
-import com.nuvio.app.features.trakt.TraktRelatedRepository
-import com.nuvio.app.features.trakt.MoreLikeThisSourcePreference
+import com.nuvio.app.features.tracking.MoreLikeThisSourcePreference
 import com.nuvio.app.features.tracking.TrackingSettingsRepository
-import com.nuvio.app.features.trakt.shouldUseTraktMoreLikeThis
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -441,11 +437,9 @@ object MetaDetailsRepository {
         fallbackItemType: String,
     ): MetaDetails {
         TrackingSettingsRepository.ensureLoaded()
-        TraktAuthRepository.ensureLoaded()
         TmdbSettingsRepository.ensureLoaded()
 
         val trackingSettings = TrackingSettingsRepository.uiState.value
-        val isTraktAuthenticated = TraktAuthRepository.uiState.value.mode == TraktConnectionMode.CONNECTED
 
         // Simkl source
         if (shouldUseSimklMoreLikeThis(trackingSettings.moreLikeThisSource) &&
@@ -464,29 +458,6 @@ object MetaDetailsRepository {
             return meta.copy(
                 moreLikeThis = items,
                 moreLikeThisSource = MoreLikeThisSource.SIMKL.takeIf { items.isNotEmpty() },
-            )
-        }
-
-        // Trakt source
-        val shouldUseTrakt = shouldUseTraktMoreLikeThis(
-            isAuthenticated = isTraktAuthenticated,
-            source = trackingSettings.moreLikeThisSource,
-        ) && supportsMoreLikeThis(meta, fallbackItemType)
-
-        if (shouldUseTrakt) {
-            val items = runCatching {
-                TraktRelatedRepository.getRelated(
-                    meta = meta,
-                    fallbackItemId = fallbackItemId,
-                    fallbackItemType = fallbackItemType,
-                )
-            }.onFailure { error ->
-                log.w { "Failed to load Trakt related titles for ${meta.id}: ${error.message}" }
-            }.getOrDefault(emptyList())
-
-            return meta.copy(
-                moreLikeThis = items,
-                moreLikeThisSource = MoreLikeThisSource.TRAKT.takeIf { items.isNotEmpty() },
             )
         }
 
@@ -521,32 +492,25 @@ object MetaDetailsRepository {
 
     private fun shouldApplyMoreLikeThisSource(meta: MetaDetails): Boolean {
         TrackingSettingsRepository.ensureLoaded()
-        TraktAuthRepository.ensureLoaded()
         TmdbSettingsRepository.ensureLoaded()
 
         val trackingSettings = TrackingSettingsRepository.uiState.value
-        val isTraktAuthenticated = TraktAuthRepository.uiState.value.mode == TraktConnectionMode.CONNECTED
         val tmdbSettings = TmdbSettingsRepository.snapshot()
-        return shouldUseTraktMoreLikeThis(
-            isAuthenticated = isTraktAuthenticated,
-            source = trackingSettings.moreLikeThisSource,
-        ) || !tmdbSettings.enabled || !tmdbSettings.useMoreLikeThis || meta.moreLikeThisSource == null && meta.moreLikeThis.isNotEmpty()
+        return !tmdbSettings.enabled || !tmdbSettings.useMoreLikeThis || meta.moreLikeThisSource == null && meta.moreLikeThis.isNotEmpty()
     }
 
     private fun buildMetaScreenSettingsFingerprint(
         settings: com.nuvio.app.features.mdblist.MdbListSettings,
     ): String {
         TrackingSettingsRepository.ensureLoaded()
-        TraktAuthRepository.ensureLoaded()
         TmdbSettingsRepository.ensureLoaded()
         val providers = settings.enabledProvidersInPriorityOrder().joinToString(",")
         val trackingSettings = TrackingSettingsRepository.uiState.value
-        val traktAuthMode = TraktAuthRepository.uiState.value.mode
         val tmdbSettings = TmdbSettingsRepository.snapshot()
         return buildString {
             append("${settings.enabled}:${settings.apiKey.trim()}:$providers")
             append("|mdblist_account=${settings.accountScope.takeUnless { settings.hasApiKey }}")
-            append("|more_like=${trackingSettings.moreLikeThisSource}:$traktAuthMode")
+            append("|more_like=${trackingSettings.moreLikeThisSource}")
             append("|tmdb=${tmdbSettings.enabled}:${tmdbSettings.useMoreLikeThis}:${tmdbSettings.language}")
         }
     }

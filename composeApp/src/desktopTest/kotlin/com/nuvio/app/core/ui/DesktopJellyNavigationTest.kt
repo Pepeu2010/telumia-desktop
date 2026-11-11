@@ -1,18 +1,20 @@
 package com.nuvio.app.core.ui
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.test.longClick
-import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
@@ -44,15 +46,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.runDesktopComposeUiTest
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import org.junit.Rule
 import java.io.File
+import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -195,7 +201,7 @@ class DesktopJellyNavigationTest {
     }
 
     @Test
-    fun disabledAnimationsStillExpandLabelsAndNavigateExactlyOnce() {
+    fun disabledAnimationsKeepMouseTargetsStableAndNavigateExactlyOnce() {
         setContent(motion = NavigationMotion.OFF)
         compose.onNodeWithContentDescription("Search").performMouseInput { enter(center); click() }
         compose.waitForIdle()
@@ -218,7 +224,7 @@ class DesktopJellyNavigationTest {
     }
 
     @Test
-    fun hoveringExpandsHomeAndLeavingCollapsesIt() {
+    fun hoveringHomeKeepsItsTargetGeometryStable() {
         setContent()
         compose.waitForIdle()
         val home = compose.onNodeWithContentDescription("Home")
@@ -226,31 +232,165 @@ class DesktopJellyNavigationTest {
         savePreview("compact")
         home.performMouseInput { enter(center) }
         compose.waitForIdle()
-        val expandedWidth = home.fetchSemanticsNode().boundsInRoot.width
-        assertTrue(expandedWidth > compactWidth * 1.5f)
+        val hoveredWidth = home.fetchSemanticsNode().boundsInRoot.width
+        assertEquals(compactWidth, hoveredWidth, 2f)
         home.performMouseInput { exit() }
         compose.waitForIdle()
         assertEquals(compactWidth, home.fetchSemanticsNode().boundsInRoot.width, 2f)
     }
 
     @Test
-    fun profileHoldOpensTheSwitcherWithoutNavigating() {
-        setContent(withProfile = true)
-        compose.onNodeWithContentDescription("Settings").performTouchInput { longClick() }
+    fun wideHomeShowsFloatingLabelsAndKeepsProfileAtTheLeft() {
+        setContent(withProfile = true, wideItems = true, viewportWidth = 1920.dp, viewportHeight = 120.dp)
         compose.waitForIdle()
-        compose.onNodeWithContentDescription("Home").assertIsSelected()
+        val home = compose.onNodeWithContentDescription("Home")
+        val search = compose.onNodeWithContentDescription("Search")
+        val library = compose.onNodeWithContentDescription("Library")
+        val settings = compose.onNodeWithContentDescription("Settings")
+        val profile = compose.onNodeWithContentDescription("Profile")
+        home.assertIsDisplayed()
+        search.assertIsDisplayed()
+        library.assertIsDisplayed()
+        settings.assertIsDisplayed()
+        profile.assertIsDisplayed()
+        assertTrue(profile.fetchSemanticsNode().boundsInRoot.left < home.fetchSemanticsNode().boundsInRoot.left)
+        home.performMouseInput { enter(center) }
+        compose.waitForIdle()
+        assertTrue(home.fetchSemanticsNode().boundsInRoot.width > 70f, "Wide Home navigation should expose its text label")
+        savePreview("wide-home")
+    }
+
+    @Test
+    fun fullHdHomeNavigationCentersTheCapsuleAndKeepsTheProfileAtTheEdge() =
+        runDesktopComposeUiTest(width = 1920, height = 120) {
+            val labels = listOf("Home", "TV", "Search", "Library", "Settings")
+            val icons = listOf(
+                Icons.Default.Home,
+                Icons.Default.VideoLibrary,
+                Icons.Default.Search,
+                Icons.Default.VideoLibrary,
+                Icons.Default.Settings,
+            )
+            setContent {
+                NuvioTheme(navigationMotion = NavigationMotion.OFF) {
+                    Box(Modifier.fillMaxSize().background(Color(0xFF080808))) {
+                        DesktopNavigationBar(
+                            items = labels.mapIndexed { index, label ->
+                                FloatingNavigationItem(
+                                    label = label,
+                                    selected = index == 0,
+                                    onClick = {},
+                                    icon = icons[index],
+                                )
+                            },
+                            isHeroEnabled = true,
+                            profileSwitcherContent = {
+                                Box(
+                                    Modifier.size(38.dp)
+                                        .background(Color(0xFF252525), CircleShape)
+                                        .semantics {
+                                            contentDescription = "Profile"
+                                            role = Role.Button
+                                        },
+                                )
+                            },
+                            modifier = Modifier.align(Alignment.TopCenter),
+                        )
+                    }
+                }
+            }
+            waitForIdle()
+            val homeNode = onNodeWithContentDescription("Home")
+            homeNode.performMouseInput { enter(center) }
+            waitForIdle()
+            val home = homeNode.fetchSemanticsNode().boundsInRoot
+            val settings = onNodeWithContentDescription("Settings").fetchSemanticsNode().boundsInRoot
+            val profile = onNodeWithContentDescription("Profile").fetchSemanticsNode().boundsInRoot
+            assertTrue(home.width > 70f, "Full HD Home navigation should show its label")
+            assertTrue(settings.width > 70f, "Full HD Settings navigation should show its label")
+            assertTrue(profile.left < home.left, "Profile avatar should remain left of the centered capsule")
+            assertTrue(profile.left in 80f..120f, "Profile avatar should align with the left inset in the cinematic reference")
+            val capsuleCenter = (home.left + settings.right) / 2f
+            assertTrue(kotlin.math.abs(capsuleCenter - 960f) < 8f, "Navigation capsule should be centered on the Full HD viewport")
+            val directory = File("build/reports/jelly-navigation").apply { mkdirs() }
+            ImageIO.write(onRoot().captureToImage().toAwtImage(), "png", File(directory, "wide-home-1920.png"))
+        }
+
+    @Test
+    fun profileButtonOpensOnClickWithoutNavigatingToSettings() {
+        setContent(withProfile = true, motion = NavigationMotion.OFF)
+        compose.onNodeWithContentDescription("Profile").performMouseInput { click() }
+        compose.waitForIdle()
         compose.runOnIdle {
             assertTrue(profileOpened)
             assertTrue(clicks.isEmpty())
+            assertEquals(0, selected.intValue)
         }
     }
 
-    private fun setContent(withProfile: Boolean = false, motion: NavigationMotion = NavigationMotion.FULL) {
-        val labels = listOf("Home", "Search", "Library", "Settings")
-        val icons = listOf(Icons.Default.Home, Icons.Default.Search, Icons.Default.VideoLibrary, Icons.Default.Settings)
+    @Test
+    fun profileButtonOpensFromKeyboardFocusWithoutNavigatingToSettings() {
+        setContent(withProfile = true, motion = NavigationMotion.OFF)
+        val profile = compose.onNodeWithContentDescription("Profile")
+        profile.performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+        profile.assertIsFocused()
+        profile.performKeyInput { pressKey(Key.Enter) }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertTrue(profileOpened)
+            assertTrue(clicks.isEmpty())
+            assertEquals(0, selected.intValue)
+        }
+    }
+
+    @Test
+    fun keyboardFocusDrawsAVisibleNavigationItemIndicator() {
+        setContent(motion = NavigationMotion.OFF)
+        val before = compose.onRoot().captureToImage().toAwtImage()
+        val search = compose.onNodeWithContentDescription("Search")
+        search.performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+        search.assertIsFocused()
+        compose.waitForIdle()
+        val after = compose.onRoot().captureToImage().toAwtImage()
+        assertTrue(
+            countDifferentPixels(before, after) > 0,
+            "Keyboard focus should add a visible indicator to the focused navigation item",
+        )
+    }
+
+    @Test
+    fun settingsRouteRemainsClickableBesideTheProfileButton() {
+        setContent(withProfile = true, motion = NavigationMotion.OFF)
+        val settings = compose.onNodeWithContentDescription("Settings")
+        settings.performMouseInput { click() }
+        compose.waitForIdle()
+        settings.assertIsSelected()
+        compose.runOnIdle { assertEquals(listOf(3), clicks) }
+    }
+
+    private fun setContent(
+        withProfile: Boolean = false,
+        motion: NavigationMotion = NavigationMotion.FULL,
+        wideItems: Boolean = false,
+        viewportWidth: Dp = 640.dp,
+        viewportHeight: Dp = 220.dp,
+    ) {
+        selected.intValue = 0
+        clicks.clear()
+        profileOpened = false
+        val labels = if (wideItems) {
+            listOf("Home", "TV", "Search", "Library", "Settings")
+        } else {
+            listOf("Home", "Search", "Library", "Settings")
+        }
+        val icons = if (wideItems) {
+            listOf(Icons.Default.Home, Icons.Default.VideoLibrary, Icons.Default.Search, Icons.Default.VideoLibrary, Icons.Default.Settings)
+        } else {
+            listOf(Icons.Default.Home, Icons.Default.Search, Icons.Default.VideoLibrary, Icons.Default.Settings)
+        }
         compose.setContent {
             NuvioTheme(navigationMotion = motion) {
-                Box(Modifier.size(640.dp, 220.dp).background(Color(0xFF151619))) {
+                Box(Modifier.size(viewportWidth, viewportHeight).background(Color(0xFF151619))) {
                     DesktopNavigationBar(
                         items = labels.mapIndexed { index, label ->
                             FloatingNavigationItem(
@@ -260,24 +400,23 @@ class DesktopJellyNavigationTest {
                                     clicks += index
                                     selected.intValue = index
                                 },
-                                icon = if (withProfile && index == 3) null else icons[index],
-                                content = if (withProfile && index == 3) {
-                                    { onClick ->
-                                        Box(
-                                            Modifier.size(26.dp).background(Color.Gray)
-                                                .clickable(onClick = onClick)
-                                                .pointerInput(Unit) {
-                                                    detectDragGesturesAfterLongPress(
-                                                        onDragStart = { profileOpened = true },
-                                                        onDrag = { change, _ -> change.consume() },
-                                                    )
-                                                },
-                                        )
-                                    }
-                                } else null,
+                                icon = icons[index],
                             )
                         },
                         isHeroEnabled = true,
+                        settingsSelected = selected.intValue == labels.lastIndex,
+                        profileSwitcherContent = if (withProfile) {
+                            {
+                                Box(
+                                    Modifier.size(26.dp).background(Color.Gray)
+                                        .semantics {
+                                            contentDescription = "Profile"
+                                            role = Role.Button
+                                        }
+                                        .clickable { profileOpened = true }
+                                )
+                            }
+                        } else null,
                         modifier = Modifier.align(Alignment.TopCenter),
                     )
                 }
@@ -288,5 +427,15 @@ class DesktopJellyNavigationTest {
     private fun savePreview(name: String) {
         val directory = File("build/reports/jelly-navigation").apply { mkdirs() }
         ImageIO.write(compose.onRoot().captureToImage().toAwtImage(), "png", File(directory, "$name.png"))
+    }
+
+    private fun countDifferentPixels(before: BufferedImage, after: BufferedImage): Int {
+        var count = 0
+        for (y in 0 until minOf(before.height, after.height)) {
+            for (x in 0 until minOf(before.width, after.width)) {
+                if (before.getRGB(x, y) != after.getRGB(x, y)) count++
+            }
+        }
+        return count
     }
 }

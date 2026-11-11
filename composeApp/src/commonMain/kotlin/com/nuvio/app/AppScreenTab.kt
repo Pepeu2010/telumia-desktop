@@ -6,6 +6,7 @@ enum class AppScreenTab {
     Home,
     Search,
     Library,
+    Tv,
     Settings,
     ;
 
@@ -15,12 +16,18 @@ enum class AppScreenTab {
     }
 }
 
-internal fun AppScreenTab.toNativeNavigationTab(): NativeNavigationTab = when (this) {
+internal fun AppScreenTab.toNativeNavigationTab(): NativeNavigationTab? = when (this) {
     AppScreenTab.Home -> NativeNavigationTab.Home
     AppScreenTab.Search -> NativeNavigationTab.Search
     AppScreenTab.Library -> NativeNavigationTab.Library
+    AppScreenTab.Tv -> null
     AppScreenTab.Settings -> NativeNavigationTab.Settings
 }
+
+internal fun shouldExposeLiveTvDestination(
+    isDesktop: Boolean,
+    isTelevision: Boolean,
+): Boolean = isDesktop || isTelevision
 
 internal fun NativeNavigationTab.toAppScreenTab(): AppScreenTab = when (this) {
     NativeNavigationTab.Home -> AppScreenTab.Home

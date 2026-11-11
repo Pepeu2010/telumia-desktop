@@ -10,7 +10,6 @@ data class TrackingExternalIds(
     val imdb: String? = null,
     val tmdb: Long? = null,
     val tvdb: String? = null,
-    val trakt: Long? = null,
     val simkl: Long? = null,
     val mal: Long? = null,
     val anidb: Long? = null,
@@ -22,7 +21,6 @@ data class TrackingExternalIds(
         get() = !imdb.isNullOrBlank() ||
             tmdb != null ||
             !tvdb.isNullOrBlank() ||
-            trakt != null ||
             simkl != null ||
             mal != null ||
             anidb != null ||
@@ -34,7 +32,6 @@ data class TrackingExternalIds(
             imdb = imdb?.takeIf(String::isNotBlank) ?: other.imdb,
             tmdb = tmdb ?: other.tmdb,
             tvdb = tvdb?.takeIf(String::isNotBlank) ?: other.tvdb,
-            trakt = trakt ?: other.trakt,
             simkl = simkl ?: other.simkl,
             mal = mal ?: other.mal,
             anidb = anidb ?: other.anidb,
@@ -80,7 +77,6 @@ data class TrackingMediaReference(
                     ?: ids.imdb?.let { "imdb:$it" }
                     ?: ids.tmdb?.let { "tmdb:$it" }
                     ?: ids.tvdb?.let { "tvdb:$it" }
-                    ?: ids.trakt?.let { "trakt:$it" }
                     ?: ids.mal?.let { "mal:$it" }
                     ?: ids.anidb?.let { "anidb:$it" }
                     ?: ids.anilist?.let { "anilist:$it" }
@@ -93,8 +89,7 @@ data class TrackingMediaReference(
 
 /**
  * Parses the canonical IDs Nuvio receives from addons and tracker-backed lists.
- * An unprefixed number retains its legacy Trakt meaning; it is never guessed to
- * be a Simkl ID.
+ * An unprefixed number is never guessed to be a Simkl ID.
  */
 fun parseTrackingExternalIds(rawValue: String?): TrackingExternalIds {
     if (rawValue.isNullOrBlank()) return TrackingExternalIds()
@@ -110,14 +105,13 @@ fun parseTrackingExternalIds(rawValue: String?): TrackingExternalIds {
         "imdb" -> TrackingExternalIds(imdb = value.takeIf(String::isNotBlank))
         "tmdb" -> TrackingExternalIds(tmdb = value.toLongOrNull())
         "tvdb" -> TrackingExternalIds(tvdb = value.takeIf(String::isNotBlank))
-        "trakt" -> TrackingExternalIds(trakt = value.toLongOrNull())
         "simkl" -> TrackingExternalIds(simkl = value.toLongOrNull())
         "mal" -> TrackingExternalIds(mal = value.toLongOrNull())
         "anidb" -> TrackingExternalIds(anidb = value.toLongOrNull())
         "anilist" -> TrackingExternalIds(anilist = value.toLongOrNull())
         "kitsu" -> TrackingExternalIds(kitsu = value.toLongOrNull())
         "mdblist" -> TrackingExternalIds(mdblist = value.takeIf(String::isNotBlank))
-        else -> TrackingExternalIds(trakt = full.toLongOrNull())
+        else -> TrackingExternalIds()
     }
 }
 

@@ -32,7 +32,7 @@ private data class StoredPosterCardStylePreferences(
     val hoverPreviewEnabled: Boolean = true,
     val hoverPreviewOpenDelayMillis: Int = DefaultHoverPreviewOpenDelayMillis,
     val hoverPreviewTrailerEnabled: Boolean = AppFeaturePolicy.hoverTrailerPlaybackSupported,
-    val hoverPreviewTrailerSoundEnabled: Boolean = false,
+    val hoverPreviewTrailerSoundEnabled: Boolean = true,
     val hoverPreviewTrailerStartSeconds: Int = DefaultHoverPreviewTrailerStartSeconds,
     val alwaysShowLandscapeClearlogo: Boolean = false,
 )
@@ -46,7 +46,7 @@ data class PosterCardStyleUiState(
     val hoverPreviewEnabled: Boolean = true,
     val hoverPreviewOpenDelayMillis: Int = DefaultHoverPreviewOpenDelayMillis,
     val hoverPreviewTrailerEnabled: Boolean = AppFeaturePolicy.hoverTrailerPlaybackSupported,
-    val hoverPreviewTrailerSoundEnabled: Boolean = false,
+    val hoverPreviewTrailerSoundEnabled: Boolean = true,
     val hoverPreviewTrailerStartSeconds: Int = DefaultHoverPreviewTrailerStartSeconds,
     val alwaysShowLandscapeClearlogo: Boolean = false,
 )

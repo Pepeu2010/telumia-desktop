@@ -27,10 +27,10 @@ class WatchedItemsStoreTest {
                         store.update { nuvioItems, providerItems, dirtyNuvioKeys, dirtyProviderKeys ->
                             nuvioItems[key] = item
                             providerItems
-                                .getOrPut(TrackingProviderId.TRAKT, ::mutableMapOf)[key] = item
+                                .getOrPut(TrackingProviderId.MDBLIST, ::mutableMapOf)[key] = item
                             dirtyNuvioKeys += key
                             dirtyProviderKeys
-                                .getOrPut(TrackingProviderId.TRAKT, ::mutableSetOf) += key
+                                .getOrPut(TrackingProviderId.MDBLIST, ::mutableSetOf) += key
                         }
                     }
                 }
@@ -40,9 +40,9 @@ class WatchedItemsStoreTest {
                     repeat(500) {
                         store.read { nuvioItems, providerItems, dirtyNuvioKeys, dirtyProviderKeys ->
                             val nuvioKeys = nuvioItems.keys.toSet()
-                            assertEquals(nuvioKeys, providerItems[TrackingProviderId.TRAKT].orEmpty().keys)
+                            assertEquals(nuvioKeys, providerItems[TrackingProviderId.MDBLIST].orEmpty().keys)
                             assertEquals(nuvioKeys, dirtyNuvioKeys)
-                            assertEquals(nuvioKeys, dirtyProviderKeys[TrackingProviderId.TRAKT])
+                            assertEquals(nuvioKeys, dirtyProviderKeys[TrackingProviderId.MDBLIST])
                         }
                     }
                 }
@@ -51,9 +51,9 @@ class WatchedItemsStoreTest {
 
         store.read { nuvioItems, providerItems, dirtyNuvioKeys, dirtyProviderKeys ->
             assertEquals(2_000, nuvioItems.size)
-            assertEquals(nuvioItems.keys, providerItems[TrackingProviderId.TRAKT].orEmpty().keys)
+            assertEquals(nuvioItems.keys, providerItems[TrackingProviderId.MDBLIST].orEmpty().keys)
             assertEquals(nuvioItems.keys, dirtyNuvioKeys)
-            assertEquals(nuvioItems.keys, dirtyProviderKeys[TrackingProviderId.TRAKT])
+            assertEquals(nuvioItems.keys, dirtyProviderKeys[TrackingProviderId.MDBLIST])
         }
     }
 }

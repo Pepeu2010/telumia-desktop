@@ -6,6 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import org.junit.Assume.assumeTrue
 
 class LinuxUpdateInstallTest {
 
@@ -172,6 +173,7 @@ class LinuxUpdateInstallTest {
 
     @Test
     fun `a package install is handed to the desktop package handler`() {
+        assumeTrue("Linux shell paths are only valid on Linux hosts", isLinuxHost())
         val command = linuxInstallerCommand(
             method = LinuxInstallMethod.RPM,
             updateFile = File("/tmp/updates/Nuvio.rpm"),
@@ -184,6 +186,7 @@ class LinuxUpdateInstallTest {
 
     @Test
     fun `an app image replaces itself once this process is gone`() {
+        assumeTrue("Linux shell paths are only valid on Linux hosts", isLinuxHost())
         val command = linuxInstallerCommand(
             method = LinuxInstallMethod.APP_IMAGE,
             updateFile = File("/tmp/updates/Nuvio.AppImage"),
@@ -202,6 +205,7 @@ class LinuxUpdateInstallTest {
 
     @Test
     fun `an app image with no known path falls back to the desktop handler`() {
+        assumeTrue("Linux shell paths are only valid on Linux hosts", isLinuxHost())
         val command = linuxInstallerCommand(
             method = LinuxInstallMethod.APP_IMAGE,
             updateFile = File("/tmp/updates/Nuvio.AppImage"),
@@ -239,4 +243,6 @@ class LinuxUpdateInstallTest {
             name = name,
             downloadUrl = "https://example.test/$name",
         )
+
+    private fun isLinuxHost(): Boolean = System.getProperty("os.name").lowercase().contains("linux")
 }

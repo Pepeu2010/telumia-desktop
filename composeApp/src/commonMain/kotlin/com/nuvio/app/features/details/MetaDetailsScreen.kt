@@ -102,10 +102,8 @@ import com.nuvio.app.core.ui.rememberHeroStretchState
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import com.nuvio.app.features.details.components.DetailActions
-import com.nuvio.app.features.details.components.CommentDetailSheet
 import com.nuvio.app.features.details.components.DetailAdditionalInfoSection
 import com.nuvio.app.features.details.components.DetailCastSection
-import com.nuvio.app.features.details.components.DetailCommentsSection
 import com.nuvio.app.features.details.components.DetailFloatingHeader
 import com.nuvio.app.features.details.components.DetailHero
 import com.nuvio.app.features.details.components.DetailMetaInfo
@@ -142,11 +140,6 @@ import com.nuvio.app.features.streams.StreamAutoPlayPolicy
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import com.nuvio.app.features.tmdb.TmdbService
 import com.nuvio.app.features.tmdb.originalTmdbImageUrl
-import com.nuvio.app.features.trakt.TraktAuthRepository
-import com.nuvio.app.features.trakt.TraktCommentReview
-import com.nuvio.app.features.trakt.TraktCommentsRepository
-import com.nuvio.app.features.trakt.TraktCommentsSettings
-import com.nuvio.app.features.trakt.TraktConnectionMode
 import com.nuvio.app.features.tracking.TrackingLibraryTab
 import com.nuvio.app.features.tracking.TrackingMembershipApplyResult
 import com.nuvio.app.features.tracking.toggleTrackingLibraryMembership
@@ -234,10 +227,6 @@ fun MetaDetailsScreen(
         MdbListSettingsRepository.ensureLoaded()
         MdbListSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
-    val traktAuthUiState by remember {
-        TraktAuthRepository.ensureLoaded()
-        TraktAuthRepository.uiState
-    }.collectAsStateWithLifecycle()
     val trackingSettingsUiState by remember {
         TrackingSettingsRepository.ensureLoaded()
         TrackingSettingsRepository.uiState
@@ -273,17 +262,6 @@ fun MetaDetailsScreen(
     var selectedEpisodeZoomAnchor by remember(type, id) { mutableStateOf<PosterZoomAnchor?>(null) }
     val episodeOverlayHazeState = rememberHazeState()
     var selectedSeasonForActions by remember(type, id) { mutableStateOf<Int?>(null) }
-    val commentsEnabled by remember {
-        TraktCommentsSettings.ensureLoaded()
-        TraktCommentsSettings.enabled
-    }.collectAsStateWithLifecycle()
-    var comments by remember(type, id) { mutableStateOf<List<TraktCommentReview>>(emptyList()) }
-    var commentsCurrentPage by remember(type, id) { mutableIntStateOf(0) }
-    var commentsPageCount by remember(type, id) { mutableIntStateOf(0) }
-    var isCommentsLoading by remember(type, id) { mutableStateOf(false) }
-    var isCommentsLoadingMore by remember(type, id) { mutableStateOf(false) }
-    var commentsError by remember(type, id) { mutableStateOf<String?>(null) }
-    var selectedComment by remember(type, id) { mutableStateOf<TraktCommentReview?>(null) }
     val detailsScope = rememberCoroutineScope()
     var showLibraryListPicker by remember(type, id) { mutableStateOf(false) }
     var pickerTabs by remember(type, id) { mutableStateOf<List<TrackingLibraryTab>>(emptyList()) }
@@ -351,10 +329,6 @@ fun MetaDetailsScreen(
         }
     }
 
-    val shouldShowComments = commentsEnabled &&
-        traktAuthUiState.mode == TraktConnectionMode.CONNECTED &&
-        displayedMeta != null &&
-        displayedMeta.type.lowercase().let { it == "movie" || it == "series" || it == "show" || it == "tv" }
 
     LaunchedEffect(displayedMeta?.id) {
         deferredMetaWorkAllowed = false
@@ -364,27 +338,6 @@ fun MetaDetailsScreen(
         }
     }
 
-    LaunchedEffect(displayedMeta?.id, shouldShowComments, deferredMetaWorkAllowed) {
-        if (displayedMeta == null || !shouldShowComments) {
-            comments = emptyList()
-            commentsCurrentPage = 0
-            commentsPageCount = 0
-            commentsError = null
-            return@LaunchedEffect
-        }
-        if (!deferredMetaWorkAllowed) return@LaunchedEffect
-        isCommentsLoading = true
-        commentsError = null
-        try {
-            val result = TraktCommentsRepository.getCommentsPage(displayedMeta, page = 1)
-            comments = result.items
-            commentsCurrentPage = result.currentPage
-            commentsPageCount = result.pageCount
-        } catch (e: Exception) {
-            commentsError = e.message ?: getString(Res.string.details_comments_load_failed)
-        }
-        isCommentsLoading = false
-    }
 
     LaunchedEffect(
         displayedMeta?.id,
@@ -433,7 +386,6 @@ fun MetaDetailsScreen(
         displayedMeta?.id,
         uiState.isLoading,
         trackingSettingsUiState.moreLikeThisSource,
-        traktAuthUiState.mode,
         tmdbSettingsUiState.enabled,
         tmdbSettingsUiState.useMoreLikeThis,
         tmdbSettingsUiState.language,
@@ -561,7 +513,7 @@ fun MetaDetailsScreen(
                                     tab.key to (snapshot[tab.key] == true)
                                 }
                             }.onFailure { error ->
-                                pickerError = error.message ?: getString(Res.string.trakt_lists_load_failed)
+                                pickerError = error.message ?: getString(Res.string.library_lists_load_failed)
                             }
                             pickerPending = false
                         }
@@ -736,6 +688,7 @@ fun MetaDetailsScreen(
                 }
                 val uriHandler = LocalUriHandler.current
                 val trailerPlaybackMode = AppFeaturePolicy.trailerPlaybackMode
+                val noPlayableTrailerMessage = stringResource(Res.string.trailer_no_playable_stream)
                 val inAppTrailerPlaybackEnabled = trailerPlaybackMode == TrailerPlaybackMode.IN_APP
                 val trailerScope = rememberCoroutineScope()
                 var selectedTrailer by remember(meta.id) { mutableStateOf<MetaTrailer?>(null) }
@@ -753,7 +706,6 @@ fun MetaDetailsScreen(
                 var heroTrailerPlaybackSource by remember(meta.id, heroTrailerCandidate?.id) { mutableStateOf<TrailerPlaybackSource?>(null) }
                 var heroTrailerReady by remember(meta.id, heroTrailerCandidate?.id) { mutableStateOf(false) }
                 var heroTrailerFinished by remember(meta.id, heroTrailerCandidate?.id) { mutableStateOf(false) }
-                val heroTrailerMuted by HeroTrailerAudioState.muted.collectAsStateWithLifecycle()
                 LaunchedEffect(
                     heroTrailerPlaybackEnabled,
                     heroTrailerCandidate?.id,
@@ -766,8 +718,9 @@ fun MetaDetailsScreen(
                     if (!deferredMetaWorkAllowed || !heroTrailerPlaybackEnabled || heroTrailerCandidate == null) {
                         return@LaunchedEffect
                     }
+                    val youtubeUrl = heroTrailerCandidate.youtubePlaybackUrl()
                     val resolvedSource = runCatching {
-                        TrailerPlaybackResolver.resolveFromYouTubeUrl(heroTrailerCandidate.youtubePlaybackUrl())
+                        TrailerPlaybackResolver.resolveFromYouTubeUrl(youtubeUrl)
                     }.getOrNull()
                     if (resolvedSource == null) {
                         heroTrailerFinished = true
@@ -781,31 +734,52 @@ fun MetaDetailsScreen(
                     heroTrailerFinished = true
                     onBack()
                 }
-                val resolveTrailer: (MetaTrailer) -> Unit = remember(meta.id, trailerPlaybackMode, uriHandler) {
+                val resolveTrailer: (MetaTrailer) -> Unit = remember(
+                    meta.id,
+                    trailerPlaybackMode,
+                    uriHandler,
+                    noPlayableTrailerMessage,
+                ) {
                     { trailer ->
-                        val youtubeUrl = trailer.youtubePlaybackUrl()
+                        val target = resolveTrailerPlaybackTarget(trailer)
                         when (trailerPlaybackMode) {
-                            TrailerPlaybackMode.EXTERNAL -> runCatching { uriHandler.openUri(youtubeUrl) }
+                            TrailerPlaybackMode.EXTERNAL -> {
+                                val targetUrl = when (target) {
+                                    is MetaTrailerPlaybackTarget.YouTube -> target.url
+                                    is MetaTrailerPlaybackTarget.External -> target.url
+                                    null -> null
+                                }
+                                targetUrl?.let { url -> runCatching { uriHandler.openUri(url) } }
+                            }
                             TrailerPlaybackMode.IN_APP -> {
-                                selectedTrailer = trailer
-                                trailerPlaybackSource = null
-                                trailerErrorMessage = null
-                                trailerLoading = true
-                                trailerRequestToken += 1
-                                val currentRequestToken = trailerRequestToken
-                                trailerScope.launch {
-                                    val resolvedSource = runCatching {
-                                        TrailerPlaybackResolver.resolveFromYouTubeUrl(youtubeUrl)
-                                    }.getOrNull()
-                                    if (currentRequestToken != trailerRequestToken) {
-                                        return@launch
+                                if (target is MetaTrailerPlaybackTarget.YouTube) {
+                                    val youtubeUrl = target.url
+                                    selectedTrailer = trailer
+                                    trailerPlaybackSource = null
+                                    trailerErrorMessage = null
+                                    trailerLoading = true
+                                    trailerRequestToken += 1
+                                    val currentRequestToken = trailerRequestToken
+                                    trailerScope.launch {
+                                        val resolvedSource = runCatching {
+                                            TrailerPlaybackResolver.resolveFromYouTubeUrl(youtubeUrl)
+                                        }.getOrNull()
+                                        if (currentRequestToken != trailerRequestToken) {
+                                            return@launch
+                                        }
+                                        trailerPlaybackSource = resolvedSource
+                                        trailerErrorMessage = if (resolvedSource == null) {
+                                            noPlayableTrailerMessage
+                                        } else {
+                                            null
+                                        }
+                                        trailerLoading = false
                                     }
-                                    trailerPlaybackSource = resolvedSource
-                                    trailerErrorMessage = if (resolvedSource == null) {
-                                        getString(Res.string.trailer_no_playable_stream)
-                                    } else {
-                                        null
-                                    }
+                                } else {
+                                    selectedTrailer = trailer
+                                    trailerPlaybackSource = null
+                                    trailerRequestToken += 1
+                                    trailerErrorMessage = noPlayableTrailerMessage
                                     trailerLoading = false
                                 }
                             }
@@ -1174,7 +1148,6 @@ fun MetaDetailsScreen(
                                 heroTrailerSourceAudioUrl = heroTrailerSourceAudioUrl,
                                 heroTrailerReady = heroTrailerReady,
                                 heroTrailerPlayWhenReady = { heroTrailerPlayWhenReady },
-                                heroTrailerMuted = heroTrailerMuted,
                                 heroGradientColor = dominantBackdropColor.takeIf { dominantColorEnabled },
                                 onBackdropLoaded = { painter, imageBitmap ->
                                     dominantBackdropPainter = painter
@@ -1225,7 +1198,6 @@ fun MetaDetailsScreen(
                                 heroTrailerSourceAudioUrl = heroTrailerSourceAudioUrl,
                                 heroTrailerReady = heroTrailerReady,
                                 heroTrailerPlayWhenReady = heroTrailerPlayWhenReady,
-                                heroTrailerMuted = heroTrailerMuted,
                                 heroGradientColor = dominantBackdropColor.takeIf { dominantColorEnabled },
                                 onBackdropLoaded = { painter -> dominantBackdropPainter = painter },
                                 onHeroTrailerReady = {
@@ -1249,7 +1221,6 @@ fun MetaDetailsScreen(
                                     heroTrailerSourceAudioUrl = null,
                                     heroTrailerReady = false,
                                     heroTrailerPlayWhenReady = false,
-                                    heroTrailerMuted = true,
                                     blurBackdrop = true,
                                     onHeroTrailerReady = {},
                                     onHeroTrailerEnded = {},
@@ -1311,12 +1282,6 @@ fun MetaDetailsScreen(
                                         isSaved = isSaved,
                                         isWatched = isWatched,
                                         onHeightChanged = { heroHeightPx.intValue = it },
-                                        heroTrailerSourceUrl = heroTrailerSourceUrl,
-                                        heroTrailerReady = heroTrailerReady,
-                                        heroTrailerMuted = heroTrailerMuted,
-                                        onHeroTrailerMuteToggle = {
-                                            HeroTrailerAudioState.toggleMuted()
-                                        },
                                         onPlayClick = onPrimaryPlayClick,
                                         onPlayLongClick = if (showManualPlayOption) onPrimaryPlayLongClick else null,
                                         onShuffleClick = if (showShuffleButton) ({
@@ -1361,49 +1326,11 @@ fun MetaDetailsScreen(
                                     hasAdditionalInfoSection = hasAdditionalInfoSection,
                                     hasCollectionSection = hasCollectionSection,
                                     hasMoreLikeThisSection = hasMoreLikeThisSection,
-                                    shouldShowComments = shouldShowComments,
-                                    comments = comments,
-                                    isCommentsLoading = isCommentsLoading,
-                                    isCommentsLoadingMore = isCommentsLoadingMore,
-                                    commentsCurrentPage = commentsCurrentPage,
-                                    commentsPageCount = commentsPageCount,
-                                    commentsError = commentsError,
                                     episodeImdbRatings = episodeImdbRatings,
                                     episodeListGroupedEpisodes = episodeListGroupedEpisodes,
                                     episodeListSeasons = episodeListSeasons,
                                     episodeListCurrentSeason = currentEpisodeListSeason,
                                     onEpisodeListSeasonSelect = { selectedEpisodeListSeason = it },
-                                    onRetryComments = {
-                                        detailsScope.launch {
-                                            isCommentsLoading = true
-                                            commentsError = null
-                                            try {
-                                                val result = TraktCommentsRepository.getCommentsPage(meta, page = 1, forceRefresh = true)
-                                                comments = result.items
-                                                commentsCurrentPage = result.currentPage
-                                                commentsPageCount = result.pageCount
-                                            } catch (e: Exception) {
-                                                commentsError = e.message ?: getString(Res.string.details_comments_load_failed)
-                                            }
-                                            isCommentsLoading = false
-                                        }
-                                    },
-                                    onLoadMoreComments = {
-                                        detailsScope.launch {
-                                            isCommentsLoadingMore = true
-                                            try {
-                                                val nextPage = commentsCurrentPage + 1
-                                                val result = TraktCommentsRepository.getCommentsPage(meta, page = nextPage)
-                                                val existingIds = comments.map { it.id }.toSet()
-                                                val newComments = result.items.filter { it.id !in existingIds }
-                                                comments = comments + newComments
-                                                commentsCurrentPage = result.currentPage
-                                                commentsPageCount = result.pageCount
-                                            } catch (_: Exception) { }
-                                            isCommentsLoadingMore = false
-                                        }
-                                    },
-                                    onCommentClick = { review -> selectedComment = review },
                                     onTrailerClick = resolveTrailer,
                                     progressByVideoId = progressByVideoId,
                                     watchedKeys = watchedUiState.watchedKeys,
@@ -1433,10 +1360,6 @@ fun MetaDetailsScreen(
                                             showOverallRatings = metaScreenSettingsUiState.showOverallRatings,
                                             isMdbListActive = mdbListSettings.isActive,
                                             horizontalPadding = contentHorizontalPadding,
-                                            heroTrailerSourceUrl = heroTrailerSourceUrl,
-                                            heroTrailerReady = heroTrailerReady,
-                                            heroTrailerMuted = heroTrailerMuted,
-                                            onHeroTrailerMuteToggle = HeroTrailerAudioState::toggleMuted,
                                             onHeightChanged = { heroHeightPx.intValue = it },
                                             actions = if (isSectionEnabled(MetaScreenSectionKey.ACTIONS)) {
                                                 {
@@ -1472,14 +1395,10 @@ fun MetaDetailsScreen(
                                         heroTrailerSourceAudioUrl = heroTrailerSourceAudioUrl,
                                         heroTrailerReady = heroTrailerReady,
                                         heroTrailerPlayWhenReady = { heroTrailerPlayWhenReady },
-                                        heroTrailerMuted = heroTrailerMuted,
                                         heroGradientColor = dominantBackdropColor.takeIf { dominantColorEnabled },
                                         onBackdropLoaded = { painter, imageBitmap ->
                                             dominantBackdropPainter = painter
                                             dominantBackdropImageBitmap = imageBitmap
-                                        },
-                                        onHeroTrailerMuteToggle = {
-                                            HeroTrailerAudioState.toggleMuted()
                                         },
                                         onHeroTrailerReady = {
                                             if (!heroTrailerFinished) {
@@ -1533,49 +1452,11 @@ fun MetaDetailsScreen(
                                     hasAdditionalInfoSection = hasAdditionalInfoSection,
                                     hasCollectionSection = hasCollectionSection,
                                     hasMoreLikeThisSection = hasMoreLikeThisSection,
-                                    shouldShowComments = shouldShowComments,
-                                    comments = comments,
-                                    isCommentsLoading = isCommentsLoading,
-                                    isCommentsLoadingMore = isCommentsLoadingMore,
-                                    commentsCurrentPage = commentsCurrentPage,
-                                    commentsPageCount = commentsPageCount,
-                                    commentsError = commentsError,
                                     episodeImdbRatings = episodeImdbRatings,
                                     episodeListGroupedEpisodes = episodeListGroupedEpisodes,
                                     episodeListSeasons = episodeListSeasons,
                                     episodeListCurrentSeason = currentEpisodeListSeason,
                                     onEpisodeListSeasonSelect = { selectedEpisodeListSeason = it },
-                                    onRetryComments = {
-                                        detailsScope.launch {
-                                            isCommentsLoading = true
-                                            commentsError = null
-                                            try {
-                                                val result = TraktCommentsRepository.getCommentsPage(meta, page = 1, forceRefresh = true)
-                                                comments = result.items
-                                                commentsCurrentPage = result.currentPage
-                                                commentsPageCount = result.pageCount
-                                            } catch (e: Exception) {
-                                                commentsError = e.message ?: getString(Res.string.details_comments_load_failed)
-                                            }
-                                            isCommentsLoading = false
-                                        }
-                                    },
-                                    onLoadMoreComments = {
-                                        detailsScope.launch {
-                                            isCommentsLoadingMore = true
-                                            try {
-                                                val nextPage = commentsCurrentPage + 1
-                                                val result = TraktCommentsRepository.getCommentsPage(meta, page = nextPage)
-                                                val existingIds = comments.map { it.id }.toSet()
-                                                val newComments = result.items.filter { it.id !in existingIds }
-                                                comments = comments + newComments
-                                                commentsCurrentPage = result.currentPage
-                                                commentsPageCount = result.pageCount
-                                            } catch (_: Exception) { }
-                                            isCommentsLoadingMore = false
-                                        }
-                                    },
-                                    onCommentClick = { review -> selectedComment = review },
                                     onTrailerClick = resolveTrailer,
                                     progressByVideoId = progressByVideoId,
                                     watchedKeys = watchedUiState.watchedKeys,
@@ -1898,43 +1779,6 @@ fun MetaDetailsScreen(
                             onPendingChange = { pendingTrackingRemoval = it },
                         )
 
-                        selectedComment?.let { comment ->
-                            val commentIndex = comments.indexOfFirst { it.id == comment.id }.coerceAtLeast(0)
-                            CommentDetailSheet(
-                                comment = comment,
-                                currentIndex = commentIndex,
-                                totalCount = comments.size,
-                                canGoBack = commentIndex > 0,
-                                canGoForward = commentIndex < comments.size - 1,
-                                onPrevious = {
-                                    if (commentIndex > 0) {
-                                        selectedComment = comments[commentIndex - 1]
-                                    }
-                                },
-                                onNext = {
-                                    val nextIndex = commentIndex + 1
-                                    if (nextIndex < comments.size) {
-                                        selectedComment = comments[nextIndex]
-                                    }
-                                    if (nextIndex >= comments.size - 3 && commentsCurrentPage < commentsPageCount) {
-                                        detailsScope.launch {
-                                            isCommentsLoadingMore = true
-                                            try {
-                                                val nextPage = commentsCurrentPage + 1
-                                                val result = TraktCommentsRepository.getCommentsPage(meta, page = nextPage)
-                                                val existingIds = comments.map { it.id }.toSet()
-                                                val newComments = result.items.filter { it.id !in existingIds }
-                                                comments = comments + newComments
-                                                commentsCurrentPage = result.currentPage
-                                                commentsPageCount = result.pageCount
-                                            } catch (_: Exception) { }
-                                            isCommentsLoadingMore = false
-                                        }
-                                    }
-                                },
-                                onDismiss = { selectedComment = null },
-                            )
-                        }
                     }
                 }
             }
@@ -2228,21 +2072,11 @@ private fun LazyListScope.configuredMetaSectionItems(
     hasAdditionalInfoSection: Boolean,
     hasCollectionSection: Boolean,
     hasMoreLikeThisSection: Boolean,
-    shouldShowComments: Boolean,
-    comments: List<TraktCommentReview>,
-    isCommentsLoading: Boolean,
-    isCommentsLoadingMore: Boolean,
-    commentsCurrentPage: Int,
-    commentsPageCount: Int,
-    commentsError: String?,
     episodeImdbRatings: Map<Pair<Int, Int>, Double>,
     episodeListGroupedEpisodes: Map<Int, List<MetaVideo>>,
     episodeListSeasons: List<Int>,
     episodeListCurrentSeason: Int?,
     onEpisodeListSeasonSelect: (Int) -> Unit,
-    onRetryComments: () -> Unit,
-    onLoadMoreComments: () -> Unit,
-    onCommentClick: (TraktCommentReview) -> Unit,
     onTrailerClick: (MetaTrailer) -> Unit,
     progressByVideoId: Map<String, WatchProgressEntry>,
     watchedKeys: Set<String>,
@@ -2268,10 +2102,6 @@ private fun LazyListScope.configuredMetaSectionItems(
             hasAdditionalInfoSection = hasAdditionalInfoSection,
             hasCollectionSection = hasCollectionSection,
             hasMoreLikeThisSection = hasMoreLikeThisSection,
-            shouldShowComments = shouldShowComments,
-            comments = comments,
-            isCommentsLoading = isCommentsLoading,
-            commentsError = commentsError,
         )
 
     fun addSectionItem(
@@ -2313,17 +2143,7 @@ private fun LazyListScope.configuredMetaSectionItems(
                     hasAdditionalInfoSection = hasAdditionalInfoSection,
                     hasCollectionSection = hasCollectionSection,
                     hasMoreLikeThisSection = hasMoreLikeThisSection,
-                    shouldShowComments = shouldShowComments,
-                    comments = comments,
-                    isCommentsLoading = isCommentsLoading,
-                    isCommentsLoadingMore = isCommentsLoadingMore,
-                    commentsCurrentPage = commentsCurrentPage,
-                    commentsPageCount = commentsPageCount,
-                    commentsError = commentsError,
                     episodeImdbRatings = episodeImdbRatings,
-                    onRetryComments = onRetryComments,
-                    onLoadMoreComments = onLoadMoreComments,
-                    onCommentClick = onCommentClick,
                     onTrailerClick = onTrailerClick,
                     progressByVideoId = progressByVideoId,
                     watchedKeys = watchedKeys,
@@ -2496,17 +2316,12 @@ private fun metaSectionHasContent(
     hasAdditionalInfoSection: Boolean,
     hasCollectionSection: Boolean,
     hasMoreLikeThisSection: Boolean,
-    shouldShowComments: Boolean,
-    comments: List<TraktCommentReview>,
-    isCommentsLoading: Boolean,
-    commentsError: String?,
 ): Boolean =
     when (key) {
         MetaScreenSectionKey.ACTIONS -> true
         MetaScreenSectionKey.OVERVIEW -> true
         MetaScreenSectionKey.PRODUCTION -> hasProductionSection
         MetaScreenSectionKey.CAST -> meta.cast.isNotEmpty()
-        MetaScreenSectionKey.COMMENTS -> shouldShowComments && (isCommentsLoading || comments.isNotEmpty() || !commentsError.isNullOrBlank())
         MetaScreenSectionKey.TRAILERS -> hasTrailersSection
         MetaScreenSectionKey.EPISODES -> hasEpisodes
         MetaScreenSectionKey.DETAILS -> hasAdditionalInfoSection
@@ -2542,17 +2357,7 @@ private fun ConfiguredMetaSections(
     hasAdditionalInfoSection: Boolean,
     hasCollectionSection: Boolean,
     hasMoreLikeThisSection: Boolean,
-    shouldShowComments: Boolean,
-    comments: List<TraktCommentReview>,
-    isCommentsLoading: Boolean,
-    isCommentsLoadingMore: Boolean,
-    commentsCurrentPage: Int,
-    commentsPageCount: Int,
-    commentsError: String?,
     episodeImdbRatings: Map<Pair<Int, Int>, Double>,
-    onRetryComments: () -> Unit,
-    onLoadMoreComments: () -> Unit,
-    onCommentClick: (TraktCommentReview) -> Unit,
     onTrailerClick: (MetaTrailer) -> Unit,
     progressByVideoId: Map<String, WatchProgressEntry>,
     watchedKeys: Set<String>,
@@ -2576,7 +2381,6 @@ private fun ConfiguredMetaSections(
             MetaScreenSectionKey.OVERVIEW -> true
             MetaScreenSectionKey.PRODUCTION -> hasProductionSection
             MetaScreenSectionKey.CAST -> meta.cast.isNotEmpty()
-            MetaScreenSectionKey.COMMENTS -> shouldShowComments && (isCommentsLoading || comments.isNotEmpty() || !commentsError.isNullOrBlank())
             MetaScreenSectionKey.TRAILERS -> hasTrailersSection
             MetaScreenSectionKey.EPISODES -> hasEpisodes
             MetaScreenSectionKey.DETAILS -> hasAdditionalInfoSection
@@ -2626,22 +2430,6 @@ private fun ConfiguredMetaSections(
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,
                 )
-            }
-            MetaScreenSectionKey.COMMENTS -> {
-                if (shouldShowComments && (isCommentsLoading || comments.isNotEmpty() || !commentsError.isNullOrBlank())) {
-                    DetailCommentsSection(
-                        comments = comments,
-                        isLoading = isCommentsLoading,
-                        isLoadingMore = isCommentsLoadingMore,
-                        canLoadMore = commentsCurrentPage < commentsPageCount,
-                        error = commentsError,
-                        onRetry = onRetryComments,
-                        onLoadMore = onLoadMoreComments,
-                        onCommentClick = onCommentClick,
-                        showHeader = showHeader,
-                        horizontalScrollPadding = horizontalScrollPadding,
-                    )
-                }
             }
             MetaScreenSectionKey.TRAILERS -> {
                 if (hasTrailersSection) {
@@ -2695,7 +2483,6 @@ private fun ConfiguredMetaSections(
                 if (hasMoreLikeThisSection) {
                     val sourceLabel = when (meta.moreLikeThisSource) {
                         MoreLikeThisSource.TMDB -> stringResource(Res.string.detail_more_like_this_powered_by_tmdb)
-                        MoreLikeThisSource.TRAKT -> stringResource(Res.string.detail_more_like_this_powered_by_trakt)
                         MoreLikeThisSource.SIMKL -> stringResource(Res.string.detail_more_like_this_powered_by_simkl)
                         null -> null
                     }

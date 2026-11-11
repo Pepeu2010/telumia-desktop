@@ -11,6 +11,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -28,14 +29,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -51,6 +50,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -58,6 +59,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.boundsInRoot
@@ -110,7 +117,6 @@ import nuvio.composeapp.generated.resources.hero_add_to_library
 import nuvio.composeapp.generated.resources.hero_mark_unwatched
 import nuvio.composeapp.generated.resources.hero_mark_watched
 import nuvio.composeapp.generated.resources.hero_remove_from_library
-import nuvio.composeapp.generated.resources.home_view_details
 import nuvio.composeapp.generated.resources.poster_logo_content_description
 import nuvio.composeapp.generated.resources.tracking_lists_update_failed
 import org.jetbrains.compose.resources.stringResource
@@ -121,7 +127,15 @@ private const val HoverPreviewExitDurationMillis = 170
 private const val HoverTrailerExtractionDebounceMillis = 1_000L
 private val HoverPreviewWidth = 420.dp
 
-private class HomePosterHoverPreviewPortalEntry(
+internal data class HomePosterHoverImmersiveEligibility(
+    val frameReady: Boolean,
+    val hoverHeld: Boolean,
+    val ownsPreview: Boolean,
+    val trailerEnded: Boolean,
+    val useRootOverlay: Boolean,
+)
+
+internal class HomePosterHoverPreviewPortalEntry(
     val owner: Any,
     val positionProvider: PopupPositionProvider,
     anchorBounds: IntRect,
@@ -129,9 +143,11 @@ private class HomePosterHoverPreviewPortalEntry(
 ) {
     var anchorBounds by mutableStateOf(anchorBounds)
     var content by mutableStateOf(content)
+    var immersive by mutableStateOf(false)
+    var onExitImmersive: () -> Unit = {}
 }
 
-private object HomePosterHoverPreviewPortal {
+internal object HomePosterHoverPreviewPortal {
     var activeEntry by mutableStateOf<HomePosterHoverPreviewPortalEntry?>(null)
         private set
 
@@ -145,16 +161,61 @@ private object HomePosterHoverPreviewPortal {
 }
 
 /** Renders the active Windows hover card in the main window, where SwingPanel has an interop host. */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun HomePosterHoverPreviewOverlayHost() {
     val entry = HomePosterHoverPreviewPortal.activeEntry ?: return
-    SubcomposeLayout(Modifier.fillMaxSize().zIndex(1f)) { constraints ->
+    val focusRequester = remember(entry.owner) { FocusRequester() }
+    var dismissedWithKey by remember(entry.owner) { mutableStateOf<Key?>(null) }
+    LaunchedEffect(entry.owner, entry.immersive) {
+        if (entry.immersive) focusRequester.requestFocus()
+    }
+    val immersiveInputModifier = if (entry.immersive || dismissedWithKey != null) {
+        Modifier
+            .focusRequester(focusRequester)
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                when {
+                    event.key == dismissedWithKey -> {
+                        if (event.type == KeyEventType.KeyUp) dismissedWithKey = null
+                        true
+                    }
+                    entry.immersive && event.type == KeyEventType.KeyDown -> {
+                        dismissedWithKey = event.key
+                        entry.onExitImmersive()
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .onPointerEvent(PointerEventType.Move) { if (entry.immersive) entry.onExitImmersive() }
+            .onPointerEvent(PointerEventType.Press) { event ->
+                if (entry.immersive) {
+                    event.changes.forEach { it.consume() }
+                    entry.onExitImmersive()
+                }
+            }
+    } else {
+        Modifier
+    }
+    SubcomposeLayout(Modifier.fillMaxSize().zIndex(1f).testTag("home-hover-overlay-host").then(immersiveInputModifier)) { constraints ->
         if (!constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
             return@SubcomposeLayout layout(0, 0) {}
         }
         val popup = subcompose(entry.owner) { entry.content() }
             .single()
-            .measure(Constraints(maxWidth = constraints.maxWidth, maxHeight = constraints.maxHeight))
+            .measure(
+                if (entry.immersive) {
+                    Constraints.fixed(constraints.maxWidth, constraints.maxHeight)
+                } else {
+                    Constraints(maxWidth = constraints.maxWidth, maxHeight = constraints.maxHeight)
+                },
+            )
+        if (entry.immersive) {
+            return@SubcomposeLayout layout(constraints.maxWidth, constraints.maxHeight) {
+                popup.place(0, 0)
+            }
+        }
         val windowSize = IntSize(constraints.maxWidth, constraints.maxHeight)
         val popupSize = IntSize(popup.width, popup.height)
         val position = entry.positionProvider.calculatePosition(
@@ -182,7 +243,10 @@ internal fun HomePosterHoverPreview(
     anchorInteractionSourceOverride: MutableInteractionSource? = null,
     trailerResolver: suspend (MetaPreview) -> TrailerPlaybackSource? = ::resolveHomePosterHoverTrailerPlaybackSource,
     onTrailerReady: () -> Unit = {},
+    onTrailerEnded: () -> Unit = {},
     onTrailerError: () -> Unit = {},
+    onImmersivePreviewChanged: (Boolean) -> Unit = {},
+    onImmersiveEligibilityChanged: (HomePosterHoverImmersiveEligibility) -> Unit = {},
     content: @Composable (Modifier) -> Unit,
 ) {
     if (!isDesktop) {
@@ -211,6 +275,8 @@ internal fun HomePosterHoverPreview(
     val activeOwner by homePosterPreviewOwnership.active.collectAsState()
     val ownsPreview = activeOwner === ownershipToken
     val currentTrailerResolver by rememberUpdatedState(trailerResolver)
+    val latestOnImmersivePreviewChanged = rememberUpdatedState(onImmersivePreviewChanged)
+    val latestOnImmersiveEligibilityChanged = rememberUpdatedState(onImmersiveEligibilityChanged)
     DisposableEffect(ownershipToken) {
         onDispose {
             HomePosterHoverPreviewPortal.clear(ownershipToken)
@@ -221,6 +287,9 @@ internal fun HomePosterHoverPreview(
     val previewHovered by previewInteractionSource.collectIsHoveredAsState()
     var previewVisible by remember(item.type, item.id) { mutableStateOf(false) }
     var popupMounted by remember(item.type, item.id) { mutableStateOf(false) }
+    var immersivePreview by remember(item.type, item.id) { mutableStateOf(false) }
+    var trailerFirstFrameRendered by remember(item.type, item.id) { mutableStateOf(false) }
+    var trailerEnded by remember(item.type, item.id) { mutableStateOf(false) }
     var previewDismissedByScroll by remember(item.type, item.id) { mutableStateOf(false) }
     var trailerPlaybackSource by remember(item.type, item.id) {
         mutableStateOf<TrailerPlaybackSource?>(null)
@@ -289,12 +358,17 @@ internal fun HomePosterHoverPreview(
         if (!ownsPreview) {
             previewVisible = false
             popupMounted = false
+            immersivePreview = false
+            trailerFirstFrameRendered = false
+            trailerEnded = false
         }
     }
 
     val hoverHeld = anchorHovered || previewHovered
     LaunchedEffect(ownsPreview, hoverHeld, trailerPlaybackEnabled, item.type, item.id) {
         trailerPlaybackSource = null
+        trailerFirstFrameRendered = false
+        trailerEnded = false
         if (!ownsPreview || !hoverHeld || !trailerPlaybackEnabled) return@LaunchedEffect
         delay(HoverTrailerExtractionDebounceMillis)
         val source = resolveBoundedHoverPreview { currentTrailerResolver(item) }
@@ -302,6 +376,30 @@ internal fun HomePosterHoverPreview(
         if (homePosterPreviewOwnership.active.value === ownershipToken) {
             trailerPlaybackSource = source
         }
+    }
+
+    LaunchedEffect(trailerFirstFrameRendered, hoverHeld, ownsPreview, trailerEnded, useRootOverlay) {
+        latestOnImmersiveEligibilityChanged.value(
+            HomePosterHoverImmersiveEligibility(
+                frameReady = trailerFirstFrameRendered,
+                hoverHeld = hoverHeld,
+                ownsPreview = ownsPreview,
+                trailerEnded = trailerEnded,
+                useRootOverlay = useRootOverlay,
+            ),
+        )
+        if (!trailerFirstFrameRendered || !hoverHeld || !ownsPreview || trailerEnded || !useRootOverlay) {
+            if (!hoverHeld || !ownsPreview || trailerEnded) immersivePreview = false
+            return@LaunchedEffect
+        }
+        delay(720L)
+        if (trailerFirstFrameRendered && hoverHeld && ownsPreview && !trailerEnded) {
+            immersivePreview = true
+        }
+    }
+
+    LaunchedEffect(immersivePreview) {
+        latestOnImmersivePreviewChanged.value(immersivePreview)
     }
 
     LaunchedEffect(popupMounted, item.type, item.id) {
@@ -394,19 +492,39 @@ internal fun HomePosterHoverPreview(
                 isWatched = isWatched,
                 isSaved = previewIsSaved,
                 trailerEnabled = trailerPlaybackEnabled,
-                trailerSoundEnabled = posterCardStyle.hoverPreviewTrailerSoundEnabled,
+                trailerSoundEnabled = true,
                 trailerStartSeconds = posterCardStyle.hoverPreviewTrailerStartSeconds,
-                trailerPlaybackSource = trailerPlaybackSource.takeIf { ownsPreview && hoverHeld },
-                onTrailerReady = onTrailerReady,
-                onTrailerError = onTrailerError,
+                trailerPlaybackSource = trailerPlaybackSource.takeIf { ownsPreview && hoverHeld && !trailerEnded },
+                immersive = immersivePreview,
+                onTrailerReady = {
+                    trailerFirstFrameRendered = true
+                    onTrailerReady()
+                },
+                onTrailerInteraction = {
+                    if (immersivePreview) immersivePreview = false
+                },
+                onTrailerEnded = {
+                    trailerEnded = true
+                    immersivePreview = false
+                    onTrailerEnded()
+                },
+                onTrailerError = {
+                    trailerEnded = true
+                    immersivePreview = false
+                    onTrailerError()
+                },
                 modifier = Modifier
                     .testTag("home-hover-preview")
                     .hoverable(previewInteractionSource)
                     .onPointerEvent(PointerEventType.Scroll) {
-                        previewDismissedByScroll = true
-                        previewVisible = false
-                        popupMounted = false
-                        homePosterPreviewOwnership.release(ownershipToken)
+                        if (immersivePreview) {
+                            immersivePreview = false
+                        } else {
+                            previewDismissedByScroll = true
+                            previewVisible = false
+                            popupMounted = false
+                            homePosterPreviewOwnership.release(ownershipToken)
+                        }
                     },
                 onClick = onClick,
                 onLongClick = onLongClick,
@@ -423,6 +541,8 @@ internal fun HomePosterHoverPreview(
         if (portalEntry != null && popupMounted && ownsPreview && anchorBounds != null) {
             portalEntry.content = portalContent
             portalEntry.anchorBounds = anchorBounds!!
+            portalEntry.immersive = immersivePreview
+            portalEntry.onExitImmersive = { immersivePreview = false }
             HomePosterHoverPreviewPortal.show(portalEntry)
         } else {
             HomePosterHoverPreviewPortal.clear(ownershipToken)
@@ -473,7 +593,10 @@ private fun HomePosterPreviewCard(
     trailerSoundEnabled: Boolean,
     trailerStartSeconds: Int,
     trailerPlaybackSource: TrailerPlaybackSource?,
+    immersive: Boolean,
     onTrailerReady: () -> Unit,
+    onTrailerInteraction: () -> Unit,
+    onTrailerEnded: () -> Unit,
     onTrailerError: () -> Unit,
     modifier: Modifier,
     onClick: (() -> Unit)?,
@@ -488,8 +611,10 @@ private fun HomePosterPreviewCard(
     var logoLoadError by remember(item.type, item.id, item.logo) { mutableStateOf(false) }
     val logoUrl = item.logo?.takeIf { it.isNotBlank() && !logoLoadError }
 
-    Column(
-        modifier = modifier
+    val layoutModifier = if (immersive) {
+        modifier.fillMaxSize().background(Color.Black)
+    } else {
+        modifier
             .width(HoverPreviewWidth)
             .shadow(tokens.elevation.overlay, shape)
             .clip(shape)
@@ -502,13 +627,19 @@ private fun HomePosterPreviewCard(
             ) {
                 onClick?.invoke()
             }
-            .secondaryClick(onLongClick),
-    ) {
+            .secondaryClick(onLongClick)
+    }
+
+    Column(modifier = layoutModifier) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .background(tokens.colors.surface),
+            modifier = if (immersive) {
+                Modifier.fillMaxSize().background(Color.Black)
+            } else {
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .background(tokens.colors.surface)
+            },
         ) {
             val artworkUrl = item.banner ?: item.poster
             if (!artworkUrl.isNullOrBlank()) {
@@ -527,23 +658,140 @@ private fun HomePosterPreviewCard(
                     soundEnabled = trailerSoundEnabled,
                     startPositionSeconds = trailerStartSeconds,
                     onReady = onTrailerReady,
+                    onEnded = onTrailerEnded,
                     onError = onTrailerError,
+                    onUserInteraction = onTrailerInteraction,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
 
+            HomePosterPreviewHeroChrome(
+                item = item,
+                isWatched = isWatched,
+                logoUrl = logoUrl,
+                previewBackground = previewBackground,
+                visible = !immersive,
+                onLogoLoadError = { logoLoadError = true },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        AnimatedVisibility(
+            visible = !immersive,
+            enter = fadeIn(animationSpec = tween(160)),
+            exit = fadeOut(animationSpec = tween(120)),
+        ) {
+            Column(
+                modifier = Modifier.padding(
+                    start = NuvioTokens.Space.s18,
+                    top = NuvioTokens.Space.s14,
+                    end = NuvioTokens.Space.s18,
+                    bottom = NuvioTokens.Space.s18,
+                ),
+                verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s10),
+            ) {
+                Text(
+                    text = item.previewMetadataLine(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = tokens.colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                item.genres
+                    .take(3)
+                    .joinToString(" • ")
+                    .takeIf { it.isNotBlank() }
+                    ?.let { genres ->
+                        Text(
+                            text = genres,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = tokens.colors.textMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+
+                item.description?.takeIf { it.isNotBlank() }?.let { description ->
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = tokens.colors.textPrimary,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                if (onClick != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s10),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        DetailIconAction(
+                            label = if (isWatched) {
+                                stringResource(Res.string.hero_mark_unwatched)
+                            } else {
+                                stringResource(Res.string.hero_mark_watched)
+                            },
+                            icon = if (isWatched) {
+                                Icons.Default.CheckCircle
+                            } else {
+                                Icons.Default.CheckCircleOutline
+                            },
+                            active = isWatched,
+                            progress = 1f,
+                            onClick = onWatchedClick,
+                            size = NuvioTokens.Space.s40,
+                        )
+
+                        DetailIconAction(
+                            label = if (isSaved) {
+                                stringResource(Res.string.hero_remove_from_library)
+                            } else {
+                                stringResource(Res.string.hero_add_to_library)
+                            },
+                            icon = if (isSaved) Icons.Default.Check else Icons.Default.Add,
+                            active = isSaved,
+                            progress = 1f,
+                            onClick = onSaveClick,
+                            size = NuvioTokens.Space.s40,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomePosterPreviewHeroChrome(
+    item: MetaPreview,
+    isWatched: Boolean,
+    logoUrl: String?,
+    previewBackground: Color,
+    visible: Boolean,
+    onLogoLoadError: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = MaterialTheme.nuvio
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(140)),
+        exit = fadeOut(animationSpec = tween(140)),
+        modifier = modifier,
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colorStops = arrayOf(
-                                0f to Color.Transparent,
-                                0.58f to previewBackground.copy(alpha = 0.08f),
-                                1f to previewBackground.copy(alpha = 0.94f),
-                            ),
+                modifier = Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Transparent,
+                            0.58f to previewBackground.copy(alpha = 0.08f),
+                            1f to previewBackground.copy(alpha = 0.94f),
                         ),
                     ),
+                ),
             )
 
             if (logoUrl != null) {
@@ -558,7 +806,7 @@ private fun HomePosterPreviewCard(
                     alignment = Alignment.CenterStart,
                     contentScale = ContentScale.Fit,
                     clipToBounds = false,
-                    onError = { logoLoadError = true },
+                    onError = { onLogoLoadError() },
                     previewCache = true,
                 )
             } else {
@@ -579,117 +827,6 @@ private fun HomePosterPreviewCard(
                 isWatched = isWatched,
                 padding = NuvioTokens.Space.s10,
             )
-        }
-
-        Column(
-            modifier = Modifier.padding(
-                start = NuvioTokens.Space.s18,
-                top = NuvioTokens.Space.s14,
-                end = NuvioTokens.Space.s18,
-                bottom = NuvioTokens.Space.s18,
-            ),
-            verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s10),
-        ) {
-            Text(
-                text = item.previewMetadataLine(),
-                style = MaterialTheme.typography.labelLarge,
-                color = tokens.colors.textSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            item.genres
-                .take(3)
-                .joinToString(" • ")
-                .takeIf { it.isNotBlank() }
-                ?.let { genres ->
-                    Text(
-                        text = genres,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = tokens.colors.textMuted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-
-            item.description?.takeIf { it.isNotBlank() }?.let { description ->
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = tokens.colors.textPrimary,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-
-            if (onClick != null) {
-                Spacer(modifier = Modifier.height(NuvioTokens.Space.s2))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s10),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(NuvioTokens.Space.s40),
-                        color = tokens.colors.accent,
-                        contentColor = tokens.colors.onAccent,
-                        shape = tokens.shapes.button,
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable(onClick = onClick)
-                                .padding(horizontal = NuvioTokens.Space.s16),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = stringResource(Res.string.home_view_details),
-                                style = MaterialTheme.typography.labelLarge,
-                                maxLines = 1,
-                            )
-                            Spacer(modifier = Modifier.width(NuvioTokens.Space.s8))
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                                contentDescription = null,
-                                modifier = Modifier.size(NuvioTokens.Icon.sm),
-                            )
-                        }
-                    }
-
-                    DetailIconAction(
-                        label = if (isWatched) {
-                            stringResource(Res.string.hero_mark_unwatched)
-                        } else {
-                            stringResource(Res.string.hero_mark_watched)
-                        },
-                        icon = if (isWatched) {
-                            Icons.Default.CheckCircle
-                        } else {
-                            Icons.Default.CheckCircleOutline
-                        },
-                        active = isWatched,
-                        progress = 1f,
-                        onClick = onWatchedClick,
-                        size = NuvioTokens.Space.s40,
-                    )
-
-                    DetailIconAction(
-                        label = if (isSaved) {
-                            stringResource(Res.string.hero_remove_from_library)
-                        } else {
-                            stringResource(Res.string.hero_add_to_library)
-                        },
-                        icon = if (isSaved) Icons.Default.Check else Icons.Default.Add,
-                        active = isSaved,
-                        progress = 1f,
-                        onClick = onSaveClick,
-                        size = NuvioTokens.Space.s40,
-                    )
-                }
-            }
         }
     }
 }

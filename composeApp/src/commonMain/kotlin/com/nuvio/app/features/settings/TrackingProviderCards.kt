@@ -68,11 +68,6 @@ import com.nuvio.app.features.simkl.SimklSyncRepository
 import com.nuvio.app.features.simkl.simklBrandPainter
 import com.nuvio.app.features.tracking.TrackingProviderId
 import com.nuvio.app.features.tracking.TrackingRefreshIntent
-import com.nuvio.app.features.trakt.TraktAuthRepository
-import com.nuvio.app.features.trakt.TraktAuthUiState
-import com.nuvio.app.features.trakt.TraktBrandAsset
-import com.nuvio.app.features.trakt.TraktConnectionMode
-import com.nuvio.app.features.trakt.traktBrandPainter
 import com.nuvio.app.features.watchprogress.WatchProgressSourceCoordinator
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
@@ -102,27 +97,12 @@ import nuvio.composeapp.generated.resources.settings_mdblist_disconnect_descript
 import nuvio.composeapp.generated.resources.settings_tracking_approval_redirect
 import nuvio.composeapp.generated.resources.settings_tracking_disconnect_description
 import nuvio.composeapp.generated.resources.settings_tracking_disconnect_title
-import nuvio.composeapp.generated.resources.settings_trakt_approval_redirect
-import nuvio.composeapp.generated.resources.settings_trakt_connect
-import nuvio.composeapp.generated.resources.settings_trakt_connected_as
-import nuvio.composeapp.generated.resources.settings_trakt_default_user
-import nuvio.composeapp.generated.resources.settings_trakt_disconnect
-import nuvio.composeapp.generated.resources.settings_trakt_disconnect_description
-import nuvio.composeapp.generated.resources.settings_trakt_failed_open_browser
-import nuvio.composeapp.generated.resources.settings_trakt_finish_sign_in
-import nuvio.composeapp.generated.resources.settings_trakt_missing_credentials
-import nuvio.composeapp.generated.resources.settings_trakt_open_activation
-import nuvio.composeapp.generated.resources.settings_trakt_open_login
-import nuvio.composeapp.generated.resources.settings_trakt_device_code_copied
-import nuvio.composeapp.generated.resources.settings_trakt_device_finish_sign_in
-import nuvio.composeapp.generated.resources.settings_trakt_device_instructions
-import nuvio.composeapp.generated.resources.settings_trakt_save_actions_description
-import nuvio.composeapp.generated.resources.settings_trakt_sign_in_description
+import nuvio.composeapp.generated.resources.settings_tracking_disconnect
+import nuvio.composeapp.generated.resources.settings_tracking_failed_open_browser
 import org.jetbrains.compose.resources.stringResource
 
 internal enum class TrackingBrand(val displayName: String) {
     NUVIO("Telumia"),
-    TRAKT("Trakt"),
     SIMKL("Simkl"),
     MDBLIST("MDBList"),
     TMDB("TMDB"),
@@ -136,22 +116,14 @@ internal enum class TrackingConnectionCardMode {
 
 internal fun isTrackingBrandAvailable(
     brand: TrackingBrand,
-    traktConnected: Boolean,
     simklConnected: Boolean,
     mdblistConnected: Boolean = false,
 ): Boolean = when (brand) {
     TrackingBrand.NUVIO,
     TrackingBrand.TMDB,
     -> true
-    TrackingBrand.TRAKT -> traktConnected
     TrackingBrand.SIMKL -> simklConnected
     TrackingBrand.MDBLIST -> mdblistConnected
-}
-
-internal fun TraktConnectionMode.toTrackingConnectionCardMode(): TrackingConnectionCardMode = when (this) {
-    TraktConnectionMode.DISCONNECTED -> TrackingConnectionCardMode.DISCONNECTED
-    TraktConnectionMode.AWAITING_APPROVAL -> TrackingConnectionCardMode.AWAITING_APPROVAL
-    TraktConnectionMode.CONNECTED -> TrackingConnectionCardMode.CONNECTED
 }
 
 internal fun SimklConnectionMode.toTrackingConnectionCardMode(): TrackingConnectionCardMode = when (this) {
@@ -163,7 +135,6 @@ internal fun SimklConnectionMode.toTrackingConnectionCardMode(): TrackingConnect
 @Composable
 internal fun TrackingProviderCards(
     isTablet: Boolean,
-    traktUiState: TraktAuthUiState,
     simklUiState: SimklAuthUiState,
 ) {
     val syncState by remember {
@@ -188,10 +159,6 @@ internal fun TrackingProviderCards(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 12.dp),
     ) {
-        TraktProviderCard(
-            uiState = traktUiState,
-            modifier = Modifier.fillMaxWidth(),
-        )
         SimklProviderCard(
             uiState = simklUiState,
             isSyncing = syncState.isLoading,
@@ -206,65 +173,6 @@ internal fun TrackingProviderCards(
     if (showSyncInfo) {
         SimklSyncInfoDialog(onDismiss = { showSyncInfo = false })
     }
-}
-
-@Composable
-private fun TraktProviderCard(
-    uiState: TraktAuthUiState,
-    modifier: Modifier,
-) {
-    val usesDeviceCodeFlow = uiState.usesDeviceCodeFlow
-    TrackingProviderCard(
-        brand = TrackingBrand.TRAKT,
-        mode = uiState.mode.toTrackingConnectionCardMode(),
-        credentialsConfigured = uiState.credentialsConfigured,
-        isLoading = uiState.isLoading,
-        connectedLabel = stringResource(
-            Res.string.settings_trakt_connected_as,
-            uiState.username ?: stringResource(Res.string.settings_trakt_default_user),
-        ),
-        connectedDescription = stringResource(Res.string.settings_trakt_save_actions_description),
-        signInDescription = stringResource(Res.string.settings_trakt_sign_in_description),
-        finishSignInLabel = stringResource(
-            if (usesDeviceCodeFlow) {
-                Res.string.settings_trakt_device_finish_sign_in
-            } else {
-                Res.string.settings_trakt_finish_sign_in
-            },
-        ),
-        approvalDescription = stringResource(
-            if (usesDeviceCodeFlow) {
-                Res.string.settings_trakt_device_instructions
-            } else {
-                Res.string.settings_trakt_approval_redirect
-            },
-        ),
-        connectLabel = stringResource(Res.string.settings_trakt_connect),
-        openLoginLabel = stringResource(
-            if (usesDeviceCodeFlow) {
-                Res.string.settings_trakt_open_activation
-            } else {
-                Res.string.settings_trakt_open_login
-            },
-        ),
-        disconnectLabel = stringResource(Res.string.settings_trakt_disconnect),
-        missingCredentialsMessage = stringResource(Res.string.settings_trakt_missing_credentials),
-        approvalCode = uiState.pendingDeviceUserCode,
-        approvalUrl = uiState.pendingDeviceVerificationUrl,
-        approvalCodeCopiedMessage = stringResource(Res.string.settings_trakt_device_code_copied),
-        statusMessage = uiState.statusMessage.takeUnless {
-            uiState.mode == TraktConnectionMode.CONNECTED
-        },
-        errorMessage = uiState.errorMessage,
-        onConnectRequested = TraktAuthRepository::onConnectRequested,
-        onResumeAuthorization = {
-            TraktAuthRepository.pendingAuthorizationUrl()
-                ?: TraktAuthRepository.onConnectRequested()
-        },
-        onCancelAuthorization = TraktAuthRepository::onCancelAuthorization,
-        onDisconnect = TraktAuthRepository::onDisconnectRequested,
-        modifier = modifier,
-    )
 }
 
 @Composable
@@ -373,7 +281,7 @@ internal fun TrackingProviderCard(
     val uriHandler = LocalUriHandler.current
     val actionScope = rememberCoroutineScope()
     val displayedApprovalCode = authorizationCode ?: approvalCode
-    val failedOpenBrowserMessage = stringResource(Res.string.settings_trakt_failed_open_browser)
+    val failedOpenBrowserMessage = stringResource(Res.string.settings_tracking_failed_open_browser)
     var browserError by rememberSaveable { mutableStateOf(false) }
     var showDisconnectDialog by rememberSaveable { mutableStateOf(false) }
     var localStatusMessage by rememberSaveable(displayedApprovalCode) { mutableStateOf<String?>(null) }
@@ -722,8 +630,6 @@ private fun TrackingDisconnectDialog(
     ) {
         Text(
             text = when (brand) {
-                TrackingBrand.TRAKT ->
-                    stringResource(Res.string.settings_trakt_disconnect_description)
                 TrackingBrand.SIMKL ->
                     stringResource(Res.string.settings_simkl_disconnect_description)
                 TrackingBrand.MDBLIST -> stringResource(Res.string.settings_mdblist_disconnect_description)
@@ -743,7 +649,7 @@ private fun TrackingDisconnectDialog(
                 onClick = onDismiss,
             )
             DialogButton(
-                text = stringResource(Res.string.settings_trakt_disconnect),
+                text = stringResource(Res.string.settings_tracking_disconnect),
                 onClick = onConfirm,
                 style = DialogButtonStyle.Destructive,
             )
@@ -758,12 +664,6 @@ internal fun TrackingBrandGlyph(
     contentDescription: String? = null,
 ) {
     when (brand) {
-        TrackingBrand.TRAKT -> Image(
-            painter = traktBrandPainter(TraktBrandAsset.Glyph),
-            contentDescription = contentDescription,
-            modifier = modifier,
-            contentScale = ContentScale.Fit,
-        )
         TrackingBrand.SIMKL -> Image(
             painter = simklBrandPainter(SimklBrandAsset.Glyph),
             contentDescription = contentDescription,
@@ -797,7 +697,6 @@ private fun TrackingBrandWordmark(
     contentDescription: String,
 ) {
     val painter: Painter = when (brand) {
-        TrackingBrand.TRAKT -> traktBrandPainter(TraktBrandAsset.Wordmark)
         TrackingBrand.SIMKL -> simklBrandPainter(SimklBrandAsset.Wordmark)
         TrackingBrand.MDBLIST -> integrationLogoPainter(IntegrationLogo.MdbList)
         TrackingBrand.NUVIO,
@@ -808,9 +707,6 @@ private fun TrackingBrandWordmark(
         painter = painter,
         contentDescription = contentDescription,
         modifier = when (brand) {
-            TrackingBrand.TRAKT -> Modifier
-                .width(86.dp)
-                .height(38.dp)
             TrackingBrand.SIMKL -> Modifier
                 .width(124.dp)
                 .height(30.dp)
@@ -825,9 +721,6 @@ private fun TrackingBrandWordmark(
 }
 
 private fun TrackingBrand.cardBrush(): Brush = when (this) {
-    TrackingBrand.TRAKT -> Brush.linearGradient(
-        colors = listOf(Color(0xFF7D279B), Color(0xFFD61F56), Color(0xFFF22125)),
-    )
     TrackingBrand.SIMKL -> Brush.linearGradient(
         colors = listOf(Color(0xFF050505), Color(0xFF292929), Color(0xFF111111)),
     )

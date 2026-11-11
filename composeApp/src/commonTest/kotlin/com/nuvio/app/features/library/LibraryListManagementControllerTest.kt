@@ -40,7 +40,7 @@ class LibraryListManagementControllerTest {
     @Test
     fun profileSourceOrAccountChangesRejectPendingDrafts() = runTest {
         val original = LibraryManagementContext(1, LibrarySourceMode.MDBLIST, 1)
-        for (replacement in listOf(original.copy(profileId = 2), original.copy(source = LibrarySourceMode.TRAKT), original.copy(accountGeneration = 2))) {
+        for (replacement in listOf(original.copy(profileId = 2), original.copy(source = LibrarySourceMode.SIMKL), original.copy(accountGeneration = 2))) {
             var current = original
             val manager = TestListManager()
             val controller = LibraryListManagementController({ current }, { manager })

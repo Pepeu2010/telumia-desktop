@@ -893,7 +893,7 @@ object TmdbMetadataService {
                 com.nuvio.app.features.tracking.TrackingSettingsRepository.ensureLoaded()
                 com.nuvio.app.features.tracking.TrackingSettingsRepository.uiState.value.moreLikeThisSource
             }
-            val tmdbIsPreferredSource = userMoreLikeThisSource == com.nuvio.app.features.trakt.MoreLikeThisSourcePreference.TMDB
+            val tmdbIsPreferredSource = userMoreLikeThisSource == com.nuvio.app.features.tracking.MoreLikeThisSourcePreference.TMDB
             if (tmdbIsPreferredSource || updated.moreLikeThis.isEmpty()) {
                 updated = updated.copy(
                     moreLikeThis = enrichment.moreLikeThis,

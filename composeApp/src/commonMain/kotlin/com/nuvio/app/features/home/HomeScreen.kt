@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
@@ -19,9 +20,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.AppScreenTab
 import com.nuvio.app.isDesktop
@@ -52,12 +55,15 @@ import com.nuvio.app.features.details.SeriesPrimaryAction
 import com.nuvio.app.features.details.seriesPrimaryAction
 import com.nuvio.app.features.home.components.HomeCatalogRowSection
 import com.nuvio.app.features.home.components.HomeContinueWatchingSection
+import com.nuvio.app.features.home.components.CinematicContinueWatchingStatusPill
 import com.nuvio.app.features.home.components.HomeEmptyStateCard
 import com.nuvio.app.features.home.components.HomeHeroReservedSpace
+import com.nuvio.app.features.home.components.HomeSelectedHero
 import com.nuvio.app.features.home.components.HomeHeroSection
 import com.nuvio.app.features.home.components.HomeSkeletonHero
 import com.nuvio.app.features.home.components.HomeSkeletonRow
 import com.nuvio.app.features.home.components.ContinueWatchingLayout
+import com.nuvio.app.features.watchprogress.ContinueWatchingSectionStyle
 import com.nuvio.app.features.tracking.TrackingSettingsRepository
 import com.nuvio.app.features.tracking.WatchProgressSource
 import com.nuvio.app.features.watched.WatchedItem
@@ -73,6 +79,7 @@ import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesRepository
 import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesUiState
 import com.nuvio.app.features.watchprogress.ContinueWatchingItem
+import com.nuvio.app.features.watchprogress.continueWatchingItemKey
 import com.nuvio.app.features.watchprogress.ContinueWatchingSortMode
 import com.nuvio.app.features.watchprogress.isMalformedNextUpSeedContentId
 import com.nuvio.app.features.watchprogress.isSeriesTypeForContinueWatching
@@ -901,9 +908,12 @@ fun HomeScreen(
         }
     }
     val hasRenderableHomeRows = homeUiState.sections.isNotEmpty() || hasRenderableCollectionRows
+    val desktopHeroItems = if (isDesktop && homeUiState.heroItems.isEmpty() && continueWatchingPreferences.isVisible) {
+        continueWatchingHeroFallback(continueWatchingItems, homeUiState.sections.flatMap { it.items })
+    } else homeUiState.heroItems
     val showHeroSlot = shouldShowHomeHeroSlot(
         heroEnabled = homeSettingsUiState.heroEnabled,
-        hasHeroItems = homeUiState.heroItems.isNotEmpty(),
+        hasHeroItems = desktopHeroItems.isNotEmpty(),
         isResolvingHeroSources = isResolvingHeroSources,
         hasRenderableHomeRows = hasRenderableHomeRows,
     )
@@ -913,7 +923,7 @@ fun HomeScreen(
         showHeroSlot = showHeroSlot,
     )
     val showHeroSkeleton = showHeroSlot &&
-        homeUiState.heroItems.isEmpty() &&
+        desktopHeroItems.isEmpty() &&
         isResolvingHeroSources
     val isInitialHomeContentLoading = shouldShowInitialHomeLoading(
         hasRenderableHomeRows = hasRenderableHomeRows,
@@ -935,6 +945,33 @@ fun HomeScreen(
             HOME_CATALOG_PREVIEW_LIMIT
         }
         val continueWatchingLayout = rememberContinueWatchingLayout(maxWidth.value, posterCardStyle)
+        val cinematicHome = isDesktop && showHeroSlot
+        var highlightedHeroItem by remember { mutableStateOf<MetaPreview?>(null) }
+        var highlightedContinueKey by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(homeUiState.sections, homeUiState.heroItems, continueWatchingItems) {
+            val selected = highlightedHeroItem ?: return@LaunchedEffect
+            val refreshed = (homeUiState.heroItems.asSequence() + homeUiState.sections.asSequence()
+                .flatMap { it.items.asSequence() })
+                .firstOrNull { it.type == selected.type && it.id == selected.id }
+            val progressItem = highlightedContinueKey?.let { key ->
+                continueWatchingItems.firstOrNull { continueWatchingItemKey(it) == key }
+            }
+            if (progressItem != null) {
+                highlightedHeroItem = continueWatchingHeroPreview(progressItem, refreshed)
+            } else if (highlightedContinueKey == null && refreshed != null) {
+                highlightedHeroItem = refreshed
+            } else {
+                highlightedHeroItem = null
+                highlightedContinueKey = null
+            }
+        }
+        val highlightContinueWatching: (ContinueWatchingItem) -> Unit = { item ->
+            highlightedContinueKey = continueWatchingItemKey(item)
+            val matched = (homeUiState.heroItems.asSequence() + homeUiState.sections.asSequence()
+                .flatMap { it.items.asSequence() })
+                .firstOrNull { it.id == item.parentMetaId && it.type == item.parentMetaType }
+            highlightedHeroItem = continueWatchingHeroPreview(item, matched)
+        }
         val nativeBottomNavigationOverlayHeight =
             if (LocalNuvioBottomNavigationOverlayPadding.current > 0.dp) {
                 nuvioSafeBottomPadding()
@@ -999,12 +1036,21 @@ fun HomeScreen(
                                 sectionPadding = if (isDesktop) homeSectionPadding else null,
                             )
 
-                            homeUiState.heroItems.isNotEmpty() -> HomeHeroSection(
-                                items = homeUiState.heroItems,
-                                modifier = Modifier,
+                            desktopHeroItems.isNotEmpty() && isDesktop -> HomeSelectedHero(
+                                items = desktopHeroItems,
+                                highlighted = highlightedHeroItem,
                                 viewportHeight = maxHeight,
                                 mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
                                 sectionPadding = if (isDesktop) homeSectionPadding else null,
+                                listState = homeListState,
+                                stretchPx = { heroStretchState.stretchPx },
+                                onItemClick = onPosterClick,
+                            )
+
+                            homeUiState.heroItems.isNotEmpty() -> HomeHeroSection(
+                                items = homeUiState.heroItems,
+                                viewportHeight = maxHeight,
+                                mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
                                 listState = homeListState,
                                 stretchPx = { heroStretchState.stretchPx },
                                 onItemClick = onPosterClick,
@@ -1034,6 +1080,10 @@ fun HomeScreen(
                         onItemClick = onContinueWatchingClick,
                         onItemLongPress = onContinueWatchingLongPress,
                         disintegrationRequest = continueWatchingDisintegrationRequest,
+                        cinematicPosterRail = cinematicHome,
+                        onItemHighlighted = highlightContinueWatching.takeIf { cinematicHome },
+                        highlightedItemKey = highlightedContinueKey,
+                        showDefaultFeature = highlightedHeroItem == null,
                     )
                     items(
                         count = 3,
@@ -1059,6 +1109,10 @@ fun HomeScreen(
                         onItemClick = onContinueWatchingClick,
                         onItemLongPress = onContinueWatchingLongPress,
                         disintegrationRequest = continueWatchingDisintegrationRequest,
+                        cinematicPosterRail = cinematicHome,
+                        onItemHighlighted = highlightContinueWatching.takeIf { cinematicHome },
+                        highlightedItemKey = highlightedContinueKey,
+                        showDefaultFeature = highlightedHeroItem == null,
                     )
                     item(key = "home_empty", contentType = "empty") {
                         when {
@@ -1160,6 +1214,10 @@ fun HomeScreen(
                         onItemClick = onContinueWatchingClick,
                         onItemLongPress = onContinueWatchingLongPress,
                         disintegrationRequest = continueWatchingDisintegrationRequest,
+                        cinematicPosterRail = cinematicHome,
+                        onItemHighlighted = highlightContinueWatching.takeIf { cinematicHome },
+                        highlightedItemKey = highlightedContinueKey,
+                        showDefaultFeature = highlightedHeroItem == null,
                     )
 
                     keyedEnabledHomeItems.forEach { keyedSettingsItem ->
@@ -1201,6 +1259,12 @@ fun HomeScreen(
                                         fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
                                         onPosterClick = onPosterClick,
                                         onPosterLongClick = onPosterLongClick,
+                                        onPosterHighlighted = if (cinematicHome) {
+                                            { selected ->
+                                                highlightedContinueKey = null
+                                                highlightedHeroItem = selected
+                                            }
+                                        } else null,
                                     )
                                 }
                             }
@@ -1208,6 +1272,25 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+
+        val cinematicProgressItem = if (cinematicHome && continueWatchingPreferences.isVisible) {
+            continueWatchingItems.firstOrNull { item ->
+                !item.isNextUp && item.resumePositionMs > 0L && item.durationMs > 0L &&
+                    (highlightedContinueKey?.let { continueWatchingItemKey(item) == it }
+                        ?: (highlightedHeroItem == null))
+            }
+        } else {
+            null
+        }
+        cinematicProgressItem?.let { item ->
+            CinematicContinueWatchingStatusPill(
+                item = item,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = homeSectionPadding, bottom = 24.dp)
+                    .zIndex(2f),
+            )
         }
     }
 }
@@ -1224,6 +1307,10 @@ private fun LazyListScope.homeContinueWatchingSections(
     onItemClick: ((ContinueWatchingItem) -> Unit)?,
     onItemLongPress: ((ContinueWatchingItem) -> Unit)?,
     disintegrationRequest: DisintegrationRequest<String>?,
+    cinematicPosterRail: Boolean = false,
+    onItemHighlighted: ((ContinueWatchingItem) -> Unit)? = null,
+    highlightedItemKey: String? = null,
+    showDefaultFeature: Boolean = true,
 ) {
     if (!preferences.isVisible) return
 
@@ -1232,15 +1319,22 @@ private fun LazyListScope.homeContinueWatchingSections(
             HomeContinueWatchingSection(
                 items = continueWatchingItems,
                 dataSourceKey = dataSourceKey,
-                style = preferences.style,
+                style = if (cinematicPosterRail) ContinueWatchingSectionStyle.Poster else preferences.style,
                 useEpisodeThumbnails = preferences.useEpisodeThumbnails,
                 blurNextUp = preferences.blurNextUp,
-                modifier = Modifier.padding(bottom = 12.dp),
+                modifier = Modifier
+                    .padding(bottom = 12.dp)
+                    .then(if (cinematicPosterRail) Modifier.offset(y = (-112).dp).zIndex(1f) else Modifier),
+                title = if (cinematicPosterRail) stringResource(Res.string.home_cinematic_continue) else null,
+                cinematicPosterRail = cinematicPosterRail,
                 sectionPadding = sectionPadding,
                 layout = layout,
                 listState = continueWatchingListState,
                 onItemClick = onItemClick,
                 onItemLongPress = onItemLongPress,
+                onItemHighlighted = onItemHighlighted,
+                highlightedItemKey = highlightedItemKey,
+                showDefaultFeature = showDefaultFeature,
                 disintegrationRequest = disintegrationRequest,
             )
         }
@@ -1280,6 +1374,27 @@ internal data class HomeNextUpResolutionPlan(
     val initialCandidates: List<CompletedSeriesCandidate>,
     val deferredCandidates: List<CompletedSeriesCandidate>,
 )
+
+/** Preserve artwork from progress when catalog metadata is incomplete or refreshed. */
+internal fun continueWatchingHeroPreview(item: ContinueWatchingItem, catalog: MetaPreview?): MetaPreview {
+    fun firstUsable(vararg values: String?): String? = values.firstOrNull { !it.isNullOrBlank() }
+    return (catalog ?: MetaPreview(item.parentMetaId, item.parentMetaType, item.title)).copy(
+        banner = firstUsable(catalog?.banner, item.background, item.imageUrl),
+        poster = firstUsable(catalog?.poster, item.poster),
+        logo = firstUsable(catalog?.logo, item.logo),
+    )
+}
+
+/** Use actual in-progress titles if the addon has no featured catalog. */
+internal fun continueWatchingHeroFallback(items: List<ContinueWatchingItem>, catalog: List<MetaPreview>): List<MetaPreview> =
+    items.asSequence()
+        .filter { !it.isNextUp && it.parentMetaId.isNotBlank() && it.parentMetaType.isNotBlank() && it.title.isNotBlank() }
+        .distinctBy { it.parentMetaType to it.parentMetaId }
+        .take(5)
+        .map { item -> continueWatchingHeroPreview(item, catalog.firstOrNull {
+            it.id == item.parentMetaId && it.type == item.parentMetaType
+        }) }
+        .toList()
 
 internal fun planHomeNextUpResolutionCandidates(
     candidates: List<CompletedSeriesCandidate>,

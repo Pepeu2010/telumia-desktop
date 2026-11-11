@@ -19,7 +19,6 @@ actual object MdbListSettingsStorage {
     private const val useTmdbKey = "mdblist_use_tmdb"
     private const val useTomatoesKey = "mdblist_use_tomatoes"
     private const val useMetacriticKey = "mdblist_use_metacritic"
-    private const val useTraktKey = "mdblist_use_trakt"
     private const val useLetterboxdKey = "mdblist_use_letterboxd"
     private const val useAudienceKey = "mdblist_use_audience"
     private const val useMalKey = "mdblist_use_mal"
@@ -30,7 +29,6 @@ actual object MdbListSettingsStorage {
         useTmdbKey,
         useTomatoesKey,
         useMetacriticKey,
-        useTraktKey,
         useLetterboxdKey,
         useAudienceKey,
         useMalKey,
@@ -82,11 +80,7 @@ actual object MdbListSettingsStorage {
         saveBoolean(useMetacriticKey, enabled)
     }
 
-    actual fun loadUseTrakt(): Boolean? = loadBoolean(useTraktKey)
 
-    actual fun saveUseTrakt(enabled: Boolean) {
-        saveBoolean(useTraktKey, enabled)
-    }
 
     actual fun loadUseLetterboxd(): Boolean? = loadBoolean(useLetterboxdKey)
 
@@ -130,7 +124,6 @@ actual object MdbListSettingsStorage {
         loadUseTmdb()?.let { put(useTmdbKey, encodeSyncBoolean(it)) }
         loadUseTomatoes()?.let { put(useTomatoesKey, encodeSyncBoolean(it)) }
         loadUseMetacritic()?.let { put(useMetacriticKey, encodeSyncBoolean(it)) }
-        loadUseTrakt()?.let { put(useTraktKey, encodeSyncBoolean(it)) }
         loadUseLetterboxd()?.let { put(useLetterboxdKey, encodeSyncBoolean(it)) }
         loadUseAudience()?.let { put(useAudienceKey, encodeSyncBoolean(it)) }
         loadUseMal()?.let { put(useMalKey, encodeSyncBoolean(it)) }
@@ -147,7 +140,6 @@ actual object MdbListSettingsStorage {
         payload.decodeSyncBoolean(useTmdbKey)?.let(::saveUseTmdb)
         payload.decodeSyncBoolean(useTomatoesKey)?.let(::saveUseTomatoes)
         payload.decodeSyncBoolean(useMetacriticKey)?.let(::saveUseMetacritic)
-        payload.decodeSyncBoolean(useTraktKey)?.let(::saveUseTrakt)
         payload.decodeSyncBoolean(useLetterboxdKey)?.let(::saveUseLetterboxd)
         payload.decodeSyncBoolean(useAudienceKey)?.let(::saveUseAudience)
         payload.decodeSyncBoolean(useMalKey)?.let(::saveUseMal)

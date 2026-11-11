@@ -22,6 +22,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 private const val TrailerReadyTimeoutMs = 12_000L
 private const val TrailerSnapshotIntervalMs = 100L
+private const val TrailerPlaybackStartThresholdMs = 500L
 
 @Composable
 internal fun WindowsHeroTrailerPlayerSurface(
@@ -35,6 +36,7 @@ internal fun WindowsHeroTrailerPlayerSurface(
     onReady: () -> Unit,
     onEnded: () -> Unit,
     onError: () -> Unit,
+    onUserInteraction: () -> Unit = {},
 ) {
     key(sourceUrl, sourceAudioUrl, startPositionMillis) {
         WindowsHeroTrailerPlayerSession(
@@ -48,6 +50,7 @@ internal fun WindowsHeroTrailerPlayerSurface(
             onReady = onReady,
             onEnded = onEnded,
             onError = onError,
+            onUserInteraction = onUserInteraction,
         )
     }
 }
@@ -64,6 +67,7 @@ private fun WindowsHeroTrailerPlayerSession(
     onReady: () -> Unit,
     onEnded: () -> Unit,
     onError: () -> Unit,
+    onUserInteraction: () -> Unit,
 ) {
     val host = remember { NativePlayerHost() }
     val controller = remember(host) {
@@ -72,14 +76,17 @@ private fun WindowsHeroTrailerPlayerSession(
     val latestOnReady = rememberUpdatedState(onReady)
     val latestOnEnded = rememberUpdatedState(onEnded)
     val latestOnError = rememberUpdatedState(onError)
+    val latestOnUserInteraction = rememberUpdatedState(onUserInteraction)
     var hostReady by remember(host) { mutableStateOf(false) }
     var mediaReady by remember(controller) { mutableStateOf(false) }
     var terminalReported by remember(controller) { mutableStateOf(false) }
 
     DisposableEffect(host) {
         host.onFirstFullSizePaint = { hostReady = true }
+        host.onCursorActivity = { latestOnUserInteraction.value() }
         onDispose {
             host.onFirstFullSizePaint = null
+            host.onCursorActivity = null
             hostReady = false
         }
     }
@@ -95,21 +102,6 @@ private fun WindowsHeroTrailerPlayerSession(
     LaunchedEffect(controller, hostReady, sourceUrl, sourceAudioUrl, startPositionMillis, muted) {
         if (!hostReady || sourceUrl.isBlank()) return@LaunchedEffect
 
-        // These previews are silent by default. If the user explicitly enables sound and
-        // the extractor returned a separate audio track, fall back to artwork instead of
-        // playing a misleading, video-only preview on Windows.
-        if (!muted && !sourceAudioUrl.isNullOrBlank()) {
-            System.err.println("[TelumiaPreview] unsupported audio-combined preview muted=$muted separateAudio=true")
-            controller.pause()
-            controller.dispose()
-            mediaReady = false
-            if (!terminalReported) {
-                terminalReported = true
-                latestOnError.value()
-            }
-            return@LaunchedEffect
-        }
-
         terminalReported = false
         mediaReady = false
         controller.attach(
@@ -117,7 +109,9 @@ private fun WindowsHeroTrailerPlayerSession(
             sourceHeaders = TrailerExtractionPlatform.defaultHeaders,
             playWhenReady = false,
             initialPositionMs = startPositionMillis.coerceAtLeast(0L),
-            decoderPriority = 0,
+            // Prefer hardware for smooth previews, but retain software fallback
+            // for trailers whose codec is unsupported by the device decoder.
+            decoderPriority = 1,
             nvidiaRtxSuperResolutionEnabled = false,
             onError = {
                 System.err.println("[TelumiaPreview] native player error detail=${it ?: "unknown"}")
@@ -147,6 +141,37 @@ private fun WindowsHeroTrailerPlayerSession(
             return@LaunchedEffect
         }
 
+        if (!muted && !sourceAudioUrl.isNullOrBlank()) {
+            val existingTrackIds = controller.getAudioTracks().map { it.id }.toSet()
+            val queued = controller.addExternalAudioAsync(sourceAudioUrl)
+            val audioReady = queued && (withTimeoutOrNull(TrailerReadyTimeoutMs) {
+                while (true) {
+                    if (controller.getAudioTracks().any { it.id !in existingTrackIds && it.isSelected }) break
+                    delay(TrailerSnapshotIntervalMs)
+                }
+                true
+            } ?: false)
+            if (!audioReady) {
+                System.err.println("[TelumiaPreview] external audio unavailable")
+                if (!terminalReported) {
+                    terminalReported = true
+                    controller.dispose()
+                    latestOnError.value()
+                }
+                return@LaunchedEffect
+            }
+        }
+
+        if (!muted && sourceAudioUrl.isNullOrBlank() && controller.getAudioTracks().none { it.isSelected }) {
+            System.err.println("[TelumiaPreview] combined source has no selected audio")
+            if (!terminalReported) {
+                terminalReported = true
+                controller.dispose()
+                latestOnError.value()
+            }
+            return@LaunchedEffect
+        }
+
         controller.setTransientResizeMode(if (fillFrame) PlayerResizeMode.Fill else PlayerResizeMode.Fit)
         controller.setMuted(muted)
         mediaReady = true
@@ -156,13 +181,31 @@ private fun WindowsHeroTrailerPlayerSession(
     LaunchedEffect(controller, mediaReady, playWhenReady, muted) {
         if (!mediaReady) return@LaunchedEffect
         controller.setMuted(muted)
-        if (playWhenReady) controller.play() else controller.pause()
+        if (playWhenReady) {
+            // Some native sources can report EOF while still paused at their first frame.
+            // `play()` mirrors the regular player replay behavior and seeks to the requested
+            // start point before unpausing when that happens.
+            if (controller.snapshot().isEnded) {
+                controller.seekTo(startPositionMillis.coerceAtLeast(0L))
+            }
+            controller.play()
+        } else {
+            controller.pause()
+        }
     }
 
     LaunchedEffect(controller, mediaReady) {
         if (!mediaReady) return@LaunchedEffect
+        var playbackAdvanced = false
+        val playbackStartPositionMs = startPositionMillis.coerceAtLeast(0L)
         while (true) {
-            if (controller.snapshot().isEnded) {
+            val snapshot = controller.snapshot()
+            // EOF can be true at load time before playback starts. Only report the trailer as
+            // ended after observing real timeline movement beyond the initial frame.
+            if (!playbackAdvanced && snapshot.positionMs >= playbackStartPositionMs + TrailerPlaybackStartThresholdMs) {
+                playbackAdvanced = true
+            }
+            if (playbackAdvanced && snapshot.isEnded) {
                 if (!terminalReported) {
                     terminalReported = true
                     latestOnEnded.value()

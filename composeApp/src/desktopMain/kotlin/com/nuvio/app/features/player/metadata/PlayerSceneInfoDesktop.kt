@@ -21,5 +21,6 @@ internal fun desktopSceneInfoEntriesAt(
 ): List<SceneInfoEntry> = if (expectedScope == null || timeline?.scope != expectedScope) {
     emptyList()
 } else {
-    timeline.sceneInfoAt(positionMs)
+    timeline.sceneInfoAt(positionMs).filterNot { it.kind == TimedMetadataKind.CHAPTER } +
+        timeline.sceneInfoChapterContextAt(positionMs).asEntries()
 }

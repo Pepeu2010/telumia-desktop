@@ -78,10 +78,10 @@ class ContinueWatchingEnrichmentStorageTest {
     @Test
     fun switchingProfilesAndSourcesKeepsTheirSnapshotsSeparate() {
         assertTrue(save(item("simkl")))
-        assertTrue(save(item("trakt"), source = WatchProgressSource.TRAKT))
+        assertTrue(save(item("remote"), source = WatchProgressSource.MDBLIST))
         assertTrue(save(item("other profile"), profileId = 2))
 
-        assertEquals("trakt", ContinueWatchingEnrichmentCache.getNextUpSnapshot(1, WatchProgressSource.TRAKT).single().name)
+        assertEquals("remote", ContinueWatchingEnrichmentCache.getNextUpSnapshot(1, WatchProgressSource.MDBLIST).single().name)
         assertEquals("simkl", ContinueWatchingEnrichmentCache.getNextUpSnapshot(1, WatchProgressSource.SIMKL).single().name)
         val staleGeneration = ContinueWatchingEnrichmentCache.generation.value
         val readCount = preferences.readCount
@@ -96,7 +96,7 @@ class ContinueWatchingEnrichmentStorageTest {
     @Test
     fun invalidationAndProfileClearingRemoveOnlyTheirSnapshots() {
         assertTrue(save(item("simkl")))
-        assertTrue(save(item("trakt"), source = WatchProgressSource.TRAKT))
+        assertTrue(save(item("remote"), source = WatchProgressSource.MDBLIST))
         assertTrue(save(item("other profile"), profileId = 2))
         val staleGeneration = ContinueWatchingEnrichmentCache.generation.value
 
@@ -104,11 +104,11 @@ class ContinueWatchingEnrichmentStorageTest {
 
         assertFalse(save(item("stale"), generation = staleGeneration))
         assertTrue(ContinueWatchingEnrichmentCache.getNextUpSnapshot(1, WatchProgressSource.SIMKL).isEmpty())
-        assertEquals("trakt", ContinueWatchingEnrichmentCache.getNextUpSnapshot(1, WatchProgressSource.TRAKT).single().name)
+        assertEquals("remote", ContinueWatchingEnrichmentCache.getNextUpSnapshot(1, WatchProgressSource.MDBLIST).single().name)
 
         ContinueWatchingEnrichmentCache.clearAll(1)
 
-        assertTrue(ContinueWatchingEnrichmentCache.getNextUpSnapshot(1, WatchProgressSource.TRAKT).isEmpty())
+        assertTrue(ContinueWatchingEnrichmentCache.getNextUpSnapshot(1, WatchProgressSource.MDBLIST).isEmpty())
         assertEquals("other profile", ContinueWatchingEnrichmentCache.getNextUpSnapshot(2, WatchProgressSource.SIMKL).single().name)
     }
 

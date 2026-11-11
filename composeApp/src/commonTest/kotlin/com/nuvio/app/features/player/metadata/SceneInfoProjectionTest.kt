@@ -26,6 +26,7 @@ class SceneInfoProjectionTest {
             timeline.sceneInfoAt(220).map { it.id.substringAfter(':') },
         )
         assertEquals("Personagem", timeline.sceneInfoAt(220).first().detail)
+        assertEquals(200L, timeline.sceneInfoAt(220).single { it.kind == TimedMetadataKind.CHAPTER }.startMs)
         assertTrue(timeline.sceneInfoAt(300).none { it.title == "Canção" })
         assertTrue(timeline.sceneInfoAt(99).isEmpty())
     }

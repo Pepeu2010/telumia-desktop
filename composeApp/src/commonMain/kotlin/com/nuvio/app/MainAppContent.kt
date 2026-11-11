@@ -1,11 +1,15 @@
 package com.nuvio.app
 
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -215,6 +219,26 @@ internal fun MainAppContent(
         val posterNavigation = remember { PosterNavigationState() }
         val navigationMotion = com.nuvio.app.core.ui.LocalUiMotion.current
         val navigationDuration = navigationMotion.durationMillis(com.nuvio.app.core.ui.NuvioTokens.Motion.normalMillis)
+        val routeEnter: (Boolean) -> EnterTransition = { isPop ->
+            val fade = fadeIn(tween(navigationDuration))
+            if (navigationMotion.allowsSpatialEffects) {
+                fade + slideInVertically(tween(navigationDuration)) { height ->
+                    if (isPop) -height / 72 else height / 72
+                }
+            } else {
+                fade
+            }
+        }
+        val routeExit: (Boolean) -> ExitTransition = { isPop ->
+            val fade = fadeOut(tween(navigationDuration))
+            if (navigationMotion.allowsSpatialEffects) {
+                fade + slideOutVertically(tween(navigationDuration)) { height ->
+                    if (isPop) height / 96 else -height / 96
+                }
+            } else {
+                fade
+            }
+        }
         LaunchedEffect(navigationMotion) {
             // Land lifted artwork immediately if motion is reduced while navigating.
             if (!navigationMotion.allowsSpatialEffects) posterNavigation.clear()
@@ -351,7 +375,7 @@ internal fun MainAppContent(
     val externalPlayerNotConfiguredText = stringResource(Res.string.external_player_not_configured)
     val externalPlayerUnavailableText = stringResource(Res.string.external_player_unavailable)
     val externalPlayerFailedText = stringResource(Res.string.external_player_failed)
-    val failedOpenBrowserText = stringResource(Res.string.settings_trakt_failed_open_browser)
+    val failedOpenBrowserText = stringResource(Res.string.settings_tracking_failed_open_browser)
     val cloudLibraryPlayFailedText = stringResource(Res.string.cloud_library_play_failed)
     val cloudLibraryPlayDisabledText = stringResource(Res.string.cloud_library_play_disabled)
     val cloudLibraryPlayNotConnectedText = stringResource(Res.string.cloud_library_play_not_connected)
@@ -421,6 +445,7 @@ internal fun MainAppContent(
                 searchScrollToTopRequests.tryEmit(Unit)
             }
             AppScreenTab.Library -> libraryScrollToTopRequests.tryEmit(Unit)
+            AppScreenTab.Tv -> Unit
             AppScreenTab.Settings -> settingsRootActionRequests.tryEmit(Unit)
         }
     }
@@ -478,7 +503,7 @@ internal fun MainAppContent(
 
     LaunchedEffect(initialTab) {
         snapshotFlow { selectedTab }.collectLatest { tab ->
-            NativeTabBridge.publishSelectedTab(tab.toNativeNavigationTab())
+            tab.toNativeNavigationTab()?.let { NativeTabBridge.publishSelectedTab(it) }
             if (tab != AppScreenTab.Search) {
                 searchFocusRequestCount = 0
             }
@@ -1104,7 +1129,6 @@ internal fun MainAppContent(
 
         val librarySectionSubtitle = when (libraryUiState.sourceMode) {
             LibrarySourceMode.LOCAL -> stringResource(Res.string.compose_catalog_subtitle_library)
-            LibrarySourceMode.TRAKT -> stringResource(Res.string.compose_catalog_subtitle_trakt_library)
             LibrarySourceMode.SIMKL -> stringResource(Res.string.compose_catalog_subtitle_simkl_library)
                                     LibrarySourceMode.MDBLIST -> stringResource(Res.string.library_mdblist_title)
         }
@@ -1287,13 +1311,13 @@ internal fun MainAppContent(
                 NavDisplay(
                     backStack = navBackStack,
                     transitionSpec = {
-                        fadeIn(tween(navigationDuration)) togetherWith fadeOut(tween(navigationDuration))
+                        routeEnter(false) togetherWith routeExit(false)
                     },
                     popTransitionSpec = {
-                        fadeIn(tween(navigationDuration)) togetherWith fadeOut(tween(navigationDuration))
+                        routeEnter(true) togetherWith routeExit(true)
                     },
                     predictivePopTransitionSpec = {
-                        fadeIn(tween(navigationDuration)) togetherWith fadeOut(tween(navigationDuration))
+                        routeEnter(true) togetherWith routeExit(true)
                     },
                     modifier = Modifier.fillMaxSize(),
                     onBack = {
@@ -1346,6 +1370,51 @@ internal fun MainAppContent(
                                     navController.navigate(
                                         DetailRoute(type = meta.type, id = meta.id, title = meta.name),
                                     )
+                                },
+                                onTmdbEntityBrowse = { entityKind, entityId, entityName, sourceType ->
+                                    navController.navigate(
+                                        EntityBrowseRoute(
+                                            entityKind = entityKind,
+                                            entityId = entityId,
+                                            entityName = entityName,
+                                            sourceType = sourceType,
+                                        ),
+                                    )
+                                },
+                                onLiveTvChannelClick = { channel ->
+                                    val launch = StreamLaunch(
+                                        profileId = activePlaybackProfileId,
+                                        type = channel.streamType,
+                                        videoId = channel.meta.id,
+                                        title = channel.meta.name,
+                                        logo = channel.meta.logo,
+                                        poster = channel.meta.poster,
+                                        background = channel.meta.banner,
+                                    )
+                                    val launchId = StreamLaunchStore.put(launch)
+                                    navController.navigate(StreamRoute(launchId = launchId, title = channel.meta.name))
+                                },
+                                onLiveTvPlaylistChannelClick = { channel ->
+                                    channel.streamUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                                        val launch = PlayerLaunch(
+                                            profileId = activePlaybackProfileId,
+                                            title = channel.displayName,
+                                            sourceUrl = url,
+                                            streamTitle = channel.displayName,
+                                            providerName = "TV ao vivo",
+                                            streamType = "tv",
+                                            contentType = "tv",
+                                            parentMetaId = channel.id,
+                                            parentMetaType = "tv",
+                                            logo = channel.logoUrl,
+                                        )
+                                        if (playerSettingsUiState.externalPlayerEnabled) {
+                                            coroutineScope.launch { openExternalPlayback(launch) }
+                                        } else {
+                                            val launchId = PlayerLaunchStore.put(launch)
+                                            navController.navigate(PlayerRoute(launchId = launchId, title = launch.title))
+                                        }
+                                    }
                                 },
                                 onPosterLongClick = { meta ->
                                     openPosterActions(PosterActionTarget(preview = meta))
@@ -1838,7 +1907,7 @@ internal fun MainAppContent(
                                                         tab.key to (snapshot[tab.key] == true)
                                                     }
                                                 }.onFailure { error ->
-                                                    pickerError = error.message ?: getString(Res.string.trakt_lists_load_failed)
+                                                    pickerError = error.message ?: getString(Res.string.library_lists_load_failed)
                                                 }
                                                 pickerPending = false
                                             }

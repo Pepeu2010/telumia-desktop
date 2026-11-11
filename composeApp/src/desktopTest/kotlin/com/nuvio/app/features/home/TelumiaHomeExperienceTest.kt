@@ -46,10 +46,11 @@ class TelumiaHomeExperienceTest {
             }
         }
         onNodeWithText(movie.name).assertIsDisplayed()
+        onNodeWithText(actionLabel).assertDoesNotExist()
         assertTrue(onNodeWithText(movie.description!!).fetchSemanticsNode().boundsInRoot.width <= 721f,
             "Synopsis must retain a readable measure on wide viewports")
-        onNodeWithText(actionLabel).assertIsDisplayed().performSemanticsAction(SemanticsActions.RequestFocus)
-        onNodeWithText(actionLabel).performKeyInput { pressKey(Key.Enter) }
+        onNodeWithText(movie.name).performSemanticsAction(SemanticsActions.RequestFocus)
+        onNodeWithText(movie.name).performKeyInput { pressKey(Key.Enter) }
         runOnIdle { assertEquals(movie, selected) }
         val image = onNodeWithTag("home-viewport").captureToImage().toAwtImage()
         assertEquals(width, image.width)
@@ -65,27 +66,31 @@ class TelumiaHomeExperienceTest {
             actionLabel = stringResource(Res.string.home_view_details)
             HomeHeroSection(listOf(movie, series), viewportHeight = 768.dp, onItemClick = { selected = it })
         } }
-        val selector = onNode(hasClickAction() and hasContentDescription(series.name))
-        selector.performSemanticsAction(SemanticsActions.RequestFocus)
-        selector.performKeyInput { pressKey(Key.Enter) }
-        selector.assertIsSelected()
+        onNodeWithText(actionLabel).assertDoesNotExist()
+        val spotlightSelector = onNode(hasClickAction() and hasContentDescription(series.name))
+        spotlightSelector.performClick()
         mainClock.autoAdvance = false
         mainClock.advanceTimeBy(10_000)
         onNodeWithText(series.name).assertIsDisplayed()
-        selector.assertIsSelected()
         mainClock.autoAdvance = true
-        onNodeWithText(actionLabel).performClick()
+        onNodeWithText(series.name).performSemanticsAction(SemanticsActions.RequestFocus)
+        onNodeWithText(series.name).performKeyInput { pressKey(Key.Enter) }
         runOnIdle { assertEquals(series, selected) }
     }
 
     @Test fun missingMetadataAndActionsDoNotCreateInventedBadgesOrButtons() = runDesktopComposeUiTest(width = 1366, height = 768) {
         val item = mutableStateOf(MetaPreview("fixture:unknown", "series", "Sem informações adicionais", imdbRating = "NaN"))
+        var detailsActionLabel = ""
         setContent { NuvioTheme(navigationMotion = NavigationMotion.OFF) {
+            detailsActionLabel = stringResource(Res.string.home_view_details)
             HomeHeroSection(listOf(item.value), viewportHeight = 768.dp)
         } }
         onNodeWithText("IMDb", substring = true).assertDoesNotExist()
-        onAllNodes(hasClickAction()).assertCountEquals(1) // The supported native fullscreen action only.
+        onNodeWithText(detailsActionLabel).assertDoesNotExist()
+        onNodeWithText(item.value.name).assertHasClickAction()
+        onAllNodes(hasClickAction()).assertCountEquals(2) // Hero title navigation and native fullscreen.
         runOnIdle { item.value = item.value.copy(imdbRating = "20.0") }
         onNodeWithText("IMDb", substring = true).assertDoesNotExist()
     }
+
 }

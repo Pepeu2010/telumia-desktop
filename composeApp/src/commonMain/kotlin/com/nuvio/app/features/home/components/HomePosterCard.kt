@@ -1,7 +1,15 @@
 package com.nuvio.app.features.home.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import com.nuvio.app.core.format.formatReleaseDateForDisplay
 import com.nuvio.app.core.ui.NuvioPosterCard
 import com.nuvio.app.core.ui.NuvioPosterShape
@@ -19,6 +27,7 @@ fun HomePosterCard(
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     showLandscapeOverlay: Boolean = true,
+    onHighlighted: ((MetaPreview) -> Unit)? = null,
 ) {
     val posterCardStyle = rememberPosterCardStyleUiState()
     val isLandscapeMode = useLandscapeBackdropMode || posterCardStyle.catalogLandscapeModeEnabled
@@ -32,6 +41,17 @@ fun HomePosterCard(
     } else {
         item.rawPosterUrl
     }
+    val highlightInteraction = remember { MutableInteractionSource() }
+    val highlightedByPointer by highlightInteraction.collectIsHoveredAsState()
+    val latestOnHighlighted by rememberUpdatedState(onHighlighted)
+    LaunchedEffect(highlightedByPointer, item) {
+        if (highlightedByPointer) latestOnHighlighted?.invoke(item)
+    }
+    val highlightModifier = if (onHighlighted != null) {
+        Modifier.hoverable(highlightInteraction).onFocusChanged { state ->
+            if (state.hasFocus) latestOnHighlighted?.invoke(item)
+        }
+    } else Modifier
 
     HomePosterHoverPreview(
         item = item,
@@ -42,7 +62,7 @@ fun HomePosterCard(
         NuvioPosterCard(
             title = item.name,
             imageUrl = imageUrl,
-            modifier = modifier.then(hoverModifier),
+            modifier = modifier.then(highlightModifier).then(hoverModifier),
             fallbackImageUrl = fallbackImageUrl,
             basePosterWidthDp = desktopCatalogShelfPosterBaseWidthDp(posterCardStyle.widthDp),
             shape = if (isLandscapeMode) NuvioPosterShape.Landscape else item.posterShape.toNuvioPosterShape(),

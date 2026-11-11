@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
@@ -29,7 +30,6 @@ import com.nuvio.app.core.ui.FloatingNavigationItem
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.LocalUiMotion
 import com.nuvio.app.core.ui.detectJellyTabGestures
-import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.visualNavIndex
 
 @Composable
@@ -44,8 +44,10 @@ internal fun JellyNavigationBar(
     surface: @Composable BoxScope.() -> Unit,
 ) {
     if (items.isEmpty()) return
-    val accentColor = MaterialTheme.nuvio.colors.accent
-    val selectedSurface = accentColor.copy(alpha = NuvioTokens.Opacity.selected)
+    // Keep the navigation chrome neutral and cinematic. The app accent remains
+    // available to content, while the active destination reads as a soft white
+    // glass pill against the black track.
+    val selectedSurface = Color.White.copy(alpha = NuvioTokens.Opacity.selected)
     val currentItems by rememberUpdatedState(items)
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
@@ -113,7 +115,7 @@ internal fun JellyNavigationBar(
                             .clip(RoundedCornerShape(50))
                             .drawWithContent {
                                 drawContent()
-                                drawJellyGlow(motion.frame, accentColor.copy(alpha = accentColor.alpha * glowStrength))
+                                drawJellyGlow(motion.frame, Color.White.copy(alpha = 0.18f * glowStrength))
                             },
                     ) {
                         surface()
@@ -140,7 +142,7 @@ internal fun JellyNavigationBar(
                                         motion.frame,
                                         items.size,
                                         selectedSurface,
-                                        accentColor.copy(alpha = accentColor.alpha * glowStrength),
+                                        Color.White.copy(alpha = 0.2f * glowStrength),
                                     ) { drawContent() }
                                 },
                         ) {

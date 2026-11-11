@@ -30,10 +30,11 @@ internal fun PlayerOverlayScaffold(
 ) {
     PlatformBackHandler(enabled = visible, onBack = onDismiss)
 
+    val motion = com.nuvio.app.core.ui.LocalUiMotion.current
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(250)),
-        exit = fadeOut(tween(200)),
+        enter = fadeIn(tween(motion.durationMillis(250))),
+        exit = fadeOut(tween(motion.durationMillis(200))),
         modifier = modifier,
     ) {
         val interactionSource = remember { MutableInteractionSource() }

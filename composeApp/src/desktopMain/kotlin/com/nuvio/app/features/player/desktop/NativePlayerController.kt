@@ -1047,6 +1047,12 @@ internal class NativePlayerController(
             )
         }
 
+    /** Queues external audio without blocking the UI while mpv opens the source. */
+    internal fun addExternalAudioAsync(url: String): Boolean {
+        val current = handle.takeIf { it != 0L } ?: return false
+        return runCatching { NativePlayerBridge.addAudioUrlAsync(current, url) }.getOrDefault(false)
+    }
+
     override fun getSubtitleTracks(): List<SubtitleTrack> =
         decodeTracks { NativePlayerBridge.subtitleTracksJson(it) }.map { track ->
             SubtitleTrack(

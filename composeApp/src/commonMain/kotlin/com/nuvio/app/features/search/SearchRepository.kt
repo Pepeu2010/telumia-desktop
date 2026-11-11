@@ -8,6 +8,8 @@ import com.nuvio.app.features.addons.ManagedAddon
 import com.nuvio.app.features.addons.enabledAddons
 import com.nuvio.app.features.addons.firstEnabledManifestError
 import com.nuvio.app.features.addons.hasPendingEnabledManifests
+import com.nuvio.app.features.collection.TmdbCollectionSourceResolver
+import com.nuvio.app.features.collection.TmdbCompanySearchResult
 import com.nuvio.app.features.catalog.CATALOG_PAGE_SIZE
 import com.nuvio.app.features.catalog.CatalogPage
 import com.nuvio.app.features.catalog.CatalogTarget
@@ -31,6 +33,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
@@ -57,6 +60,8 @@ private data class DiscoverRequestKey(
     val hasPendingAddonManifests: Boolean,
 )
 
+private const val MIN_COMPANY_SEARCH_QUERY_LENGTH = 2
+
 object SearchRepository {
     private val log = Logger.withTag("SearchRepository")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -66,8 +71,11 @@ object SearchRepository {
     val discoverUiState: StateFlow<DiscoverUiState> = _discoverUiState.asStateFlow()
 
     private var activeJob: Job? = null
+    private var activeCompanySearchJob: Job? = null
     private var activeDiscoverJob: Job? = null
     private var lastRequestKey: String? = null
+    private var lastCompanySearchQuery: String? = null
+    private val companySearchGeneration = MutableStateFlow(0L)
     private var discoverSources: List<DiscoverCatalogOption> = emptyList()
     private var lastDiscoverRequestKey: DiscoverRequestKey? = null
 
@@ -81,6 +89,8 @@ object SearchRepository {
             clear()
             return
         }
+
+        startCompanySearch(normalizedQuery, forceRefresh)
 
         val enabledAddons = addons.enabledAddons()
         val hasPendingAddonManifests = enabledAddons.hasPendingEnabledManifests()
@@ -97,6 +107,9 @@ object SearchRepository {
                     else -> SearchEmptyStateReason.NoActiveAddons
                 },
                 errorMessage = addonManifestErrorMessage,
+                companyResults = _uiState.value.companyResults,
+                isCompanySearchLoading = _uiState.value.isCompanySearchLoading,
+                companySearchError = _uiState.value.companySearchError,
             )
             return
         }
@@ -111,6 +124,9 @@ object SearchRepository {
             _uiState.value = SearchUiState(
                 isLoading = hasPendingAddonManifests,
                 emptyStateReason = if (hasPendingAddonManifests) null else SearchEmptyStateReason.NoSearchCatalogs,
+                companyResults = _uiState.value.companyResults,
+                isCompanySearchLoading = _uiState.value.isCompanySearchLoading,
+                companySearchError = _uiState.value.companySearchError,
             )
             return
         }
@@ -132,7 +148,13 @@ object SearchRepository {
         lastRequestKey = requestKey
 
         activeJob?.cancel()
-        _uiState.value = SearchUiState(isLoading = true)
+        val companyState = _uiState.value
+        _uiState.value = SearchUiState(
+            isLoading = true,
+            companyResults = companyState.companyResults,
+            isCompanySearchLoading = companyState.isCompanySearchLoading,
+            companySearchError = companyState.companySearchError,
+        )
 
         activeJob = scope.launch {
             val resultChannel = Channel<IndexedSearchResult>(Channel.UNLIMITED)
@@ -171,10 +193,9 @@ object SearchRepository {
                     results[result.index] = result
                     val sections = results.orderedSections()
                     if (sections.isNotEmpty()) {
-                        _uiState.value = SearchUiState(
-                            isLoading = true,
-                            sections = sections,
-                        )
+                        _uiState.update {
+                            it.copy(isLoading = true, sections = sections, emptyStateReason = null, errorMessage = null)
+                        }
                     }
                 }
             } finally {
@@ -187,29 +208,78 @@ object SearchRepository {
             val firstFailure = completedResults.firstNotNullOfOrNull { it.error?.message }
             val allFailed = completedResults.isNotEmpty() && completedResults.all { it.error != null }
 
-            _uiState.value = SearchUiState(
-                isLoading = sections.isEmpty() && hasPendingAddonManifests,
-                sections = sections,
-                emptyStateReason = when {
-                    sections.isNotEmpty() -> null
-                    hasPendingAddonManifests -> null
-                    allFailed -> SearchEmptyStateReason.RequestFailed
-                    else -> SearchEmptyStateReason.NoResults
-                },
-                errorMessage = if (allFailed) firstFailure else null,
-            )
+            _uiState.update {
+                it.copy(
+                    isLoading = sections.isEmpty() && hasPendingAddonManifests,
+                    sections = sections,
+                    emptyStateReason = when {
+                        sections.isNotEmpty() -> null
+                        hasPendingAddonManifests -> null
+                        allFailed -> SearchEmptyStateReason.RequestFailed
+                        else -> SearchEmptyStateReason.NoResults
+                    },
+                    errorMessage = if (allFailed) firstFailure else null,
+                )
+            }
+        }
+    }
+
+    private fun startCompanySearch(query: String, forceRefresh: Boolean) {
+        if (query.length < MIN_COMPANY_SEARCH_QUERY_LENGTH) {
+            activeCompanySearchJob?.cancel()
+            lastCompanySearchQuery = null
+            companySearchGeneration.value += 1
+            _uiState.update {
+                it.copy(companyResults = emptyList(), isCompanySearchLoading = false, companySearchError = null)
+            }
+            return
+        }
+
+        val queryChanged = query != lastCompanySearchQuery
+        if (!queryChanged && !forceRefresh) return
+
+        lastCompanySearchQuery = query
+        val generation = companySearchGeneration.value + 1
+        companySearchGeneration.value = generation
+        activeCompanySearchJob?.cancel()
+        _uiState.update { it.withCompanySearchLoading(clearResults = queryChanged) }
+
+        activeCompanySearchJob = scope.launch {
+            try {
+                val results = TmdbCollectionSourceResolver.searchCompanies(query)
+                if (generation == companySearchGeneration.value) {
+                    _uiState.update { it.withCompanySearchResults(mapCompanySearchResults(results)) }
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                if (generation == companySearchGeneration.value) {
+                    _uiState.update {
+                        it.withCompanySearchError(
+                            error.message?.takeIf(String::isNotBlank)
+                                ?: getString(Res.string.compose_search_empty_failed_message),
+                        )
+                    }
+                }
+            }
         }
     }
 
     fun clear() {
         activeJob?.cancel()
+        activeCompanySearchJob?.cancel()
+        lastCompanySearchQuery = null
+        companySearchGeneration.value += 1
         lastRequestKey = null
         _uiState.value = SearchUiState()
     }
 
     fun reset() {
         activeJob?.cancel()
+        activeCompanySearchJob?.cancel()
         activeDiscoverJob?.cancel()
+        lastCompanySearchQuery = null
+        companySearchGeneration.value += 1
         lastRequestKey = null
         discoverSources = emptyList()
         lastDiscoverRequestKey = null
@@ -624,6 +694,19 @@ private data class SearchCatalogRequest(
     val query: String,
     val supportsPagination: Boolean,
 )
+
+internal fun mapCompanySearchResults(results: Iterable<TmdbCompanySearchResult>): List<SearchCompanyResult> =
+    deduplicateCompanySearchResults(
+        results.mapNotNull { result ->
+            val name = result.name?.trim()?.takeIf(String::isNotEmpty) ?: return@mapNotNull null
+            if (result.id <= 0) return@mapNotNull null
+            SearchCompanyResult(
+                tmdbId = result.id,
+                name = name,
+                originCountry = result.originCountry?.trim()?.takeIf(String::isNotEmpty),
+            )
+        },
+    )
 
 private fun AddonCatalog.supportsSearch(): Boolean =
     extra.any { property -> property.name == "search" } &&

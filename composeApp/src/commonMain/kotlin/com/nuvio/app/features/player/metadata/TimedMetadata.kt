@@ -73,11 +73,18 @@ class TimedMetadataTimeline private constructor(
 
     fun sceneEventsAt(positionMs: Long, minimumConfidence: Double = 0.8): List<TimedMetadataEvent> {
         if (scope.editionId.isNullOrBlank() || !minimumConfidence.isFinite() || minimumConfidence !in 0.0..1.0) return emptyList()
-        return eventsAt(positionMs).filter {
-            it.body.kind in sceneKinds && it.endMs != null &&
-                it.provenance.providerId in trustedSceneProviderIds && (it.confidence ?: -1.0) >= minimumConfidence
-        }
+        return eventsAt(positionMs).filter { isTrustedSceneEvent(it, minimumConfidence) && it.endMs != null }
     }
+
+    /** All trusted scene events for the current edition, including chapters with known starts but unknown ends. */
+    fun trustedSceneEvents(minimumConfidence: Double = 0.8): List<TimedMetadataEvent> {
+        if (scope.editionId.isNullOrBlank() || !minimumConfidence.isFinite() || minimumConfidence !in 0.0..1.0) return emptyList()
+        return events.filter { isTrustedSceneEvent(it, minimumConfidence) }
+    }
+
+    private fun isTrustedSceneEvent(event: TimedMetadataEvent, minimumConfidence: Double): Boolean =
+        event.body.kind in sceneKinds && event.provenance.providerId in trustedSceneProviderIds &&
+            (event.confidence ?: -1.0) >= minimumConfidence
 
     companion object {
         const val MAX_EVENTS = 4096

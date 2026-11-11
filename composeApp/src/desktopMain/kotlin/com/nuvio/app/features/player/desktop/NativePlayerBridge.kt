@@ -84,6 +84,7 @@ internal object NativePlayerBridge {
     external fun selectAudioTrack(handle: Long, trackId: Int)
     external fun selectSubtitleTrack(handle: Long, trackId: Int)
     external fun addSubtitleUrl(handle: Long, url: String)
+    external fun addAudioUrlAsync(handle: Long, url: String): Boolean
     external fun clearExternalSubtitles(handle: Long)
     external fun clearExternalSubtitlesAndSelect(handle: Long, trackId: Int)
     external fun applyWindowChrome(

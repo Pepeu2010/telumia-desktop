@@ -21,11 +21,9 @@ data class LibraryItem(
     val posterShape: PosterShape = PosterShape.Poster,
     val addonBaseUrl: String? = null,
     val listKeys: Set<String> = emptySet(),
-    val traktRank: Int? = null,
     val listRanks: Map<String, Int> = emptyMap(),
     val imdbId: String? = null,
     val tmdbId: Int? = null,
-    val traktId: Int? = null,
     /** Original media category from the tracking provider (e.g. "anime").
      *  Used for UI filtering while [type] stays as "movie"/"series" for meta addon compatibility. */
     val mediaCategory: String? = null,
@@ -51,7 +49,6 @@ internal fun librarySectionItemKey(sectionType: String, item: LibraryItem): Stri
 
 enum class LibrarySourceMode {
     LOCAL,
-    TRAKT,
     SIMKL,
     MDBLIST,
 }

@@ -7,7 +7,6 @@ object MdbListMetadataService {
     const val PROVIDER_TMDB = "tmdb"
     const val PROVIDER_TOMATOES = "tomatoes"
     const val PROVIDER_METACRITIC = "metacritic"
-    const val PROVIDER_TRAKT = "trakt"
     const val PROVIDER_LETTERBOXD = "letterboxd"
     const val PROVIDER_AUDIENCE = "audience"
     const val PROVIDER_MAL = "mal"
@@ -17,7 +16,6 @@ object MdbListMetadataService {
         PROVIDER_TMDB,
         PROVIDER_TOMATOES,
         PROVIDER_METACRITIC,
-        PROVIDER_TRAKT,
         PROVIDER_LETTERBOXD,
         PROVIDER_AUDIENCE,
         PROVIDER_MAL,

@@ -7,7 +7,7 @@ import kotlin.test.assertEquals
 class TrackingScrobbleCoordinatorTest {
     @Test
     fun `fanout isolates one provider failure`() = runBlocking {
-        val successful = FakeScrobbler(TrackingProviderId.TRAKT)
+        val successful = FakeScrobbler(TrackingProviderId.MDBLIST)
         val failing = FakeScrobbler(TrackingProviderId.SIMKL, failure = IllegalStateException("offline"))
         val event = TrackingScrobbleEvent(
             media = TrackingMediaReference(
@@ -31,8 +31,8 @@ class TrackingScrobbleCoordinatorTest {
 
     @Test
     fun `seek fanout targets only providers that restart scrobbles`() = runBlocking {
-        val trakt = FakeScrobbler(
-            providerId = TrackingProviderId.TRAKT,
+        val restarting = FakeScrobbler(
+            providerId = TrackingProviderId.MDBLIST,
             seekScrobblePolicy = TrackingSeekScrobblePolicy.STOP_AND_RESTART,
         )
         val simkl = FakeScrobbler(TrackingProviderId.SIMKL)
@@ -45,13 +45,13 @@ class TrackingScrobbleCoordinatorTest {
         )
 
         dispatchTrackingSeekScrobble(
-            scrobblers = listOf(trakt, simkl),
+            scrobblers = listOf(restarting, simkl),
             profileId = 2,
             action = TrackingScrobbleAction.STOP,
             event = event,
         )
 
-        assertEquals(1, trakt.callCount)
+        assertEquals(1, restarting.callCount)
         assertEquals(0, simkl.callCount)
     }
 

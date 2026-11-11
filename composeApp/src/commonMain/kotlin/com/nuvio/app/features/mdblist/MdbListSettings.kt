@@ -7,7 +7,6 @@ data class MdbListSettings(
     val useTmdb: Boolean = true,
     val useTomatoes: Boolean = true,
     val useMetacritic: Boolean = true,
-    val useTrakt: Boolean = true,
     val useLetterboxd: Boolean = true,
     val useAudience: Boolean = true,
     val useMal: Boolean = true,
@@ -36,7 +35,6 @@ data class MdbListSettings(
             MdbListMetadataService.PROVIDER_TMDB -> useTmdb
             MdbListMetadataService.PROVIDER_TOMATOES -> useTomatoes
             MdbListMetadataService.PROVIDER_METACRITIC -> useMetacritic
-            MdbListMetadataService.PROVIDER_TRAKT -> useTrakt
             MdbListMetadataService.PROVIDER_LETTERBOXD -> useLetterboxd
             MdbListMetadataService.PROVIDER_AUDIENCE -> useAudience
             MdbListMetadataService.PROVIDER_MAL -> useMal

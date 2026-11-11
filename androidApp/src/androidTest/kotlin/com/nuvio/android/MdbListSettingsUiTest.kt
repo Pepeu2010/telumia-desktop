@@ -38,7 +38,7 @@ class MdbListSettingsUiTest {
         assumeTrue(InstrumentationRegistry.getArguments().getString("mdblistLive") == "true")
         assumeTrue(MdbListTracker.auth.state.value.isAuthenticated)
         compose.runOnUiThread {
-            compose.activity.setContent { NuvioTheme { SettingsScreen(initialPageName = "TraktAuthentication") } }
+            compose.activity.setContent { NuvioTheme { SettingsScreen(initialPageName = "TrackingAccounts") } }
         }
         compose.onAllNodesWithText("MDBList").onFirst().performScrollTo().performClick()
         compose.onNodeWithText("Sync watched history and playback progress across devices").performScrollTo().assertIsDisplayed()
@@ -57,7 +57,7 @@ class MdbListSettingsUiTest {
         val profile = MdbListTracker.auth.state.value.scope.profileId
         val original = TrackingSettingsRepository.uiState.value
         compose.runOnUiThread {
-            compose.activity.setContent { NuvioTheme { SettingsScreen(initialPageName = "TraktAuthentication") } }
+            compose.activity.setContent { NuvioTheme { SettingsScreen(initialPageName = "TrackingAccounts") } }
         }
         try {
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Library Source"))

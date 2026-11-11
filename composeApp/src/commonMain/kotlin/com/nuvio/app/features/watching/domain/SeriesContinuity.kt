@@ -84,7 +84,7 @@ fun nextReleasedEpisodeAfter(
     }
 
     // Fallback: if the seed wasn't found by season+episode (anime with absolute
-    // numbering on Trakt vs multi-season on addon), try global index matching.
+    // numbering on the provider vs multi-season on addon), try global index matching.
     if (watchedIndex < 0 && seasonNumber != null && episodeNumber != null) {
         val mainEpisodes = sortedEpisodes.filter { episode -> normalizeSeasonNumber(episode.seasonNumber) > 0 }
         val addonSeasons = mainEpisodes.mapTo(mutableSetOf()) { episode ->

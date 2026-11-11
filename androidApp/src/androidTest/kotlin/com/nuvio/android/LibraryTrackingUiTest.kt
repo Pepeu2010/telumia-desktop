@@ -109,7 +109,7 @@ class LibraryTrackingUiTest {
     fun sameNamedMembershipDestinationsIdentifyProviderAndDispatchCorrectKey() {
         val membership = mutableStateOf(mapOf<String, Boolean>())
         var saved = false
-        val tabs = listOf(movies, movies.copy(key = "trakt:list:42", providerId = TrackingProviderId.TRAKT))
+        val tabs = listOf(movies, movies.copy(key = "simkl:list:42", providerId = TrackingProviderId.SIMKL))
         compose.setContent {
             NuvioTheme {
                 TrackingListPickerDialog(true, "Save to lists", tabs, membership.value, false, null,
@@ -117,7 +117,7 @@ class LibraryTrackingUiTest {
             }
         }
         compose.onNodeWithText("MDBList · Movies").assertIsDisplayed().performClick()
-        compose.onNodeWithText("Trakt · Movies").assertIsDisplayed()
+        compose.onNodeWithText("Simkl · Movies").assertIsDisplayed()
         compose.onNodeWithText("Save").performClick()
         compose.runOnIdle {
             assertEquals(mapOf("mdblist:list:42" to true), membership.value)

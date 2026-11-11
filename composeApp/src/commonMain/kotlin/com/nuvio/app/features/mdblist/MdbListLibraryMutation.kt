@@ -14,11 +14,9 @@ internal fun LibraryItem.mdbListLibraryItem(): MdbListLibraryItem {
             id.startsWith("imdb:") -> put("imdb", id.removePrefix("imdb:"))
             id.startsWith("tmdb:") -> put("tmdb", id.removePrefix("tmdb:"))
             id.startsWith("tvdb:") -> put("tvdb", id.removePrefix("tvdb:"))
-            id.startsWith("trakt:") -> put("trakt", id.removePrefix("trakt:"))
         }
         imdbId?.let { put("imdb", it) }
         tmdbId?.let { put("tmdb", it) }
-        traktId?.let { put("trakt", it) }
     })
     return MdbListLibraryItem(type, MdbListMedia(ids, name, com.nuvio.app.features.tracking.extractTrackingYear(releaseInfo), poster, banner), description, genres)
 }
@@ -28,7 +26,6 @@ internal fun MdbListLibraryItem.membershipBody(watchlist: Boolean): String {
         media.ids.imdb?.let { put("imdb", it) }
         media.ids.tmdb?.let { put("tmdb", it) }
         media.ids.tvdb?.let { put("tvdb", it) }
-        media.ids.trakt?.let { put("trakt", it) }
     }
     require(ids.isNotEmpty()) { "An external movie or show ID is required" }
     return buildJsonObject {

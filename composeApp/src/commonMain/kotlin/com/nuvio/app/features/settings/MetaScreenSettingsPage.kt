@@ -77,8 +77,6 @@ import nuvio.composeapp.generated.resources.settings_meta_cast
 import nuvio.composeapp.generated.resources.settings_meta_cast_description
 import nuvio.composeapp.generated.resources.settings_meta_collection
 import nuvio.composeapp.generated.resources.settings_meta_collection_description
-import nuvio.composeapp.generated.resources.settings_meta_comments
-import nuvio.composeapp.generated.resources.settings_meta_comments_description
 import nuvio.composeapp.generated.resources.settings_meta_details
 import nuvio.composeapp.generated.resources.settings_meta_details_description
 import nuvio.composeapp.generated.resources.settings_meta_hero_trailer_playback
@@ -564,7 +562,6 @@ private val MetaScreenSectionKey.titleRes: StringResource
         MetaScreenSectionKey.OVERVIEW -> Res.string.settings_meta_overview
         MetaScreenSectionKey.PRODUCTION -> Res.string.settings_meta_production
         MetaScreenSectionKey.CAST -> Res.string.settings_meta_cast
-        MetaScreenSectionKey.COMMENTS -> Res.string.settings_meta_comments
         MetaScreenSectionKey.TRAILERS -> Res.string.settings_meta_trailers
         MetaScreenSectionKey.EPISODES -> Res.string.settings_meta_episodes
         MetaScreenSectionKey.DETAILS -> Res.string.settings_meta_details
@@ -578,7 +575,6 @@ private val MetaScreenSectionKey.descriptionRes: StringResource
         MetaScreenSectionKey.OVERVIEW -> Res.string.settings_meta_overview_description
         MetaScreenSectionKey.PRODUCTION -> Res.string.settings_meta_production_description
         MetaScreenSectionKey.CAST -> Res.string.settings_meta_cast_description
-        MetaScreenSectionKey.COMMENTS -> Res.string.settings_meta_comments_description
         MetaScreenSectionKey.TRAILERS -> Res.string.settings_meta_trailers_description
         MetaScreenSectionKey.EPISODES -> Res.string.settings_meta_episodes_description
         MetaScreenSectionKey.DETAILS -> Res.string.settings_meta_details_description

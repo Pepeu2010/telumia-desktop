@@ -295,7 +295,7 @@ private fun NativePlayerSurface(
             initialPositionMs = initialPositionMs,
             decoderPriority = decoderPriority,
             nvidiaRtxSuperResolutionEnabled = nvidiaRtxSuperResolutionEnabled,
-            onError = { message -> latestOnError.value(message) },
+            onError = { message -> latestOnError.value(safePlaybackErrorToken(message)) },
         )
         initialPositionRequestKey?.let { key ->
             latestOnInitialPositionHandled.value(key, initialPositionMs > 0L)
@@ -372,7 +372,11 @@ private fun NativePlayerSurface(
         }
         DialogWindow(onCloseRequest = closeSceneInfo, title = playerControlsState.sceneInfoLabel,
             state = rememberDialogState(width = 620.dp, height = 520.dp)) {
-            DesktopSceneInfoPanel(playerControlsState.sceneInfoEntries, onDismiss = closeSceneInfo)
+            DesktopSceneInfoPanel(
+                entries = mergedControls.sceneInfoEntries,
+                onDismiss = closeSceneInfo,
+                onSeekToChapterStart = controller::seekTo,
+            )
         }
     }
 
