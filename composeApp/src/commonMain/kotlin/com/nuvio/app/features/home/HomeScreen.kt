@@ -21,6 +21,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
@@ -947,6 +953,7 @@ fun HomeScreen(
         val continueWatchingLayout = rememberContinueWatchingLayout(maxWidth.value, posterCardStyle)
         val cinematicHome = isDesktop && showHeroSlot
         var highlightedHeroItem by remember { mutableStateOf<MetaPreview?>(null) }
+        var lastHeroBackdrop by remember { mutableStateOf<MetaPreview?>(null) }
         var highlightedContinueKey by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(homeUiState.sections, homeUiState.heroItems, continueWatchingItems) {
             val selected = highlightedHeroItem ?: return@LaunchedEffect
@@ -1020,6 +1027,23 @@ fun HomeScreen(
             horizontalPadding = 0.dp,
             topPadding = effectiveTopPadding,
             listState = homeListState,
+            backgroundContent = {
+                if (cinematicHome) {
+                    val backdropItem = highlightedHeroItem ?: lastHeroBackdrop ?: desktopHeroItems.firstOrNull()
+                    val backdropUrl = backdropItem?.banner ?: backdropItem?.poster
+                    Crossfade(targetState = backdropUrl, animationSpec = tween(360), label = "HomePersistentBackdrop") { url ->
+                        Box(Modifier.fillMaxSize()) {
+                            if (!url.isNullOrBlank()) {
+                                AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize())
+                            }
+                            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+                                Color.Black.copy(alpha = 0.42f), Color.Black.copy(alpha = 0.72f), Color.Black.copy(alpha = 0.84f)
+                            ))))
+                        }
+                    }
+                }
+            },
         ) {
             if (showHeroSlot) {
                 item(key = "home_hero", contentType = "hero") {
@@ -1045,6 +1069,7 @@ fun HomeScreen(
                                 listState = homeListState,
                                 stretchPx = { heroStretchState.stretchPx },
                                 onItemClick = onPosterClick,
+                                onBackgroundItemChanged = { lastHeroBackdrop = it },
                             )
 
                             homeUiState.heroItems.isNotEmpty() -> HomeHeroSection(

@@ -138,6 +138,7 @@ fun HomeHeroSection(
     listState: LazyListState? = null,
     stretchPx: () -> Float = { 0f },
     onItemClick: ((MetaPreview) -> Unit)? = null,
+    onBackgroundItemChanged: (MetaPreview) -> Unit = {},
 ) {
     if (items.isEmpty()) return
 
@@ -158,6 +159,10 @@ fun HomeHeroSection(
     val heroHovered by heroInteractionSource.collectIsHoveredAsState()
     var heroFocused by remember { mutableStateOf(false) }
     val autoScrollPage = pagerState.settledPage
+
+    LaunchedEffect(autoScrollPage, items) {
+        onBackgroundItemChanged(items[autoScrollPage % items.size])
+    }
 
     LaunchedEffect(pagerState) {
         pagerState.scrollToPage(pagerState.currentPage)

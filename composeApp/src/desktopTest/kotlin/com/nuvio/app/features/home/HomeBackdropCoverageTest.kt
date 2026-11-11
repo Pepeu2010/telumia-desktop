@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.platform.testTag
@@ -17,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.mutableStateOf
 import com.nuvio.app.core.ui.NavigationMotion
 import com.nuvio.app.core.ui.NuvioTheme
+import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.features.home.components.HomeHeroSection
 import com.nuvio.app.features.home.components.HomeSelectedHero
 import com.sun.net.httpserver.HttpServer
@@ -32,6 +34,28 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class HomeBackdropCoverageTest {
+    @Test
+    fun fixedBackgroundRemainsVisibleAfterScrollingPastHero() {
+        runDesktopComposeUiTest(width = 800, height = 600) {
+            lateinit var list: androidx.compose.foundation.lazy.LazyListState
+            setContent {
+                NuvioTheme(navigationMotion = NavigationMotion.OFF) {
+                    list = rememberLazyListState()
+                    NuvioScreen(modifier = Modifier.testTag("fixed-backdrop-screen"), listState = list,
+                        backgroundContent = {
+                            Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Red))
+                        }) {
+                        item { Box(Modifier.size(100.dp, 700.dp)) }
+                        item { Box(Modifier.size(100.dp, 700.dp)) }
+                    }
+                }
+            }
+            runOnIdle { kotlinx.coroutines.runBlocking { list.scrollToItem(1) } }
+            waitForIdle()
+            val pixel = Color(onNodeWithTag("fixed-backdrop-screen").captureToImage().toAwtImage().getRGB(400, 300))
+            assertTrue(pixel.red > 200 && pixel.green < 50, "Background should stay visible after the hero scrolls away")
+        }
+    }
     @Test
     fun desktopBackdropContinuesBehindTheFirstShelf() {
         val artwork = BufferedImage(640, 360, BufferedImage.TYPE_INT_RGB).apply {

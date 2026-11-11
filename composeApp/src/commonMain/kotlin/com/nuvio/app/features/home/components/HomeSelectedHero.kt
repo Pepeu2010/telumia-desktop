@@ -28,6 +28,7 @@ internal fun HomeSelectedHero(
     listState: LazyListState?,
     stretchPx: () -> Float,
     onItemClick: ((MetaPreview) -> Unit)?,
+    onBackgroundItemChanged: (MetaPreview) -> Unit = {},
 ) {
     val duration = LocalUiMotion.current.durationMillis(360)
     BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -51,6 +52,7 @@ internal fun HomeSelectedHero(
                         listState = listState,
                         stretchPx = stretchPx,
                         onItemClick = onItemClick,
+                        onBackgroundItemChanged = onBackgroundItemChanged,
                     )
                 }
             }
