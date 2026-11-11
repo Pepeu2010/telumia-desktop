@@ -14,8 +14,6 @@ class MdbListRatingsDecoderTest {
                 {"source":"imdb","value":0,"score":99},
                 {"source":"tmdb","value":101},
                 {"source":"tmdb","value":76,"score":90},
-                {"source":"trakt","value":-1},
-                {"source":"trakt","value":80},
                 {"source":"letterboxd","value":5.1},
                 {"source":"letterboxd","value":-1,"score":82},
                 {"source":"letterboxd","value":4.1,"score":82},
@@ -29,7 +27,6 @@ class MdbListRatingsDecoderTest {
         assertEquals(listOf(
             MetaExternalRating("imdb", 0.0),
             MetaExternalRating("tmdb", 76.0),
-            MetaExternalRating("trakt", 80.0),
             MetaExternalRating("letterboxd", 4.1),
             MetaExternalRating("mal", 8.3),
         ), ratings)

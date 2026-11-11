@@ -21,11 +21,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.VolumeOff
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -95,7 +92,6 @@ fun DesktopDetailBackdrop(
     heroTrailerSourceAudioUrl: String?,
     heroTrailerReady: Boolean,
     heroTrailerPlayWhenReady: Boolean,
-    heroTrailerMuted: Boolean,
     heroGradientColor: Color? = null,
     blurBackdrop: Boolean = false,
     onBackdropLoaded: (Painter) -> Unit = {},
@@ -166,7 +162,7 @@ fun DesktopDetailBackdrop(
                 sourceUrl = heroTrailerSourceUrl,
                 sourceAudioUrl = heroTrailerSourceAudioUrl,
                 playWhenReady = heroTrailerPlayWhenReady,
-                muted = heroTrailerMuted,
+                muted = false,
                 fillFrame = true,
                 modifier = artworkModifier.graphicsLayer { alpha = trailerAlpha },
                 onReady = onHeroTrailerReady,
@@ -207,10 +203,6 @@ fun DesktopDetailHero(
     isSaved: Boolean,
     isWatched: Boolean,
     onHeightChanged: (Int) -> Unit,
-    heroTrailerSourceUrl: String?,
-    heroTrailerReady: Boolean,
-    heroTrailerMuted: Boolean,
-    onHeroTrailerMuteToggle: () -> Unit,
     onPlayClick: () -> Unit,
     onPlayLongClick: (() -> Unit)?,
     onShuffleClick: (() -> Unit)?,
@@ -222,11 +214,6 @@ fun DesktopDetailHero(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val space = NuvioTokens.Space
-    val trailerAlpha by animateFloatAsState(
-        targetValue = if (heroTrailerReady) 1f else 0f,
-        animationSpec = tween(durationMillis = NuvioTokens.Motion.sheetEnterMillis),
-        label = "desktop_detail_hero_controls_alpha",
-    )
     var logoLoadError by remember(meta.id, meta.logo) { mutableStateOf(false) }
     val logoUrl = meta.logo?.takeIf { it.isNotBlank() }
 
@@ -367,40 +354,6 @@ fun DesktopDetailHero(
                 onPlayClick = onPlayClick,
                 onPlayLongClick = onPlayLongClick,
             )
-        }
-
-        if (heroTrailerSourceUrl != null) {
-            Surface(
-                onClick = onHeroTrailerMuteToggle,
-                enabled = heroTrailerReady,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .statusBarsPadding()
-                    .padding(
-                        top = space.s32,
-                        end = actionHorizontalInset + if (isFullscreenActionSupported) 60.dp else 0.dp,
-                    )
-                    .size(48.dp)
-                    .graphicsLayer { alpha = trailerAlpha },
-                shape = CircleShape,
-                color = colorScheme.surfaceVariant.copy(alpha = 0.82f),
-                contentColor = colorScheme.onSurface,
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = if (heroTrailerMuted) {
-                            Icons.AutoMirrored.Rounded.VolumeOff
-                        } else {
-                            Icons.AutoMirrored.Rounded.VolumeUp
-                        },
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
         }
 
         if (isFullscreenActionSupported) {

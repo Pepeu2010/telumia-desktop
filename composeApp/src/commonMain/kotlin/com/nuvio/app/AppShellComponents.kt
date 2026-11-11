@@ -38,6 +38,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +46,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -75,6 +77,8 @@ import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import com.nuvio.app.core.ui.NuvioNavBarScrollState
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.features.livetv.LiveTvChannel
+import com.nuvio.app.features.livetv.LiveTvChannelItem
 import com.nuvio.app.features.cloud.CloudLibraryContentType
 import com.nuvio.app.features.cloud.CloudLibraryFile
 import com.nuvio.app.features.cloud.CloudLibraryItem
@@ -115,6 +119,7 @@ import nuvio.composeapp.generated.resources.compose_nav_library
 import nuvio.composeapp.generated.resources.compose_nav_profile
 import nuvio.composeapp.generated.resources.compose_nav_search
 import nuvio.composeapp.generated.resources.compose_nav_settings
+import nuvio.composeapp.generated.resources.compose_nav_tv
 import nuvio.composeapp.generated.resources.compose_settings_page_root
 import nuvio.composeapp.generated.resources.sidebar_library
 import nuvio.composeapp.generated.resources.sidebar_search
@@ -173,6 +178,9 @@ internal data class AppTabRequests(
 internal data class AppTabActions(
     val onCatalogClick: ((HomeCatalogSection) -> Unit)? = null,
     val onPosterClick: ((MetaPreview) -> Unit)? = null,
+    val onTmdbEntityBrowse: ((entityKind: String, entityId: Int, entityName: String, sourceType: String) -> Unit)? = null,
+    val onLiveTvChannelClick: ((LiveTvChannelItem) -> Unit)? = null,
+    val onLiveTvPlaylistChannelClick: ((LiveTvChannel) -> Unit)? = null,
     val onPosterLongClick: ((MetaPreview) -> Unit)? = null,
     val onLibraryPosterClick: ((LibraryItem) -> Unit)? = null,
     val onLibraryPosterLongClick: ((LibraryItem, LibrarySection) -> Unit)? = null,
@@ -267,6 +275,9 @@ internal fun AppTabHost(
                     listState = state.searchListState,
                     onPosterClick = actions.onPosterClick,
                     onPosterLongClick = actions.onPosterLongClick,
+                    onCompanyClick = { company ->
+                        actions.onTmdbEntityBrowse?.invoke("company", company.tmdbId, company.name, "movie")
+                    },
                     searchFocusRequestCount = state.searchFocusRequestCount,
                     scrollToTopRequests = requests.searchScrollToTopRequests,
                 )
@@ -284,6 +295,17 @@ internal fun AppTabHost(
                     onConnectCloudClick = actions.onConnectCloudClick,
                     onDownloadsClick = actions.onDownloadsClick,
                     disintegrationRequest = state.libraryDisintegrationRequest,
+                )
+            }
+
+            AppScreenTab.Tv -> {
+                LiveTvScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    topChromePadding = state.topChromePadding,
+                    isSelectedTab = selectedTab == AppScreenTab.Tv,
+                    onChannelClick = actions.onLiveTvChannelClick,
+                    onPlaylistChannelClick = actions.onLiveTvPlaylistChannelClick,
+                    onManageAddonsClick = actions.onAddonsSettingsClick,
                 )
             }
 
@@ -579,6 +601,30 @@ internal fun TabletFloatingTopBar(
                             )
                         },
                     )
+                    if (isTelevisionDevice()) {
+                        TabletTopPillItem(
+                            label = stringResource(Res.string.compose_nav_tv),
+                            selected = selectedTab == AppScreenTab.Tv,
+                            onClick = { onTabSelected(AppScreenTab.Tv) },
+                            labelFraction = labelFraction,
+                            pillHeight = pillHeight,
+                            expandedHorizontalPadding = expandedHorizontalPadding,
+                            collapsedHorizontalPadding = iconCollapsedPadding,
+                            textStyle = labelTextStyle,
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Filled.Tv,
+                                    contentDescription = stringResource(Res.string.compose_nav_tv),
+                                    modifier = Modifier.size(navIconSize),
+                                    tint = if (selectedTab == AppScreenTab.Tv) {
+                                        tokens.colors.textPrimary
+                                    } else {
+                                        Color.White.copy(alpha = 0.70f)
+                                    },
+                                )
+                            },
+                        )
+                    }
                     TabletTopPillItem(
                         label = stringResource(Res.string.compose_nav_settings),
                         selected = selectedTab == AppScreenTab.Settings,
@@ -688,6 +734,17 @@ internal fun AppLoadingContent(
     modifier: Modifier = Modifier,
 ) {
     val tokens = MaterialTheme.nuvio
+    val motion = LocalUiMotion.current
+    var brandRevealed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { brandRevealed = true }
+    val brandReveal by animateFloatAsState(
+        targetValue = if (brandRevealed) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = motion.durationMillis(760),
+            easing = FastOutSlowInEasing,
+        ),
+        label = "telumiaLaunchBrandReveal",
+    )
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center,
@@ -695,12 +752,34 @@ internal fun AppLoadingContent(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            AppBrandWordmark(
-                contentDescription = stringResource(Res.string.app_brand_name),
-                modifier = Modifier
-                    .fillMaxWidth(0.48f)
-                    .height(44.dp),
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth().height(80.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 300.dp, height = 112.dp)
+                        .graphicsLayer { alpha = brandReveal * 0.42f }
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(Color(0xFFFFA55A).copy(alpha = 0.34f), Color.Transparent),
+                            ),
+                        ),
+                )
+                AppBrandWordmark(
+                    contentDescription = stringResource(Res.string.app_brand_name),
+                    modifier = Modifier
+                        .fillMaxWidth(0.48f)
+                        .height(44.dp)
+                        .graphicsLayer {
+                            alpha = brandReveal
+                            val scale = 0.9f + brandReveal * 0.1f
+                            scaleX = scale
+                            scaleY = scale
+                            translationY = (1f - brandReveal) * 14.dp.toPx()
+                        },
+                )
+            }
             Spacer(modifier = Modifier.height(tokens.spacing.sectionGap))
             NuvioLoadingIndicator()
         }
@@ -865,6 +944,19 @@ internal fun DesktopHoverSidebar(
                     Icon(
                         painter = painterResource(Res.drawable.sidebar_library),
                         contentDescription = stringResource(Res.string.compose_nav_library),
+                        modifier = Modifier.size(DesktopSidebarIconSize),
+                        tint = color,
+                    )
+                }
+                DesktopSidebarItem(
+                    label = stringResource(Res.string.compose_nav_tv),
+                    selected = selectedTab == AppScreenTab.Tv,
+                    expanded = sidebarExpanded,
+                    onClick = { selectTab(AppScreenTab.Tv) },
+                ) { color ->
+                    Icon(
+                        imageVector = Icons.Filled.Tv,
+                        contentDescription = stringResource(Res.string.compose_nav_tv),
                         modifier = Modifier.size(DesktopSidebarIconSize),
                         tint = color,
                     )

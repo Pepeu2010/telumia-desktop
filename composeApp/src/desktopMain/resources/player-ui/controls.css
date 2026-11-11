@@ -380,14 +380,14 @@ button:disabled {
 
 .top-gradient {
   top: 0;
-  height: 160px;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, .7), rgba(0, 0, 0, 0));
+  height: 200px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, .82), rgba(0, 0, 0, .26), transparent);
 }
 
 .bottom-gradient {
   bottom: 0;
-  height: 220px;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, .7));
+  height: min(42vh, 360px);
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, .55) 55%, rgba(0, 0, 0, .94));
 }
 
 .content {
@@ -414,8 +414,8 @@ button:disabled {
   flex-direction: column;
   gap: 0;
   opacity: 1;
-  padding: 4px 0 4px 16px;
-  border-left: 3px solid var(--theme-accent);
+  padding: 4px 0;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .65);
 }
 
 .title {
@@ -1573,11 +1573,9 @@ button:disabled {
   bottom: var(--slider-bottom);
   display: flex;
   flex-direction: column;
-  padding: 18px 20px 14px;
-  border: 1px solid var(--theme-border-default);
-  border-radius: 20px;
-  background: rgba(12, 17, 24, .94);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, .32);
+  padding: 14px 0 10px;
+  border: 0;
+  background: transparent;
 }
 
 .scrub {
@@ -3506,20 +3504,20 @@ svg {
 /* Decoded frames are shown only after a matching response; no poster stands in for a scene. */
 .timeline-preview { position: absolute; bottom: 26px; transform: translateX(-50%); padding: 8px; background: #111922; border: 1px solid rgba(255,255,255,.25); border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.55); pointer-events: none; z-index: 8; text-align: center; }
 .timeline-preview[hidden], .timeline-preview img[hidden] { display: none; }
-.timeline-preview img { display: block; width: 100%; max-height: 180px; object-fit: contain; border-radius: 6px; }
+.timeline-preview img { display: block; width: 100%; max-height: 150px; object-fit: contain; border-radius: 6px; }
 .timeline-preview output { display: block; padding: 5px 0 1px; font-variant-numeric: tabular-nums; color: #f8fafc; font-size: 14px; }
-.player.pip .timeline-preview { display: none; }
+.player.pip-mode .timeline-preview { display: none; }
 
-.timeline-preview > img { max-width: 320px; margin: 0 auto; }
+.timeline-preview > img { max-width: 264px; margin: 0 auto; }
 .timeline-filmstrip { display: flex; gap: 4px; margin-top: 8px; }
 .timeline-filmstrip[hidden] { display: none; }
 .timeline-filmstrip-frame { flex: 1; min-width: 0; padding: 3px; border: 1px solid transparent; border-radius: 5px; }
-.timeline-filmstrip-frame.selected { border-color: #8fc8fa; background: #223d55; }
+.timeline-filmstrip-frame.selected { border-color: var(--theme-focus); background: var(--theme-selected-surface); }
 .timeline-filmstrip-frame img { width: 100%; max-height: 72px; border-radius: 3px; }
 .timeline-filmstrip-frame span { display: block; padding-top: 4px; color: #eef3f8; font-size: 11px; font-variant-numeric: tabular-nums; }
 
 /* The playback dock stays compact in PiP; the regular desktop layout keeps its own hierarchy. */
-.player.pip-mode .progress { left: 10px; right: 10px; bottom: 10px; padding: 10px; border-radius: 12px; }
+.player.pip-mode .progress { left: 10px; right: 10px; bottom: 10px; padding: 10px; border-radius: 12px; background: rgba(12, 17, 24, .94); }
 @media (min-width: 761px) {
   .action.playback-action { display: flex; width: auto; gap: 10px; padding: 0 18px; }
   .action.playback-action span { display: block; position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; font-size: 13px; }

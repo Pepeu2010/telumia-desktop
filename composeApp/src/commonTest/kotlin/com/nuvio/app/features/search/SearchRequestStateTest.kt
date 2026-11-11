@@ -3,12 +3,49 @@ package com.nuvio.app.features.search
 import com.nuvio.app.features.addons.AddonManifest
 import com.nuvio.app.features.addons.AddonResource
 import com.nuvio.app.features.addons.ManagedAddon
+import com.nuvio.app.features.collection.TmdbCompanySearchResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SearchRequestStateTest {
+    @Test
+    fun `recent searches remain visible while focus moves from the search field to the list`() {
+        assertTrue(
+            shouldShowSearchRecents(
+                query = "",
+                hasOpenedSearch = true,
+                recentSearchCount = 1,
+            ),
+        )
+    }
+
+    @Test
+    fun `recent searches stay hidden before search is opened or while a query is active`() {
+        assertFalse(
+            shouldShowSearchRecents(
+                query = "",
+                hasOpenedSearch = false,
+                recentSearchCount = 1,
+            ),
+        )
+        assertFalse(
+            shouldShowSearchRecents(
+                query = "dune",
+                hasOpenedSearch = true,
+                recentSearchCount = 1,
+            ),
+        )
+        assertFalse(
+            shouldShowSearchRecents(
+                query = "",
+                hasOpenedSearch = true,
+                recentSearchCount = 0,
+            ),
+        )
+    }
+
     @Test
     fun `matching request reuses completed state`() {
         assertTrue(
@@ -36,6 +73,43 @@ class SearchRequestStateTest {
                 cachedRequestKey = "same-query",
             ),
         )
+    }
+
+    @Test
+    fun `company results are normalized and deduplicated by TMDB id`() {
+        assertEquals(
+            listOf(SearchCompanyResult(8, "Fox Studios", "US"), SearchCompanyResult(10, "Studio Ten")),
+            mapCompanySearchResults(
+                listOf(
+                    TmdbCompanySearchResult(id = 8, name = "  Fox Studios ", originCountry = " US "),
+                    TmdbCompanySearchResult(id = 8, name = "Duplicate Name", originCountry = "GB"),
+                    TmdbCompanySearchResult(id = 9, name = "  "),
+                    TmdbCompanySearchResult(id = 0, name = "Invalid ID"),
+                    TmdbCompanySearchResult(id = 10, name = "Studio Ten"),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `company loading success and failure settle without losing results state`() {
+        val loading = SearchUiState(
+            companyResults = listOf(SearchCompanyResult(7, "Old Company")),
+        ).withCompanySearchLoading(clearResults = true)
+        assertTrue(loading.isCompanySearchLoading)
+        assertTrue(loading.companyResults.isEmpty())
+        assertEquals(null, loading.companySearchError)
+
+        val succeeded = loading.withCompanySearchResults(
+            listOf(SearchCompanyResult(8, "Studio Eight")),
+        )
+        assertFalse(succeeded.isCompanySearchLoading)
+        assertEquals(listOf(SearchCompanyResult(8, "Studio Eight")), succeeded.companyResults)
+        assertEquals(null, succeeded.companySearchError)
+
+        val failed = loading.withCompanySearchError("TMDB unavailable")
+        assertFalse(failed.isCompanySearchLoading)
+        assertEquals("TMDB unavailable", failed.companySearchError)
     }
 
     @Test

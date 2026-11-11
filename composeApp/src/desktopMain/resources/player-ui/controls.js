@@ -65,7 +65,7 @@ const renderTimelinePreview = () => {
 };
 const positionTimelinePreview = () => {
   const width = seek.getBoundingClientRect().width;
-  const previewWidth = Math.min(timelineFilmstrip.hidden ? 320 : 560, Math.max(160, width));
+  const previewWidth = Math.min(timelineFilmstrip.hidden ? 280 : 480, Math.max(0, width));
   timelinePreview.style.width = `${previewWidth}px`;
   timelinePreview.style.left = `${Math.max(previewWidth / 2, Math.min(width - previewWidth / 2, timelinePreviewTarget / state.durationMs * width))}px`;
 };

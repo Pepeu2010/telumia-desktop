@@ -116,7 +116,7 @@ internal fun sortLibraryItems(
                     .thenBy { libraryTitleTieBreakKey(it) }
                     .thenBy { it.id }
             } else {
-                compareBy<LibraryItem> { it.listRanks[listKey] ?: it.traktRank ?: Int.MAX_VALUE }
+                compareBy<LibraryItem> { it.listRanks[listKey] ?: Int.MAX_VALUE }
                     .thenByDescending { it.savedAtEpochMs }
                     .thenBy { libraryTitleTieBreakKey(it) }
                     .thenBy { it.id }

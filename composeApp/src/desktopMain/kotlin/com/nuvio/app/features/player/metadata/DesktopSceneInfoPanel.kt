@@ -29,9 +29,14 @@ import androidx.compose.ui.unit.dp
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.scene_info_actor
 import nuvio.composeapp.generated.resources.scene_info_chapter
+import nuvio.composeapp.generated.resources.scene_info_chapter_context
+import nuvio.composeapp.generated.resources.scene_info_chapter_current
+import nuvio.composeapp.generated.resources.scene_info_chapter_next
+import nuvio.composeapp.generated.resources.scene_info_chapter_previous
 import nuvio.composeapp.generated.resources.scene_info_close
 import nuvio.composeapp.generated.resources.scene_info_empty
 import nuvio.composeapp.generated.resources.scene_info_music
+import nuvio.composeapp.generated.resources.scene_info_seek_chapter
 import nuvio.composeapp.generated.resources.scene_info_title
 import nuvio.composeapp.generated.resources.scene_info_trivia
 import org.jetbrains.compose.resources.stringResource
@@ -40,8 +45,11 @@ import org.jetbrains.compose.resources.stringResource
 internal fun DesktopSceneInfoPanel(
     entries: List<SceneInfoEntry>,
     onDismiss: () -> Unit,
+    onSeekToChapterStart: (Long) -> Unit = {},
 ) {
     val closeFocus = androidx.compose.runtime.remember { FocusRequester() }
+    val chapterEntries = entries.filter { it.kind == TimedMetadataKind.CHAPTER && it.chapterRelation != null }
+    val factEntries = entries.filterNot { it.kind == TimedMetadataKind.CHAPTER && it.chapterRelation != null }
     Surface(
         modifier = Modifier.fillMaxSize().testTag("scene-info-panel").onPreviewKeyEvent {
             if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
@@ -63,7 +71,19 @@ internal fun DesktopSceneInfoPanel(
                 Text(stringResource(Res.string.scene_info_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(entries, key = SceneInfoEntry::id) { entry ->
+                    if (chapterEntries.isNotEmpty()) {
+                        item(key = "chapter-context-heading") {
+                            Text(
+                                stringResource(Res.string.scene_info_chapter_context),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        items(chapterEntries, key = SceneInfoEntry::id) { entry ->
+                            SceneInfoChapterRow(entry, onSeekToChapterStart)
+                        }
+                    }
+                    items(factEntries, key = SceneInfoEntry::id) { entry ->
                         Column(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 4.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(entry.kind.label(), style = MaterialTheme.typography.labelMedium,
@@ -82,6 +102,54 @@ internal fun DesktopSceneInfoPanel(
         }
     }
     androidx.compose.runtime.LaunchedEffect(Unit) { closeFocus.requestFocus() }
+}
+
+@Composable
+private fun SceneInfoChapterRow(
+    entry: SceneInfoEntry,
+    onSeekToChapterStart: (Long) -> Unit,
+) {
+    val relation = requireNotNull(entry.chapterRelation)
+    val startMs = entry.startMs
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                when (relation) {
+                    SceneInfoChapterRelation.PREVIOUS -> stringResource(Res.string.scene_info_chapter_previous)
+                    SceneInfoChapterRelation.CURRENT -> stringResource(Res.string.scene_info_chapter_current)
+                    SceneInfoChapterRelation.NEXT -> stringResource(Res.string.scene_info_chapter_next)
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(entry.title, style = MaterialTheme.typography.titleMedium,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            startMs?.let {
+                Text(formatSceneInfoTimestamp(it), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        OutlinedButton(
+            onClick = { startMs?.takeIf { it >= 0L }?.let(onSeekToChapterStart) },
+            enabled = startMs != null && startMs >= 0L,
+            modifier = Modifier.testTag("scene-info-chapter-seek-${relation.name.lowercase()}"),
+        ) {
+            Text(stringResource(Res.string.scene_info_seek_chapter))
+        }
+    }
+}
+
+private fun formatSceneInfoTimestamp(positionMs: Long): String {
+    val totalSeconds = positionMs.coerceAtLeast(0L) / 1_000L
+    val seconds = totalSeconds % 60L
+    val minutes = (totalSeconds / 60L) % 60L
+    val hours = totalSeconds / 3_600L
+    fun pad2(value: Long) = if (value < 10L) "0$value" else value.toString()
+    return if (hours > 0L) "$hours:${pad2(minutes)}:${pad2(seconds)}" else "${totalSeconds / 60L}:${pad2(seconds)}"
 }
 
 @Composable

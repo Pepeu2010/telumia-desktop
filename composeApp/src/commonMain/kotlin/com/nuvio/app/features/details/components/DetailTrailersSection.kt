@@ -46,6 +46,8 @@ import com.nuvio.app.core.ui.nuvioDesktopDragScroll
 import com.nuvio.app.core.ui.nuvioHorizontalScrollBleed
 import com.nuvio.app.core.ui.rememberPosterCardStyleUiState
 import com.nuvio.app.features.details.MetaTrailer
+import com.nuvio.app.features.details.resolveTrailerPlaybackTarget
+import com.nuvio.app.features.details.youtubeThumbnailUrl
 import nuvio.composeapp.generated.resources.*
 import nuvio.composeapp.generated.resources.detail_tab_trailer
 import nuvio.composeapp.generated.resources.detail_trailer_category_count
@@ -198,6 +200,13 @@ private fun TrailerCard(
     metaFontSize: androidx.compose.ui.unit.TextUnit,
     onClick: () -> Unit,
 ) {
+    val canOpenTrailer = remember(trailer.site, trailer.key) {
+        resolveTrailerPlaybackTarget(trailer) != null
+    }
+    val thumbnailUrl = remember(trailer.site, trailer.key) {
+        trailer.youtubeThumbnailUrl()
+    }
+
     Column(
         modifier = Modifier.width(cardWidth),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -210,10 +219,10 @@ private fun TrailerCard(
                     shape = RoundedCornerShape(cornerRadius),
                     surface = NuvioCardDepthSurface.Trailers,
                 )
-                .clickable(onClick = onClick),
+                .clickable(enabled = canOpenTrailer, onClick = onClick),
         ) {
             AsyncImage(
-                model = "https://img.youtube.com/vi/${trailer.key}/hqdefault.jpg",
+                model = thumbnailUrl,
                 contentDescription = trailer.displayName ?: trailer.name,
                 modifier = Modifier
                     .fillMaxWidth()

@@ -15,7 +15,7 @@ class WatchProgressSourceCoordinatorTest {
     @Test
     fun `serialized transition uses latest source for the same profile`() {
         val queued = context(source = WatchProgressSource.NUVIO_SYNC)
-        val latest = context(source = WatchProgressSource.TRAKT)
+        val latest = context(source = WatchProgressSource.MDBLIST)
 
         assertEquals(
             latest,
@@ -66,21 +66,21 @@ class WatchProgressSourceCoordinatorTest {
         watchedRefreshes.clear()
 
         val result = runner.transition(
-            context = context(source = WatchProgressSource.TRAKT),
+            context = context(source = WatchProgressSource.MDBLIST),
             refreshIfUnchanged = true,
             forceSnapshot = true,
         )
 
         assertTrue(result.succeeded)
-        assertEquals(listOf(1 to WatchProgressSource.TRAKT), invalidations)
-        assertEquals(listOf(WatchProgressSource.TRAKT), activatedProgress)
-        assertEquals(listOf(WatchProgressSource.TRAKT), activatedWatched)
+        assertEquals(listOf(1 to WatchProgressSource.MDBLIST), invalidations)
+        assertEquals(listOf(WatchProgressSource.MDBLIST), activatedProgress)
+        assertEquals(listOf(WatchProgressSource.MDBLIST), activatedWatched)
         assertEquals(
-            listOf(RefreshCall(1, WatchProgressSource.TRAKT, sourceChanged = true, force = true)),
+            listOf(RefreshCall(1, WatchProgressSource.MDBLIST, sourceChanged = true, force = true)),
             progressRefreshes,
         )
         assertEquals(
-            listOf(RefreshCall(1, WatchProgressSource.TRAKT, sourceChanged = false, force = true)),
+            listOf(RefreshCall(1, WatchProgressSource.MDBLIST, sourceChanged = false, force = true)),
             watchedRefreshes,
         )
     }
@@ -102,13 +102,13 @@ class WatchProgressSourceCoordinatorTest {
         )
 
         runner.transition(
-            context = context(source = WatchProgressSource.TRAKT),
+            context = context(source = WatchProgressSource.MDBLIST),
             refreshIfUnchanged = false,
             forceSnapshot = true,
         )
 
         assertTrue(sourceChangedAtRefresh)
-        assertEquals(listOf(1 to WatchProgressSource.TRAKT), invalidations)
+        assertEquals(listOf(1 to WatchProgressSource.MDBLIST), invalidations)
     }
 
     @Test
@@ -169,7 +169,7 @@ class WatchProgressSourceCoordinatorTest {
         )
 
         val result = runner.transition(
-            context = context(source = WatchProgressSource.TRAKT),
+            context = context(source = WatchProgressSource.MDBLIST),
             refreshIfUnchanged = true,
             forceSnapshot = true,
         )
@@ -192,7 +192,7 @@ class WatchProgressSourceCoordinatorTest {
                 watchedAttempts > 1
             },
         )
-        val context = context(source = WatchProgressSource.TRAKT)
+        val context = context(source = WatchProgressSource.MDBLIST)
 
         val first = runner.transition(
             context = context,
@@ -215,7 +215,7 @@ class WatchProgressSourceCoordinatorTest {
         var appliedSource = WatchProgressSource.NUVIO_SYNC
         val invalidations = mutableListOf<WatchProgressSource>()
         val refreshedSources = mutableListOf<WatchProgressSource>()
-        var failTraktWatchedRefresh = true
+        var failMdbListWatchedRefresh = true
         val runner = WatchProgressSourceTransitionRunner(
             currentAppliedSource = { appliedSource },
             invalidateCache = { _, source -> invalidations += source },
@@ -227,7 +227,7 @@ class WatchProgressSourceCoordinatorTest {
             },
             refreshWatched = { _, source, _ ->
                 refreshedSources += source
-                source != WatchProgressSource.TRAKT || !failTraktWatchedRefresh
+                source != WatchProgressSource.MDBLIST || !failMdbListWatchedRefresh
             },
         )
 
@@ -240,13 +240,13 @@ class WatchProgressSourceCoordinatorTest {
         )
         assertFalse(
             runner.transition(
-                context = context(source = WatchProgressSource.TRAKT),
+                context = context(source = WatchProgressSource.MDBLIST),
                 refreshIfUnchanged = false,
                 forceSnapshot = true,
             ).succeeded,
         )
 
-        failTraktWatchedRefresh = false
+        failMdbListWatchedRefresh = false
         val reverted = runner.transition(
             context = context(source = WatchProgressSource.NUVIO_SYNC),
             refreshIfUnchanged = false,
@@ -256,15 +256,15 @@ class WatchProgressSourceCoordinatorTest {
         assertTrue(reverted.succeeded)
         assertEquals(WatchProgressSource.NUVIO_SYNC, appliedSource)
         assertEquals(
-            listOf(WatchProgressSource.TRAKT, WatchProgressSource.NUVIO_SYNC),
+            listOf(WatchProgressSource.MDBLIST, WatchProgressSource.NUVIO_SYNC),
             invalidations,
         )
         assertEquals(
             listOf(
                 WatchProgressSource.NUVIO_SYNC,
                 WatchProgressSource.NUVIO_SYNC,
-                WatchProgressSource.TRAKT,
-                WatchProgressSource.TRAKT,
+                WatchProgressSource.MDBLIST,
+                WatchProgressSource.MDBLIST,
                 WatchProgressSource.NUVIO_SYNC,
                 WatchProgressSource.NUVIO_SYNC,
             ),
@@ -289,7 +289,7 @@ class WatchProgressSourceCoordinatorTest {
             },
             refreshWatched = { _, _, _ -> true },
         )
-        val context = context(source = WatchProgressSource.TRAKT)
+        val context = context(source = WatchProgressSource.MDBLIST)
         val staleTransition = async {
             runner.transition(
                 context = context,

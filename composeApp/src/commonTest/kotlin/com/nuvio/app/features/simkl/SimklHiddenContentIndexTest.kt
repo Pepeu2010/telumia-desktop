@@ -32,7 +32,7 @@ class SimklHiddenContentIndexTest {
             "anilist:202", "ANILIST:00202:3", "kitsu:303", "KITSU:00303:3",
         )
         val unmatchedIds = listOf(
-            "", "123", "456", "trakt:456", "tt7654321", "imdb:1234567",
+            "", "123", "456", "mdblist:456", "tt7654321", "imdb:1234567",
             "tmdb:456", "tvdb:SeriesI", "mal:303", "kitsu:789", "simkl:invalid",
         )
         val statuses: List<SimklListStatus?> = SimklListStatus.entries + listOf(null)

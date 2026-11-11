@@ -24,7 +24,7 @@ class WatchedModelsTest {
 
     @Test
     fun `remote watched sources carry provider identity`() {
-        assertEquals(TrackingProviderId.TRAKT, WatchProgressSource.TRAKT.providerId)
+        assertEquals(TrackingProviderId.MDBLIST, WatchProgressSource.MDBLIST.providerId)
         assertEquals(TrackingProviderId.SIMKL, WatchProgressSource.SIMKL.providerId)
         assertEquals(null, WatchProgressSource.NUVIO_SYNC.providerId)
     }

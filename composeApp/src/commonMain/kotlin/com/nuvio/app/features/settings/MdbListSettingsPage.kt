@@ -39,7 +39,6 @@ import nuvio.composeapp.generated.resources.source_mal
 import nuvio.composeapp.generated.resources.source_metacritic
 import nuvio.composeapp.generated.resources.source_rotten_tomatoes
 import nuvio.composeapp.generated.resources.source_tmdb
-import nuvio.composeapp.generated.resources.source_trakt
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -116,7 +115,6 @@ private fun ProviderRows(
         MdbListMetadataService.PROVIDER_TMDB to Res.string.source_tmdb,
         MdbListMetadataService.PROVIDER_TOMATOES to Res.string.source_rotten_tomatoes,
         MdbListMetadataService.PROVIDER_METACRITIC to Res.string.source_metacritic,
-        MdbListMetadataService.PROVIDER_TRAKT to Res.string.source_trakt,
         MdbListMetadataService.PROVIDER_LETTERBOXD to Res.string.source_letterboxd,
         MdbListMetadataService.PROVIDER_AUDIENCE to Res.string.source_audience_score,
         MdbListMetadataService.PROVIDER_MAL to Res.string.source_mal,

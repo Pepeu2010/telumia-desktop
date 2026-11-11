@@ -63,10 +63,8 @@ import nuvio.composeapp.generated.resources.settings_appearance_app_language_res
 import nuvio.composeapp.generated.resources.settings_appearance_app_language_sheet_title
 import nuvio.composeapp.generated.resources.settings_appearance_app_icon
 import nuvio.composeapp.generated.resources.settings_appearance_nav_bar_style
-import nuvio.composeapp.generated.resources.settings_appearance_sidebar_style
 import nuvio.composeapp.generated.resources.settings_appearance_top_bar_style
 import nuvio.composeapp.generated.resources.settings_appearance_nav_bar_style_sheet_title
-import nuvio.composeapp.generated.resources.settings_appearance_sidebar_style_sheet_title
 import nuvio.composeapp.generated.resources.settings_appearance_top_bar_style_sheet_title
 import nuvio.composeapp.generated.resources.settings_nav_bar_glow_on
 import nuvio.composeapp.generated.resources.settings_nav_bar_glow_off
@@ -74,9 +72,6 @@ import nuvio.composeapp.generated.resources.settings_nav_bar_summary
 import nuvio.composeapp.generated.resources.settings_appearance_amoled_black
 import nuvio.composeapp.generated.resources.settings_appearance_amoled_description
 import nuvio.composeapp.generated.resources.settings_appearance_continue_watching_description
-import nuvio.composeapp.generated.resources.settings_appearance_desktop_navigation
-import nuvio.composeapp.generated.resources.settings_appearance_desktop_navigation_top_bar
-import nuvio.composeapp.generated.resources.settings_appearance_desktop_navigation_sheet_title
 import nuvio.composeapp.generated.resources.settings_appearance_hover_preview_description
 import nuvio.composeapp.generated.resources.settings_appearance_liquid_glass
 import nuvio.composeapp.generated.resources.settings_appearance_liquid_glass_description
@@ -141,11 +136,6 @@ internal fun LazyListScope.appearanceSettingsContent(
         val animationIntensity by ThemeSettingsRepository.animationIntensity.collectAsStateWithLifecycle()
         var showLanguageRestartDialog by remember { mutableStateOf(false) }
         val layoutDirection = LocalLayoutDirection.current
-        var showDesktopNavigationSheet by rememberSaveable { mutableStateOf(false) }
-        val desktopNavigationLayout by remember {
-            ThemeSettingsRepository.ensureLoaded()
-            ThemeSettingsRepository.desktopNavigationLayout
-        }.collectAsStateWithLifecycle()
         var showNavBarStyleSheet by rememberSaveable { mutableStateOf(false) }
         var showAppIconPicker by rememberSaveable { mutableStateOf(false) }
         val navBarStyleAvailable = !isIos
@@ -187,29 +177,10 @@ internal fun LazyListScope.appearanceSettingsContent(
                     isTablet = isTablet,
                     onClick = { showIntensityPicker = true },
                 )
-                    SettingsGroupDivider(isTablet = isTablet)
-                    val desktopNavDescription = if (isTablet) {
-                        stringResource(desktopNavigationLayout.labelRes)
-                    } else {
-                        stringResource(Res.string.settings_appearance_desktop_navigation_top_bar)
-                    }
-                    SettingsNavigationRow(
-                        title = stringResource(Res.string.settings_appearance_desktop_navigation),
-                        description = desktopNavDescription,
-                        isTablet = isTablet,
-                        onClick = {
-                            if (isTablet) {
-                                showDesktopNavigationSheet = true
-                            }
-                        },
-                    )
                 }
                 if (!isIos) {
                     SettingsGroupDivider(isTablet = isTablet)
-                    val isSidebarActive = isDesktop && isTablet && desktopNavigationLayout == DesktopNavigationLayout.Sidebar
-                    val styleTitle = if (isSidebarActive) {
-                        stringResource(Res.string.settings_appearance_sidebar_style)
-                    } else if (isDesktop) {
+                    val styleTitle = if (isDesktop) {
                         stringResource(Res.string.settings_appearance_top_bar_style)
                     } else {
                         stringResource(Res.string.settings_appearance_nav_bar_style)
@@ -259,17 +230,6 @@ internal fun LazyListScope.appearanceSettingsContent(
                     onClick = { showLanguageSheet = true },
                 )
             }
-        }
-
-        if (showDesktopNavigationSheet) {
-            DesktopNavigationLayoutBottomSheet(
-                selectedLayout = desktopNavigationLayout,
-                onLayoutSelected = {
-                    ThemeSettingsRepository.setDesktopNavigationLayout(it)
-                    showDesktopNavigationSheet = false
-                },
-                onDismiss = { showDesktopNavigationSheet = false },
-            )
         }
 
         if (showMotionPicker) {
@@ -339,7 +299,6 @@ internal fun LazyListScope.appearanceSettingsContent(
                 NavBarStyleBottomSheet(
                     selectedStyle = selectedNavBarStyle,
                     isTablet = isTablet,
-                    desktopNavigationLayout = desktopNavigationLayout,
                     onStyleSelected = {
                         onNavBarStyleSelected(it)
                         showNavBarStyleSheet = false
@@ -421,66 +380,6 @@ internal fun LazyListScope.appearanceSettingsContent(
                     description = stringResource(Res.string.settings_content_discovery_meta_screen_description),
                     isTablet = isTablet,
                     onClick = onMetaScreenClick,
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DesktopNavigationLayoutBottomSheet(
-    selectedLayout: DesktopNavigationLayout,
-    onLayoutSelected: (DesktopNavigationLayout) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val coroutineScope = rememberCoroutineScope()
-
-    NuvioModalBottomSheet(
-        onDismissRequest = {
-            coroutineScope.launch {
-                dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss)
-            }
-        },
-        sheetState = sheetState,
-    ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-        ) {
-            item {
-                Text(
-                    text = stringResource(Res.string.settings_appearance_desktop_navigation_sheet_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                )
-            }
-
-            itemsIndexed(DesktopNavigationLayout.entries) { index, layout ->
-                if (index > 0) {
-                    NuvioBottomSheetDivider()
-                }
-                NuvioBottomSheetActionRow(
-                    title = stringResource(layout.labelRes),
-                    onClick = {
-                        onLayoutSelected(layout)
-                        coroutineScope.launch {
-                            dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss)
-                        }
-                    },
-                    trailingContent = {
-                        if (layout == selectedLayout) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = stringResource(Res.string.cd_selected),
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    },
                 )
             }
         }
@@ -576,13 +475,11 @@ private fun AppearanceLanguageBottomSheet(
 private fun NavBarStyleBottomSheet(
     selectedStyle: NavBarStyle,
     isTablet: Boolean = true,
-    desktopNavigationLayout: DesktopNavigationLayout = DesktopNavigationLayout.Default,
     onStyleSelected: (NavBarStyle) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
-    val isSidebarActive = isDesktop && isTablet && desktopNavigationLayout == DesktopNavigationLayout.Sidebar
     val availableStyles = remember(isDesktop, isTablet) {
         when {
             isDesktop -> listOf(NavBarStyle.ADAPTIVE, NavBarStyle.EXPANDED, NavBarStyle.COMPACT)
@@ -606,9 +503,7 @@ private fun NavBarStyleBottomSheet(
         ) {
             item {
                 Text(
-                    text = if (isSidebarActive) {
-                        stringResource(Res.string.settings_appearance_sidebar_style_sheet_title)
-                    } else if (isDesktop) {
+                    text = if (isDesktop) {
                         stringResource(Res.string.settings_appearance_top_bar_style_sheet_title)
                     } else {
                         stringResource(Res.string.settings_appearance_nav_bar_style_sheet_title)

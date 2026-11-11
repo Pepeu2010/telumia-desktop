@@ -53,7 +53,7 @@ class HomeHeroSectionTest {
             preferDesktopLayout = true,
         )
 
-        assertEquals(1036.8f, layout.heroHeight.value, 0.001f)
+        assertEquals(763.2f, layout.heroHeight.value, 0.001f)
         assertEquals(2560f, layout.contentContainerMaxWidth.value, 0.001f)
         assertEquals(32f, layout.contentHorizontalPadding.value, 0.001f)
         assertEquals(40f, layout.contentVerticalPadding.value, 0.001f)

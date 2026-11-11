@@ -39,7 +39,7 @@ class TrackingProviderRefreshCoordinatorTest {
         val result = coordinateTrackingProviderRefresh(
             providerId = TrackingProviderId.SIMKL,
             refreshProvider = { true },
-            activeProviderId = { TrackingProviderId.TRAKT },
+            activeProviderId = { TrackingProviderId.MDBLIST },
             refreshActiveReadModels = {
                 readModelRefreshes += 1
                 true

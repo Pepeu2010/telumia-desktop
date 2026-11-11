@@ -39,8 +39,6 @@ import nuvio.composeapp.generated.resources.settings_hover_preview_section_behav
 import nuvio.composeapp.generated.resources.settings_hover_preview_section_trailer
 import nuvio.composeapp.generated.resources.settings_hover_preview_trailer_enabled
 import nuvio.composeapp.generated.resources.settings_hover_preview_trailer_enabled_description
-import nuvio.composeapp.generated.resources.settings_hover_preview_trailer_sound_enabled
-import nuvio.composeapp.generated.resources.settings_hover_preview_trailer_sound_enabled_description
 import nuvio.composeapp.generated.resources.settings_hover_preview_trailer_start_time
 import nuvio.composeapp.generated.resources.settings_hover_preview_trailer_start_time_description
 import nuvio.composeapp.generated.resources.settings_hover_preview_trailer_start_time_value
@@ -87,17 +85,6 @@ internal fun LazyListScope.hoverPreviewSettingsContent(
                         enabled = uiState.hoverPreviewEnabled,
                         isTablet = isTablet,
                         onCheckedChange = PosterCardStyleRepository::setHoverPreviewTrailerEnabled,
-                    )
-                    SettingsGroupDivider(isTablet = isTablet)
-                    SettingsSwitchRow(
-                        title = stringResource(Res.string.settings_hover_preview_trailer_sound_enabled),
-                        description = stringResource(
-                            Res.string.settings_hover_preview_trailer_sound_enabled_description,
-                        ),
-                        checked = uiState.hoverPreviewTrailerSoundEnabled,
-                        enabled = uiState.hoverPreviewEnabled && uiState.hoverPreviewTrailerEnabled,
-                        isTablet = isTablet,
-                        onCheckedChange = PosterCardStyleRepository::setHoverPreviewTrailerSoundEnabled,
                     )
                     SettingsGroupDivider(isTablet = isTablet)
                     HoverPreviewTrailerStartSlider(

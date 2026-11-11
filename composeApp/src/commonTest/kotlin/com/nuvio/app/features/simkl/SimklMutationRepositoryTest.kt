@@ -41,7 +41,6 @@ class SimklMutationRepositoryTest {
         assertEquals("plantowatch", anime.getValue("to").jsonPrimitive.content)
         assertEquals(53536L, movie.getValue("ids").jsonObject.getValue("simkl").jsonPrimitive.content.toLong())
         assertEquals("tt0181852", movie.getValue("ids").jsonObject.getValue("imdb").jsonPrimitive.content)
-        assertNull(movie.getValue("ids").jsonObject["trakt"])
         assertNull(movie["poster"])
         assertNull(movie["posterUrl"])
         assertEquals(16498L, anime.getValue("ids").jsonObject.getValue("mal").jsonPrimitive.content.toLong())
@@ -354,7 +353,6 @@ class SimklMutationRepositoryTest {
             simkl = 53536,
             imdb = "tt0181852",
             tmdb = 296,
-            trakt = 123,
         ),
     )
 

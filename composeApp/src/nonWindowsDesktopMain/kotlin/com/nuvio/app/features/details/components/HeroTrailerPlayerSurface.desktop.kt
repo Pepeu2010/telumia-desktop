@@ -39,6 +39,7 @@ actual fun HeroTrailerPlayerSurface(
     onReady: () -> Unit,
     onEnded: () -> Unit,
     onError: () -> Unit,
+    onUserInteraction: () -> Unit,
 ) {
     key(sourceUrl, sourceAudioUrl, startPositionMillis) {
         DesktopTrailerPlayerSession(
@@ -52,6 +53,7 @@ actual fun HeroTrailerPlayerSurface(
             onReady = onReady,
             onEnded = onEnded,
             onError = onError,
+            onUserInteraction = onUserInteraction,
         )
     }
 }
@@ -68,6 +70,7 @@ private fun DesktopTrailerPlayerSession(
     onReady: () -> Unit,
     onEnded: () -> Unit,
     onError: () -> Unit,
+    onUserInteraction: () -> Unit,
 ) {
     val player = rememberVideoPlayerState()
     val callbackScope = rememberCoroutineScope()

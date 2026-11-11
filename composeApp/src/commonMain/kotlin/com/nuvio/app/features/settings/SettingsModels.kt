@@ -31,7 +31,6 @@ import nuvio.composeapp.generated.resources.compose_settings_page_root
 import nuvio.composeapp.generated.resources.compose_settings_page_streams
 import nuvio.composeapp.generated.resources.compose_settings_page_supporters_contributors
 import nuvio.composeapp.generated.resources.compose_settings_page_tmdb_enrichment
-import nuvio.composeapp.generated.resources.compose_settings_page_trakt
 import nuvio.composeapp.generated.resources.compose_settings_page_tracking
 import nuvio.composeapp.generated.resources.settings_account
 import org.jetbrains.compose.resources.StringResource
@@ -156,8 +155,7 @@ internal enum class SettingsPage(
         category = SettingsCategory.General,
         parentPage = Integrations,
     ),
-    TraktAuthentication(
-        // Keep the enum name for saved navigation-state compatibility.
+    TrackingAccounts(
         titleRes = Res.string.compose_settings_page_tracking,
         category = SettingsCategory.Account,
         parentPage = Root,

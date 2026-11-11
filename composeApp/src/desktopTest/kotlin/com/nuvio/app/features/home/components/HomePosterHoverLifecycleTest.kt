@@ -11,6 +11,12 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.awt.ComposePanel
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toAwtImage
@@ -26,15 +32,20 @@ import com.nuvio.app.core.ui.PosterCardStyleUiState
 import com.nuvio.app.core.ui.PosterZoomOverlayCoordinator
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.player.desktop.DesktopHostOs
-import com.nuvio.app.features.player.desktop.originalAviFixture
 import com.nuvio.app.features.trailer.TrailerPlaybackSource
+import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.home_view_details
+import org.jetbrains.compose.resources.stringResource
 import java.awt.Rectangle
 import java.awt.Robot
+import java.awt.event.KeyEvent
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import javax.imageio.ImageIO
 import javax.swing.JFrame
 import javax.swing.SwingUtilities
@@ -49,12 +60,42 @@ import org.junit.Assume.assumeTrue
 @OptIn(ExperimentalTestApi::class, ExperimentalComposeUiApi::class)
 class HomePosterHoverLifecycleTest {
     @Test
-    fun desktopDefaultsToSilentHoverTrailerWithExplicitSoundOptIn() {
+    fun immersiveOverlayConsumesPressAndReleaseBeforeReturningFocus() =
+        runDesktopComposeUiTest(width = 800, height = 600) {
+            val owner = Any()
+            val exits = AtomicInteger()
+            val entry = HomePosterHoverPreviewPortalEntry(owner, object : PopupPositionProvider {
+                override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize,
+                    layoutDirection: LayoutDirection, popupContentSize: IntSize) = IntOffset.Zero
+            }, IntRect(0, 0, 1, 1)) { Box(Modifier.size(100.dp)) }
+            runOnIdle {
+                entry.immersive = true
+                entry.onExitImmersive = { exits.incrementAndGet(); entry.immersive = false }
+                HomePosterHoverPreviewPortal.show(entry)
+            }
+            try {
+                setContent { HomePosterHoverPreviewOverlayHost() }
+                onNodeWithTag("home-hover-overlay-host").performKeyInput {
+                    keyDown(Key.Enter)
+                    keyUp(Key.Enter)
+                }
+                runOnIdle {
+                    assertTrue(!entry.immersive)
+                    assertTrue(exits.get() == 1)
+                }
+            } finally {
+                runOnIdle { HomePosterHoverPreviewPortal.clear(owner) }
+            }
+        }
+
+    @Test
+    fun desktopDefaultsToHoverTrailerWithSound() {
         val defaults = PosterCardStyleUiState()
-        assertFalse(defaults.hoverPreviewTrailerSoundEnabled)
+        assertTrue(defaults.hoverPreviewTrailerSoundEnabled)
         if (DesktopHostOs.current == DesktopHostOs.WINDOWS) {
-            assertFalse(AppFeaturePolicy.hoverTrailerPlaybackSupported)
-            assertFalse(defaults.hoverPreviewTrailerEnabled)
+            assertTrue(AppFeaturePolicy.hoverTrailerPlaybackSupported)
+            assertTrue(defaults.hoverPreviewTrailerEnabled)
+            assertTrue(AppFeaturePolicy.hoverPreviewUsesRootOverlay)
         } else {
             assertTrue(AppFeaturePolicy.hoverTrailerPlaybackSupported)
             assertTrue(defaults.hoverPreviewTrailerEnabled)
@@ -73,8 +114,10 @@ class HomePosterHoverLifecycleTest {
                 hoverPreviewTrailerSoundEnabled = false,
             )
             runOnIdle { PosterZoomOverlayCoordinator.hide() }
+            var detailsActionLabel = ""
             setContent {
                 NuvioTheme(navigationMotion = NavigationMotion.OFF) {
+                    detailsActionLabel = stringResource(Res.string.home_view_details)
                     Box(Modifier.fillMaxSize()) {
                         Box(Modifier.padding(64.dp)) {
                             HomePosterHoverPreview(
@@ -115,6 +158,8 @@ class HomePosterHoverLifecycleTest {
             waitForIdle()
             waitUntil(timeoutMillis = 8_000) { started.get() }
             onNodeWithTag("home-hover-preview").assertIsDisplayed()
+            onNodeWithText(detailsActionLabel).assertDoesNotExist()
+            onNodeWithTag("home-hover-preview").assertHasClickAction()
             val screenshotDirectory = File("build/reports/telumia-hover-preview").apply { mkdirs() }
             ImageIO.write(
                 onNodeWithTag("home-hover-preview").captureToImage().toAwtImage(),
@@ -134,23 +179,38 @@ class HomePosterHoverLifecycleTest {
         }
 
     @Test
-    fun windowsHoverPreviewReachesTheRealMutedNativeTrailerSurface() {
+    fun windowsHoverPreviewReachesTheRealNativeTrailerSurface() {
         assumeTrue("Windows native hover-preview integration gate", DesktopHostOs.current == DesktopHostOs.WINDOWS)
-        val fixture = Files.createTempFile("telumia-hover-inline-", ".avi")
-        Files.write(fixture, originalAviFixture())
+        val fixture = Files.createTempFile("telumia-hover-inline-", ".mp4")
+        val fixtureBytes = requireNotNull(javaClass.getResourceAsStream("/telumia-hover-audio-test.mp4")) {
+            "the deterministic MPEG-4 hover fixture must be on the desktopTest classpath"
+        }.use { it.readBytes() }
+        Files.write(fixture, fixtureBytes)
         val resolving = CountDownLatch(1)
         val ready = CountDownLatch(1)
+        val ended = CountDownLatch(1)
+        val immersiveEntered = CountDownLatch(1)
+        val chromeRestored = CountDownLatch(1)
+        val immersiveWasEntered = AtomicBoolean(false)
+        val immersiveEligibilityStates = ConcurrentLinkedQueue<HomePosterHoverImmersiveEligibility>()
         val failed = CountDownLatch(1)
+        val trailerReadyCount = AtomicInteger()
         val anchorMeasured = CountDownLatch(1)
         val frameCreated = AtomicBoolean(false)
         val anchorInteractionSource = MutableInteractionSource()
+        val testStartedAt = System.nanoTime()
+        val lifecycleEvents = ConcurrentLinkedQueue<String>()
+        fun recordLifecycleEvent(event: String) {
+            val elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - testStartedAt)
+            lifecycleEvents.add("${elapsedMs}ms $event")
+        }
         lateinit var panel: ComposePanel
         lateinit var window: JFrame
         val settings = PosterCardStyleUiState(
             hoverPreviewEnabled = true,
             hoverPreviewOpenDelayMillis = 500,
             hoverPreviewTrailerEnabled = true,
-            hoverPreviewTrailerSoundEnabled = false,
+            hoverPreviewTrailerSoundEnabled = true,
         )
 
         try {
@@ -179,10 +239,33 @@ class HomePosterHoverLifecycleTest {
                                 anchorInteractionSourceOverride = anchorInteractionSource,
                                 trailerResolver = {
                                     resolving.countDown()
-                                    TrailerPlaybackSource(fixture.toAbsolutePath().toString())
+                                    TrailerPlaybackSource(fixture.toUri().toString())
                                 },
-                                onTrailerReady = { ready.countDown() },
-                                onTrailerError = { failed.countDown() },
+                                onTrailerReady = {
+                                    recordLifecycleEvent("trailer-ready #${trailerReadyCount.incrementAndGet()}")
+                                    ready.countDown()
+                                },
+                                onTrailerEnded = {
+                                    recordLifecycleEvent("trailer-ended")
+                                    ended.countDown()
+                                },
+                                onTrailerError = {
+                                    recordLifecycleEvent("trailer-error")
+                                    failed.countDown()
+                                },
+                                onImmersivePreviewChanged = { immersive ->
+                                    recordLifecycleEvent("immersive=$immersive")
+                                    if (immersive) {
+                                        immersiveWasEntered.set(true)
+                                        immersiveEntered.countDown()
+                                    } else if (immersiveWasEntered.get()) {
+                                        chromeRestored.countDown()
+                                    }
+                                },
+                                onImmersiveEligibilityChanged = { state ->
+                                    immersiveEligibilityStates.add(state)
+                                    recordLifecycleEvent("eligibility=$state")
+                                },
                             ) { hover ->
                                 Box(
                                     hover.testTag("windows-hover-anchor")
@@ -212,14 +295,46 @@ class HomePosterHoverLifecycleTest {
             val trailerReady = ready.await(15, TimeUnit.SECONDS)
             assertTrue(
                 trailerReady,
-                if (failed.count == 0L) "the main-window overlay must reach media-ready with the muted local trailer"
+                if (failed.count == 0L) "the main-window overlay must reach media-ready with the local trailer"
                 else "the main-window overlay player reported an error before media-ready",
             )
-            Thread.sleep(250)
-            assertTrue(homePosterPreviewOwnership.active.value != null, "the overlay must retain ownership during playback")
+            assertTrue(
+                immersiveEntered.await(8, TimeUnit.SECONDS),
+                "the ready local trailer must enter the full-window presentation; " +
+                    "eligibility history=${immersiveEligibilityStates.joinToString(" -> ")}; " +
+                    "terminal events=${lifecycleEvents.filter { it.contains("trailer-ended") || it.contains("trailer-error") }}; " +
+                    "events=${lifecycleEvents.joinToString(" | ")}",
+            )
+            assertTrue(
+                trailerReadyCount.get() == 1,
+                "entering the full-window presentation must preserve the already-ready native player",
+            )
+            Thread.sleep(1_000)
             val screenshot = File("build/reports/telumia-hover-preview/windows-native-overlay.png")
                 .apply { parentFile.mkdirs() }
             ImageIO.write(Robot().createScreenCapture(Rectangle(window.locationOnScreen, window.size)), "png", screenshot)
+            val robot = Robot()
+            robot.mouseMove(window.x + window.width / 2, window.y + window.height / 2)
+            assertTrue(
+                chromeRestored.await(4, TimeUnit.SECONDS),
+                "pointer movement must restore the hover-card chrome; " +
+                    "events=${lifecycleEvents.joinToString(" | ")}; " +
+                    "focusOwner=${window.focusOwner?.javaClass?.name}; " +
+                    "windowFocused=${window.isFocused}; panelFocused=${panel.isFocusOwner}",
+            )
+            assertTrue(
+                ended.await(15, TimeUnit.SECONDS),
+                "the full-window trailer must report playback end; events=${lifecycleEvents.joinToString(" | ")}",
+            )
+            Thread.sleep(1_500)
+            assertTrue(
+                trailerReadyCount.get() == 1,
+                "the same player must finish without remounting after the chrome is restored",
+            )
+            assertTrue(homePosterPreviewOwnership.active.value != null, "the overlay must retain ownership during playback")
+            // The real overlay covers the preview surface; leave it physically before emitting
+            // the injected anchor exit so both hover sources are released, as they are on user exit.
+            robot.mouseMove(window.x + window.width / 2, window.y + window.height + 8)
             assertTrue(anchorInteractionSource.tryEmit(HoverInteraction.Exit(hoverEnter)))
             val releaseDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(4)
             while (homePosterPreviewOwnership.active.value != null && System.nanoTime() < releaseDeadline) {

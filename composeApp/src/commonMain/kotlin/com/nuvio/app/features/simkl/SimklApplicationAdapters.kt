@@ -144,7 +144,7 @@ data class SimklProgressUiState(
  * without coordinates; a whole-series action still reports its episodes one by one (`WatchingActions`
  * marks the series and its released episodes together), which carries the same information and cannot
  * touch anything else. A mark whose type is `anime` is dropped too: the app cannot tell an anime film
- * from an anime series without more metadata, and Trakt's adapter drops both for the same reason. That
+ * from an anime series without more metadata, and other adapters drop both for the same reason. That
  * is the accepted trade, because a mark the user made by hand staying out of the history is cheaper
  * than a single call stamping a whole series.
  */

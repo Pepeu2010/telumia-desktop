@@ -42,7 +42,7 @@ class SeriesPlaybackResolverTest {
         assertEquals(1, action.seasonNumber)
         assertEquals(1, action.episodeNumber)
         assertEquals("Pilot", action.episodeTitle)
-        assertEquals("Play S1 E1", action.label)
+        assertEquals("Reproduzir T1 E1", action.label)
         assertNull(action.resumePositionMs)
     }
 
@@ -75,7 +75,7 @@ class SeriesPlaybackResolverTest {
         )
 
         assertNotNull(action)
-        assertEquals("Next Up • S1 E3", action.label)
+        assertEquals("A Seguir • T1 E3", action.label)
         assertEquals("show:1:3", action.videoId)
         assertEquals(1, action.seasonNumber)
         assertEquals(3, action.episodeNumber)
@@ -124,7 +124,7 @@ class SeriesPlaybackResolverTest {
         )
 
         assertNotNull(action)
-        assertEquals("Next Up • S1 E3", action.label)
+        assertEquals("A Seguir • T1 E3", action.label)
         assertEquals("show:1:3", action.videoId)
     }
 
@@ -162,7 +162,7 @@ class SeriesPlaybackResolverTest {
         )
 
         assertNotNull(action)
-        assertEquals("Next Up • S4 E15", action.label)
+        assertEquals("A Seguir • T4 E15", action.label)
         assertEquals("tmdb:98765:4:15", action.videoId)
         assertEquals(4, action.seasonNumber)
         assertEquals(15, action.episodeNumber)
@@ -190,7 +190,7 @@ class SeriesPlaybackResolverTest {
         )
 
         assertNotNull(action)
-        assertEquals("Play S1 E2", action.label)
+        assertEquals("Reproduzir T1 E2", action.label)
         assertEquals("show:1:2", action.videoId)
         assertEquals(1, action.seasonNumber)
         assertEquals(2, action.episodeNumber)
@@ -231,7 +231,7 @@ class SeriesPlaybackResolverTest {
         )
 
         assertNotNull(action)
-        assertEquals("Resume S1 E1", action.label)
+        assertEquals("Retomar T1 E1", action.label)
         assertEquals("show:1:1", action.videoId)
     }
 

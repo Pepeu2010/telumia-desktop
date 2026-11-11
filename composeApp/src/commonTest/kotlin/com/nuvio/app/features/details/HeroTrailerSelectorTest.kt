@@ -56,7 +56,7 @@ class HeroTrailerSelectorTest {
 
     private fun trailer(
         id: String,
-        key: String = id,
+        key: String = id.padEnd(11, 'x').take(11),
         site: String = "YouTube",
         type: String = "Trailer",
         official: Boolean = false,

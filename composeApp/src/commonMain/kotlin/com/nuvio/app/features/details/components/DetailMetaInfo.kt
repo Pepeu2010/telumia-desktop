@@ -50,7 +50,6 @@ import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_METACRITIC
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_MAL
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_TMDB
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_TOMATOES
-import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_TRAKT
 import com.nuvio.app.features.mdblist.RottenTomatoesStatus
 import com.nuvio.app.features.mdblist.rottenTomatoesStatus
 import nuvio.composeapp.generated.resources.*
@@ -60,7 +59,6 @@ import nuvio.composeapp.generated.resources.rating_letterboxd
 import nuvio.composeapp.generated.resources.rating_metacritic
 import nuvio.composeapp.generated.resources.rating_rotten_tomatoes
 import nuvio.composeapp.generated.resources.rating_tmdb
-import nuvio.composeapp.generated.resources.rating_trakt
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.painterResource
@@ -357,14 +355,6 @@ private val ratingVisuals = listOf(
         logo = Res.drawable.rating_tmdb,
         logoWidth = 16.dp,
         valueColor = Color(0xFF01B4E4),
-        format = ::formatWhole,
-    ),
-    RatingVisuals(
-        source = PROVIDER_TRAKT,
-        displayName = "Trakt",
-        logo = Res.drawable.rating_trakt,
-        logoWidth = 16.dp,
-        valueColor = Color(0xFFED1C24),
         format = ::formatWhole,
     ),
     RatingVisuals(

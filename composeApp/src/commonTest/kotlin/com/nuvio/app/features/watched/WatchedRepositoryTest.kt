@@ -195,7 +195,7 @@ class WatchedRepositoryTest {
     fun successfulTrackerPush_doesNotAcknowledgeFailedNuvioPush() {
         val outcome = WatchedPushOutcome(
             nuvioSyncSucceeded = false,
-            succeededTrackerProviderIds = setOf(TrackingProviderId.TRAKT),
+            succeededTrackerProviderIds = setOf(TrackingProviderId.MDBLIST),
         )
 
         assertFalse(
@@ -243,7 +243,7 @@ class WatchedRepositoryTest {
     @Test
     fun watchedItemsForSource_keepsProviderSnapshotsIsolated() {
         val nuvioItem = watchedItem(id = "nuvio", markedAtEpochMs = 1_000L)
-        val traktItem = watchedItem(id = "trakt", markedAtEpochMs = 2_000L)
+        val remoteItem = watchedItem(id = "remote", markedAtEpochMs = 2_000L)
         val simklItem = watchedItem(id = "simkl", markedAtEpochMs = 3_000L)
 
         assertEquals(
@@ -252,18 +252,18 @@ class WatchedRepositoryTest {
                 source = WatchProgressSource.NUVIO_SYNC,
                 nuvioItems = listOf(nuvioItem),
                 providerItems = mapOf(
-                    TrackingProviderId.TRAKT to listOf(traktItem),
+                    TrackingProviderId.MDBLIST to listOf(remoteItem),
                     TrackingProviderId.SIMKL to listOf(simklItem),
                 ),
             ),
         )
         assertEquals(
-            listOf(traktItem),
+            listOf(remoteItem),
             watchedItemsForSource(
-                source = WatchProgressSource.TRAKT,
+                source = WatchProgressSource.MDBLIST,
                 nuvioItems = listOf(nuvioItem),
                 providerItems = mapOf(
-                    TrackingProviderId.TRAKT to listOf(traktItem),
+                    TrackingProviderId.MDBLIST to listOf(remoteItem),
                     TrackingProviderId.SIMKL to listOf(simklItem),
                 ),
             ),
@@ -274,7 +274,7 @@ class WatchedRepositoryTest {
                 source = WatchProgressSource.SIMKL,
                 nuvioItems = listOf(nuvioItem),
                 providerItems = mapOf(
-                    TrackingProviderId.TRAKT to listOf(traktItem),
+                    TrackingProviderId.MDBLIST to listOf(remoteItem),
                     TrackingProviderId.SIMKL to listOf(simklItem),
                 ),
             ),
@@ -284,10 +284,10 @@ class WatchedRepositoryTest {
     @Test
     fun successfulTrackerPush_waitsForRemoteSnapshotAcknowledgement() {
         val outcome = WatchedPushOutcome(
-            succeededTrackerProviderIds = setOf(TrackingProviderId.TRAKT),
+            succeededTrackerProviderIds = setOf(TrackingProviderId.MDBLIST),
         )
 
-        assertFalse(shouldAcknowledgeNuvioWatchedPush(WatchProgressSource.TRAKT, outcome))
+        assertFalse(shouldAcknowledgeNuvioWatchedPush(WatchProgressSource.MDBLIST, outcome))
     }
 
     @Test
@@ -308,43 +308,43 @@ class WatchedRepositoryTest {
     }
 
     @Test
-    fun replacingTraktSnapshot_doesNotOverwriteNuvioSnapshot() {
+    fun replacingRemoteSnapshot_doesNotOverwriteNuvioSnapshot() {
         val nuvioItem = watchedItem(id = "nuvio", markedAtEpochMs = 1_000L)
-        val previousTraktItem = watchedItem(id = "old-trakt", markedAtEpochMs = 2_000L)
-        val refreshedTraktItem = watchedItem(id = "new-trakt", markedAtEpochMs = 3_000L)
+        val previousRemoteItem = watchedItem(id = "old-remote", markedAtEpochMs = 2_000L)
+        val refreshedRemoteItem = watchedItem(id = "new-remote", markedAtEpochMs = 3_000L)
         val nuvioItems = mutableMapOf("nuvio" to nuvioItem)
         val providerItems = mutableMapOf(
-            TrackingProviderId.TRAKT to mutableMapOf("old-trakt" to previousTraktItem),
+            TrackingProviderId.MDBLIST to mutableMapOf("old-remote" to previousRemoteItem),
         )
 
         replaceWatchedItemsForSource(
-            source = WatchProgressSource.TRAKT,
+            source = WatchProgressSource.MDBLIST,
             nuvioItems = nuvioItems,
             providerItems = providerItems,
-            replacement = mapOf("new-trakt" to refreshedTraktItem),
+            replacement = mapOf("new-remote" to refreshedRemoteItem),
         )
 
         assertEquals(mapOf("nuvio" to nuvioItem), nuvioItems)
         assertEquals(
-            mapOf("new-trakt" to refreshedTraktItem),
-            providerItems[TrackingProviderId.TRAKT].orEmpty(),
+            mapOf("new-remote" to refreshedRemoteItem),
+            providerItems[TrackingProviderId.MDBLIST].orEmpty(),
         )
     }
 
     @Test
-    fun effectiveWatchedSource_fallsBackToNuvioWhenTraktIsUnavailable() {
+    fun effectiveWatchedSource_fallsBackToNuvioWhenRemoteIsUnavailable() {
         assertEquals(
             WatchProgressSource.NUVIO_SYNC,
             effectiveWatchedSource(
-                requestedSource = WatchProgressSource.TRAKT,
+                requestedSource = WatchProgressSource.MDBLIST,
                 connectedProviderIds = emptySet(),
             ),
         )
         assertEquals(
-            WatchProgressSource.TRAKT,
+            WatchProgressSource.MDBLIST,
             effectiveWatchedSource(
-                requestedSource = WatchProgressSource.TRAKT,
-                connectedProviderIds = setOf(TrackingProviderId.TRAKT),
+                requestedSource = WatchProgressSource.MDBLIST,
+                connectedProviderIds = setOf(TrackingProviderId.MDBLIST),
             ),
         )
     }
@@ -369,21 +369,21 @@ class WatchedRepositoryTest {
 
     @Test
     fun sourceOperationGuard_rejectsResultFromSourceActiveBeforeSwitch() {
-        val traktOperation = WatchedSourceOperation(
-            source = WatchProgressSource.TRAKT,
+        val remoteOperation = WatchedSourceOperation(
+            source = WatchProgressSource.MDBLIST,
             generation = 4L,
         )
 
         assertTrue(
             isWatchedSourceOperationCurrent(
-                operation = traktOperation,
-                activeSource = WatchProgressSource.TRAKT,
+                operation = remoteOperation,
+                activeSource = WatchProgressSource.MDBLIST,
                 activeGeneration = 4L,
             ),
         )
         assertFalse(
             isWatchedSourceOperationCurrent(
-                operation = traktOperation,
+                operation = remoteOperation,
                 activeSource = WatchProgressSource.NUVIO_SYNC,
                 activeGeneration = 5L,
             ),
@@ -392,15 +392,15 @@ class WatchedRepositoryTest {
 
     @Test
     fun sourceOperationGuard_rejectsOlderRefreshAfterSwitchingAwayAndBack() {
-        val firstTraktOperation = WatchedSourceOperation(
-            source = WatchProgressSource.TRAKT,
+        val firstRemoteOperation = WatchedSourceOperation(
+            source = WatchProgressSource.MDBLIST,
             generation = 7L,
         )
 
         assertFalse(
             isWatchedSourceOperationCurrent(
-                operation = firstTraktOperation,
-                activeSource = WatchProgressSource.TRAKT,
+                operation = firstRemoteOperation,
+                activeSource = WatchProgressSource.MDBLIST,
                 activeGeneration = 9L,
             ),
         )

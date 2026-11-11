@@ -27,8 +27,13 @@ import com.nuvio.app.features.player.PlatformPlayerSurface
 import com.nuvio.app.features.player.PlayerEngineController
 import com.nuvio.app.features.player.PlayerPlaybackSnapshot
 import com.nuvio.app.features.player.PlayerResizeMode
+import com.nuvio.app.features.player.PlaybackDiagnosticStage
+import com.nuvio.app.features.player.PlaybackErrorDetailsDialog
+import com.nuvio.app.features.player.playbackErrorSummary
+import com.nuvio.app.features.player.playbackErrorDiagnostics
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_retry
+import nuvio.composeapp.generated.resources.home_view_details
 import nuvio.composeapp.generated.resources.trailer_unable_to_play
 import org.jetbrains.compose.resources.stringResource
 
@@ -44,6 +49,18 @@ internal fun TrailerPlayer(
     onExitFullscreen: (() -> Unit)? = null,
 ) {
     val error = errorMessage ?: state.error
+    var showDiagnostics by remember(error) { mutableStateOf(false) }
+    val diagnostics = playbackErrorDiagnostics(
+        stage = when {
+            errorMessage != null -> PlaybackDiagnosticStage.SourceResolution
+            state.snapshot.isLoading -> PlaybackDiagnosticStage.PlayerStartup
+            else -> PlaybackDiagnosticStage.Playback
+        },
+        sourceUrl = source?.videoUrl,
+        streamType = null,
+        responseHeaders = emptyMap(),
+        errorMessage = error,
+    )
     EnterImmersivePlayerMode(keepScreenAwake = error == null && state.playWhenReady && !state.snapshot.isEnded)
     Box(modifier = modifier.background(Color.Black), contentAlignment = Alignment.Center) {
         if (source != null && !isLoading && error == null) {
@@ -68,12 +85,15 @@ internal fun TrailerPlayer(
                     color = Color.White,
                 )
                 Text(
-                    text = error,
+                    text = playbackErrorSummary(error),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.7f),
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
+                TextButton(onClick = { showDiagnostics = true }) {
+                    Text(stringResource(Res.string.home_view_details))
+                }
                 if (onRetry != null) {
                     TextButton(onClick = onRetry) { Text(stringResource(Res.string.action_retry)) }
                 }
@@ -84,6 +104,12 @@ internal fun TrailerPlayer(
             canControlPlayback = source != null && !isLoading && error == null,
             title = title,
             onExitFullscreen = onExitFullscreen,
+        )
+    }
+    if (showDiagnostics && error != null) {
+        PlaybackErrorDetailsDialog(
+            diagnostics = diagnostics,
+            onDismiss = { showDiagnostics = false },
         )
     }
 }

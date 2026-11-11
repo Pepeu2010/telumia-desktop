@@ -25,7 +25,6 @@ object MdbListSettingsRepository {
     private var useTmdb = true
     private var useTomatoes = true
     private var useMetacritic = true
-    private var useTrakt = true
     private var useLetterboxd = true
     private var useAudience = true
     private var useMal = true
@@ -82,10 +81,6 @@ object MdbListSettingsRepository {
                 useMetacritic = value
                 MdbListSettingsStorage.saveUseMetacritic(value)
             } else return
-            MdbListMetadataService.PROVIDER_TRAKT -> if (useTrakt != value) {
-                useTrakt = value
-                MdbListSettingsStorage.saveUseTrakt(value)
-            } else return
             MdbListMetadataService.PROVIDER_LETTERBOXD -> if (useLetterboxd != value) {
                 useLetterboxd = value
                 MdbListSettingsStorage.saveUseLetterboxd(value)
@@ -111,7 +106,6 @@ object MdbListSettingsRepository {
         useTmdb = MdbListSettingsStorage.loadUseTmdb() ?: true
         useTomatoes = MdbListSettingsStorage.loadUseTomatoes() ?: true
         useMetacritic = MdbListSettingsStorage.loadUseMetacritic() ?: true
-        useTrakt = MdbListSettingsStorage.loadUseTrakt() ?: true
         useLetterboxd = MdbListSettingsStorage.loadUseLetterboxd() ?: true
         useAudience = MdbListSettingsStorage.loadUseAudience() ?: true
         useMal = MdbListSettingsStorage.loadUseMal() ?: true
@@ -126,7 +120,6 @@ object MdbListSettingsRepository {
             useTmdb = useTmdb,
             useTomatoes = useTomatoes,
             useMetacritic = useMetacritic,
-            useTrakt = useTrakt,
             useLetterboxd = useLetterboxd,
             useAudience = useAudience,
             useMal = useMal,

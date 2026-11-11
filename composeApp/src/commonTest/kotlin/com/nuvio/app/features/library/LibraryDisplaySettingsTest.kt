@@ -13,7 +13,7 @@ class LibraryDisplaySettingsTest {
         )
         assertEquals(
             LibrarySortOption.DEFAULT,
-            effectiveLibrarySortOption(LibrarySortOption.DEFAULT, LibrarySourceMode.TRAKT),
+            effectiveLibrarySortOption(LibrarySortOption.DEFAULT, LibrarySourceMode.MDBLIST),
         )
         assertEquals(
             LibrarySortOption.DEFAULT,
@@ -25,14 +25,14 @@ class LibraryDisplaySettingsTest {
         )
 
         val input = listOf(
-            item("ranked-second", savedAt = 3L, traktRank = 2),
+            item("ranked-second", savedAt = 3L),
             item("unranked", savedAt = 4L),
-            item("ranked-first", savedAt = 1L, traktRank = 1),
-            item("ranked-first-newer", savedAt = 2L, traktRank = 1),
+            item("ranked-first", savedAt = 1L),
+            item("ranked-first-newer", savedAt = 2L),
         )
         assertEquals(
-            listOf("ranked-first-newer", "ranked-first", "ranked-second", "unranked"),
-            sortLibraryItems(input, LibrarySortOption.DEFAULT, LibrarySourceMode.TRAKT).map { it.id },
+            listOf("unranked", "ranked-second", "ranked-first-newer", "ranked-first"),
+            sortLibraryItems(input, LibrarySortOption.DEFAULT, LibrarySourceMode.MDBLIST).map { it.id },
         )
         assertEquals(
             listOf("unranked", "ranked-second", "ranked-first-newer", "ranked-first"),
@@ -99,7 +99,7 @@ class LibraryDisplaySettingsTest {
         )
         assertEquals(
             listOf("oldest", "middle", "newest"),
-            sortLibraryItems(input, LibrarySortOption.ADDED_ASC, LibrarySourceMode.TRAKT).map { it.id },
+            sortLibraryItems(input, LibrarySortOption.ADDED_ASC, LibrarySourceMode.MDBLIST).map { it.id },
         )
     }
 
@@ -162,7 +162,7 @@ class LibraryDisplaySettingsTest {
 
         val projection = buildLibraryVerticalProjection(
             sections = listOf(watchlist, personal),
-            sourceMode = LibrarySourceMode.TRAKT,
+            sourceMode = LibrarySourceMode.MDBLIST,
             selectedSectionKey = "missing",
             selectedType = "movie",
             sortOption = LibrarySortOption.TITLE_ASC,
@@ -204,13 +204,11 @@ class LibraryDisplaySettingsTest {
         type: String = "movie",
         name: String = id,
         savedAt: Long = 0L,
-        traktRank: Int? = null,
     ): LibraryItem =
         LibraryItem(
             id = id,
             type = type,
             name = name,
             savedAtEpochMs = savedAt,
-            traktRank = traktRank,
         )
 }

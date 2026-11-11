@@ -26,6 +26,7 @@ fun HomeCatalogRowSection(
     onViewAllClick: (() -> Unit)? = null,
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onPosterLongClick: ((MetaPreview) -> Unit)? = null,
+    onPosterHighlighted: ((MetaPreview) -> Unit)? = null,
 ) {
     if (sectionPadding != null) {
         HomeCatalogRowSectionContent(
@@ -38,6 +39,7 @@ fun HomeCatalogRowSection(
             onViewAllClick = onViewAllClick,
             onPosterClick = onPosterClick,
             onPosterLongClick = onPosterLongClick,
+            onPosterHighlighted = onPosterHighlighted,
         )
     } else {
         BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
@@ -51,6 +53,7 @@ fun HomeCatalogRowSection(
                 onViewAllClick = onViewAllClick,
                 onPosterClick = onPosterClick,
                 onPosterLongClick = onPosterLongClick,
+                onPosterHighlighted = onPosterHighlighted,
             )
         }
     }
@@ -67,6 +70,7 @@ private fun HomeCatalogRowSectionContent(
     onViewAllClick: (() -> Unit)?,
     onPosterClick: ((MetaPreview) -> Unit)?,
     onPosterLongClick: ((MetaPreview) -> Unit)?,
+    onPosterHighlighted: ((MetaPreview) -> Unit)?,
 ) {
     val posterCardStyle = rememberPosterCardStyleUiState()
 
@@ -91,6 +95,7 @@ private fun HomeCatalogRowSectionContent(
             ),
             onClick = onPosterClick?.let { { it(item) } },
             onLongClick = onPosterLongClick?.let { { it(item) } },
+            onHighlighted = onPosterHighlighted,
         )
     }
 }

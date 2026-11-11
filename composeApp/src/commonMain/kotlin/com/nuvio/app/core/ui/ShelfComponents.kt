@@ -55,6 +55,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.nuvio.app.isDesktop
@@ -88,6 +89,8 @@ fun <T> NuvioShelfSection(
     onViewAllClick: (() -> Unit)? = null,
     onTitleClick: (() -> Unit)? = null,
     viewAllPillSize: NuvioViewAllPillSize = NuvioViewAllPillSize.Default,
+    titleStyle: TextStyle? = null,
+    titleToRowSpacing: Dp? = null,
     key: ((T) -> Any)? = null,
     animatePlacement: Boolean = false,
     state: LazyListState = rememberLazyListState(),
@@ -103,7 +106,9 @@ fun <T> NuvioShelfSection(
     }
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap + NuvioTokens.Space.s2),
+        verticalArrangement = Arrangement.spacedBy(
+            titleToRowSpacing ?: (tokens.spacing.controlGap + NuvioTokens.Space.s2),
+        ),
     ) {
         if (title.isNotBlank()) {
             NuvioShelfSectionHeader(
@@ -112,6 +117,7 @@ fun <T> NuvioShelfSection(
                 onViewAllClick = onViewAllClick,
                 onTitleClick = onTitleClick,
                 viewAllPillSize = viewAllPillSize,
+                titleStyle = titleStyle,
             )
         }
         LazyRow(
@@ -403,6 +409,7 @@ private fun NuvioShelfSectionHeader(
     onViewAllClick: (() -> Unit)? = null,
     onTitleClick: (() -> Unit)? = null,
     viewAllPillSize: NuvioViewAllPillSize = NuvioViewAllPillSize.Default,
+    titleStyle: TextStyle? = null,
 ) {
     val tokens = MaterialTheme.nuvio
     Column(
@@ -418,7 +425,7 @@ private fun NuvioShelfSectionHeader(
                 modifier = Modifier
                     .weight(1f)
                     .then(if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier),
-                style = MaterialTheme.typography.titleLarge,
+                style = titleStyle ?: MaterialTheme.typography.titleLarge,
                 color = tokens.colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

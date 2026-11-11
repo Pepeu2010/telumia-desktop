@@ -15,7 +15,7 @@ class DesktopNavigationBarTest {
     }
 
     @Test
-    fun adaptiveHomeWithHeroExpandsForHoverAndProfilePopup() {
+    fun adaptiveHomeWithHeroStartsIconOnlyAndRevealsNamesOnInteraction() {
         assertEquals(0f, labels(hero = true))
         assertEquals(1f, labels(hero = true, hovered = true))
         assertEquals(1f, labels(hero = true, popup = true))
@@ -23,15 +23,16 @@ class DesktopNavigationBarTest {
     }
 
     @Test
-    fun adaptiveHomeWithoutHeroCollapsesAfterScrolling() {
-        assertEquals(1f, labels())
+    fun adaptiveHomeWithoutHeroKeepsTheIconBarCompact() {
+        assertEquals(0f, labels())
         assertEquals(0f, labels(scrolled = true))
         assertEquals(1f, labels(scrolled = true, hovered = true))
     }
 
     @Test
-    fun otherTabsKeepTheirLabelsWhileScrolling() {
-        assertEquals(1f, labels(home = false, scrolled = true))
+    fun otherTabsKeepTheIconBarCompact() {
+        assertEquals(0f, labels(home = false, scrolled = true))
+        assertEquals(1f, labels(home = false, hovered = true))
     }
 
     @Test

@@ -13,16 +13,23 @@ import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.Dp
 import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
@@ -99,16 +106,24 @@ internal fun JellyTabTargets(
     horizontalLabels: Boolean = false,
     iconSize: Dp = if (compactSize) 24.dp else 28.dp,
 ) {
+    val tokens = MaterialTheme.nuvio
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     Row(modifier.padding(horizontal = 4.dp).selectableGroup()) {
         items.forEachIndexed { index, item ->
             val visualIndex = visualNavIndex(index, items.size, isRtl)
+            var isFocused by remember(index) { mutableStateOf(false) }
             val onClick = {
                 motion.select(visualIndex)
                 item.onClick()
             }
+            val focusIndicatorModifier = if (isFocused) {
+                Modifier.border(2.dp, tokens.colors.borderSelected, RoundedCornerShape(50))
+            } else {
+                Modifier
+            }
             Box(
                 modifier = Modifier.weight(1f).fillMaxHeight()
+                    .onFocusChanged { isFocused = it.isFocused }
                     .selectable(
                         selected = item.selected,
                         role = Role.Tab,
@@ -121,7 +136,8 @@ internal fun JellyTabTargets(
                         selected = item.selected
                         contentDescription = item.label
                         onClick { onClick(); true }
-                    },
+                    }
+                    .then(focusIndicatorModifier),
                 contentAlignment = Alignment.Center,
             ) {
                 if (item.content != null) {

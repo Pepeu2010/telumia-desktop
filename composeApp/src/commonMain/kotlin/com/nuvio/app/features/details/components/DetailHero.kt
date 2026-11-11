@@ -1,33 +1,18 @@
 package com.nuvio.app.features.details.components
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.VolumeOff
-import androidx.compose.material.icons.rounded.VolumeUp
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -72,10 +57,8 @@ fun DetailHero(
     heroTrailerSourceAudioUrl: String? = null,
     heroTrailerReady: Boolean = false,
     heroTrailerPlayWhenReady: () -> Boolean = { false },
-    heroTrailerMuted: Boolean = true,
     heroGradientColor: Color? = null,
     onBackdropLoaded: (Painter, ImageBitmap?) -> Unit = { _, _ -> },
-    onHeroTrailerMuteToggle: () -> Unit = {},
     onHeroTrailerReady: () -> Unit = {},
     onHeroTrailerEnded: () -> Unit = {},
     onHeroTrailerError: () -> Unit = {},
@@ -97,10 +80,6 @@ fun DetailHero(
             animationSpec = tween(durationMillis = 300),
             label = "detail_hero_trailer_alpha",
         )
-        val muteIconSize = if (isTablet) 20.dp else 22.dp
-        val heroChromeTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
-            8.dp +
-            ((40.dp - muteIconSize) / 2)
         val bottomGradientColor = heroGradientColor ?: MaterialTheme.colorScheme.background
         var logoLoadError by remember(meta.id, meta.logo) {
             mutableStateOf(false)
@@ -161,7 +140,7 @@ fun DetailHero(
                         sourceUrl = heroTrailerSourceUrl,
                         sourceAudioUrl = heroTrailerSourceAudioUrl,
                         playWhenReady = heroTrailerPlayWhenReady(),
-                        muted = heroTrailerMuted,
+                        muted = false,
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .fillMaxWidth()
@@ -177,45 +156,6 @@ fun DetailHero(
                         onEnded = onHeroTrailerEnded,
                         onError = onHeroTrailerError,
                     )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable(
-                                enabled = heroTrailerReady,
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onHeroTrailerMuteToggle,
-                            ),
-                    )
-                    AnimatedContent(
-                        targetState = heroTrailerMuted,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(
-                                top = heroChromeTopPadding,
-                                end = if (isDesktop) foregroundHorizontalPadding else if (isTablet) 32.dp else 22.dp,
-                            )
-                            .graphicsLayer {
-                                alpha = trailerAlpha * 0.72f
-                            },
-                        transitionSpec = {
-                            (fadeIn(animationSpec = tween(120)) + scaleIn(
-                                initialScale = 0.82f,
-                                animationSpec = tween(160),
-                            )) togetherWith (fadeOut(animationSpec = tween(90)) + scaleOut(
-                                targetScale = 1.12f,
-                                animationSpec = tween(100),
-                            ))
-                        },
-                        label = "detail_hero_trailer_mute_icon",
-                    ) { muted ->
-                        Icon(
-                            imageVector = if (muted) Icons.Rounded.VolumeOff else Icons.Rounded.VolumeUp,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(muteIconSize),
-                        )
-                    }
                 }
 
                 Box(

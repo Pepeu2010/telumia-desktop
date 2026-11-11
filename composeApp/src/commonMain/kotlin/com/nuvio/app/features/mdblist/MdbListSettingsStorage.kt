@@ -15,8 +15,6 @@ internal expect object MdbListSettingsStorage {
     fun saveUseTomatoes(enabled: Boolean)
     fun loadUseMetacritic(): Boolean?
     fun saveUseMetacritic(enabled: Boolean)
-    fun loadUseTrakt(): Boolean?
-    fun saveUseTrakt(enabled: Boolean)
     fun loadUseLetterboxd(): Boolean?
     fun saveUseLetterboxd(enabled: Boolean)
     fun loadUseAudience(): Boolean?

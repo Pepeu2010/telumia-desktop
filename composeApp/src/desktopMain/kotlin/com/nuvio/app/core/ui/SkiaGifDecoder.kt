@@ -28,7 +28,11 @@ internal object DesktopGifLimits {
         width.toLong() * height <= 4L * 1024 * 1024
     fun validateHeader(bytes: ByteArray) {
         require(bytes.size in 10..MAX_BYTES)
-        require(bytes.copyOfRange(0,6).toString(Charsets.US_ASCII) in setOf("GIF87a","GIF89a"))
+        val header = bytes.copyOfRange(0, minOf(12, bytes.size)).toString(Charsets.US_ASCII)
+        val isGif = header.startsWith("GIF87a") || header.startsWith("GIF89a")
+        val isWebp = bytes.size >= 12 && header.startsWith("RIFF") && header.substring(8, 12) == "WEBP"
+        require(isGif || isWebp) { "Only GIF and WebP animations are supported" }
+        if (!isGif) return // Skia validates WebP dimensions after decoding the codec header.
         fun word(offset: Int) = (bytes[offset].toInt() and 255) or ((bytes[offset+1].toInt() and 255) shl 8)
         require(safeDimensions(word(6),word(8))) { "GIF dimensions exceed the working memory limit" }
     }

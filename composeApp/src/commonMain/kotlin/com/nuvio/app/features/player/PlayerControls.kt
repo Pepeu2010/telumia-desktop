@@ -1,10 +1,15 @@
 package com.nuvio.app.features.player
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -52,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
@@ -147,13 +153,14 @@ internal fun PlayerControlsShell(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (useLegacyLayout) 220.dp else 260.dp)
+                .height(if (useLegacyLayout) 220.dp else 300.dp)
                 .align(Alignment.BottomCenter)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color.Black.copy(alpha = if (useLegacyLayout) 0.7f else 0.8f),
+                            Color.Black.copy(alpha = if (useLegacyLayout) 0.35f else 0.5f),
+                            Color.Black.copy(alpha = if (useLegacyLayout) 0.7f else 0.94f),
                         ),
                     ),
                 ),
@@ -546,10 +553,21 @@ private fun SideControlButton(
     metrics: PlayerLayoutMetrics,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    val focused by interaction.collectIsFocusedAsState()
+    val motion = com.nuvio.app.core.ui.LocalUiMotion.current
+    val surface by animateColorAsState(
+        if (hovered || focused) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.34f),
+        tween(motion.durationMillis(160)), label = "playerSideHover",
+    )
     Box(
         modifier = Modifier
             .clip(CircleShape)
-            .clickable(onClick = onClick)
+            .background(surface)
+            .border(1.dp, Color.White.copy(alpha = if (hovered || focused) 0.48f else 0.18f), CircleShape)
+            .hoverable(interaction)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(metrics.sideButtonPadding),
         contentAlignment = Alignment.Center,
     ) {
@@ -573,10 +591,22 @@ internal fun PlayPauseControlButton(
         if (isPlaying) AppIconResource.PlayerPause else AppIconResource.PlayerPlay,
     )
 
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    val focused by interaction.collectIsFocusedAsState()
+    val motion = com.nuvio.app.core.ui.LocalUiMotion.current
+    val surface by animateColorAsState(
+        if (hovered || focused) Color.White.copy(alpha = 0.32f) else Color.White.copy(alpha = 0.16f),
+        tween(motion.durationMillis(160)), label = "playerPlayHover",
+    )
     Box(
         modifier = Modifier
+            .testTag("player-play-pause")
             .clip(CircleShape)
-            .clickable(onClick = onClick)
+            .background(surface)
+            .border(1.dp, Color.White.copy(alpha = if (hovered || focused) 0.7f else 0.4f), CircleShape)
+            .hoverable(interaction)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(metrics.playButtonPadding),
         contentAlignment = Alignment.Center,
     ) {

@@ -37,7 +37,6 @@ internal class MdbListLibraryProjection(snapshot: MdbListLibrarySnapshot) {
                     savedAtEpochMs = maxOf(previous?.savedAtEpochMs ?: 0, item.listedAt),
                     imdbId = media.ids.imdb,
                     tmdbId = media.ids.tmdb?.takeIf { it <= Int.MAX_VALUE }?.toInt(),
-                    traktId = media.ids.trakt?.takeIf { it <= Int.MAX_VALUE }?.toInt(),
                     trackingProviderId = "mdblist",
                     trackingProviderItemId = media.ids.mdblist,
                     trackingSourceUrl = media.sourceUrl(item.type)

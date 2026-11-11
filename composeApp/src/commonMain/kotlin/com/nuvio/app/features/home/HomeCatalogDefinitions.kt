@@ -46,6 +46,7 @@ fun buildHomeCatalogDefinitions(addons: List<ManagedAddon>): List<HomeCatalogDef
         addon to manifest
     }.flatMap { (addon, manifest) ->
         manifest.catalogs
+            .filter { catalog -> catalog.type.trim().lowercase() !in LIVE_TV_CATALOG_TYPES }
             .filter { catalog -> catalog.extra.none { it.isRequired } }
             .map { catalog ->
                 HomeCatalogDefinition(
@@ -67,6 +68,8 @@ fun buildHomeCatalogDefinitions(addons: List<ManagedAddon>): List<HomeCatalogDef
                 )
             }
     }.distinctBy(HomeCatalogDefinition::key)
+
+private val LIVE_TV_CATALOG_TYPES = setOf("channel", "tv")
 
 private fun buildHomeCatalogDescriptorSignature(
     addon: ManagedAddon,

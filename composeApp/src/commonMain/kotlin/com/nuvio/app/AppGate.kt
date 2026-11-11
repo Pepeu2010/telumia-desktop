@@ -55,8 +55,7 @@ import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.profiles.ProfileSelectionScreen
 import com.nuvio.app.features.profiles.profileAvatarImageUrl
 import com.nuvio.app.features.profiles.ProfileStudioAvatars
-import com.nuvio.app.features.trakt.TraktAuthRepository
-import com.nuvio.app.features.trakt.TraktSettingsRepository
+import com.nuvio.app.features.tracking.TrackingSettingsRepository
 import com.nuvio.app.features.watched.WatchedRepository
 import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesRepository
 import com.nuvio.app.features.watchprogress.ContinueWatchingEnrichmentCache
@@ -78,8 +77,7 @@ internal suspend fun warmProfileBoundRepositories() {
         LibraryRepository.ensureLoaded()
         P2pSettingsRepository.ensureLoaded()
         PlayerSettingsRepository.ensureLoaded()
-        TraktAuthRepository.ensureLoaded()
-        TraktSettingsRepository.ensureLoaded()
+        TrackingSettingsRepository.ensureLoaded()
         WatchedRepository.ensureLoaded()
         WatchProgressRepository.ensureLoaded()
         ContinueWatchingEnrichmentCache.warm(ProfileRepository.activeProfileId)

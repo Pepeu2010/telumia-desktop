@@ -58,7 +58,7 @@ class SimklPkceTest {
     @Test
     fun `callback parser rejects other routes and missing state`() {
         assertIs<SimklAuthCallback.NotSimkl>(
-            parseSimklAuthCallback("nuvio://auth/trakt?code=a&state=b", "nuvio://auth/simkl"),
+            parseSimklAuthCallback("nuvio://auth/provider?code=a&state=b", "nuvio://auth/simkl"),
         )
         assertIs<SimklAuthCallback.Invalid>(
             parseSimklAuthCallback("nuvio://auth/simkl?code=a", "nuvio://auth/simkl"),

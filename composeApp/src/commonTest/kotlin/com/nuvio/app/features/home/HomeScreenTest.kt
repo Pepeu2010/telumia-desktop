@@ -12,7 +12,7 @@ import com.nuvio.app.features.watchprogress.CachedNextUpItem
 import com.nuvio.app.features.watchprogress.ContinueWatchingItem
 import com.nuvio.app.features.watchprogress.ContinueWatchingSortMode
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
-import com.nuvio.app.features.watchprogress.WatchProgressSourceTraktHistory
+import com.nuvio.app.features.watchprogress.WatchProgressSourceSimklPlayback
 import com.nuvio.app.features.watchprogress.nextUpDismissKey
 import com.nuvio.app.features.watchprogress.parseReleaseDateToEpochMs
 import com.nuvio.app.features.watchprogress.resolvedProgressKey
@@ -78,7 +78,7 @@ class HomeScreenTest {
     }
 
     @Test
-    fun `home trakt continue watching candidate limits match TV`() {
+    fun `home continue watching candidate limits match TV`() {
         assertEquals(300, HomeContinueWatchingMaxRecentProgressItems)
         assertEquals(32, HomeNextUpInitialResolutionLimit)
     }
@@ -122,7 +122,7 @@ class HomeScreenTest {
         )
 
         assertEquals(listOf("tt0944947:1:4", "movie-1"), result.map(ContinueWatchingItem::videoId))
-        assertEquals("S1 E4 • Cripples, Bastards, and Broken Things", result.first().subtitle)
+        assertEquals("T1 E4 • Cripples, Bastards, and Broken Things", result.first().subtitle)
     }
 
     @Test
@@ -145,7 +145,7 @@ class HomeScreenTest {
         )
 
         assertEquals(1, result.size)
-        assertEquals("S1 E5 • The Wolf and the Lion", result.single().subtitle)
+        assertEquals("T1 E5 • The Wolf and the Lion", result.single().subtitle)
     }
 
     @Test
@@ -195,7 +195,7 @@ class HomeScreenTest {
         )
 
         assertEquals(listOf("show:1:4"), result.map(ContinueWatchingItem::videoId))
-        assertEquals("S1 E4 • Current", result.single().subtitle)
+        assertEquals("T1 E4 • Current", result.single().subtitle)
     }
 
     @Test
@@ -589,14 +589,14 @@ class HomeScreenTest {
 
     @Test
     fun `provider-owned completed history ignores the separate watched projection`() {
-        val traktProgress = progressEntry(
+        val providerProgress = progressEntry(
             videoId = "show:1:2",
             title = "Show",
             seasonNumber = 1,
             episodeNumber = 2,
             lastUpdatedEpochMs = 2_000L,
             isCompleted = true,
-        ).copy(source = WatchProgressSourceTraktHistory)
+        ).copy(source = WatchProgressSourceSimklPlayback)
         val watchedItem = watchedItem(
             id = "other-show",
             season = 3,
@@ -605,7 +605,7 @@ class HomeScreenTest {
         )
 
         val result = buildHomeNextUpSeedCandidates(
-            progressEntries = listOf(traktProgress),
+            progressEntries = listOf(providerProgress),
             watchedItems = listOf(watchedItem),
             providerOwnsCompletedHistory = true,
             preferFurthestEpisode = true,

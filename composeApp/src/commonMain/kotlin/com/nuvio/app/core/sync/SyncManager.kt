@@ -536,7 +536,7 @@ object SyncManager {
                     continue
                 }
 
-                // Account surfaces still need refresh when Trakt/Simkl is the watch source.
+                // Account surfaces still need refresh when Simkl is the watch source.
                 // Each repository retains its existing source-selection policy.
                 startFullProfilePull(profileId = profileId, reason = "periodic")
             }

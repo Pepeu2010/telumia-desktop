@@ -44,7 +44,7 @@ class MdbListRatingsRepositoryTest {
         val ratings = repository.getRatings("movie", "tt1234567", credential, providers)
 
         assertEquals(providers, ratings.map { it.source })
-        assertEquals(listOf(8.1, 78.0, 92.0, 75.0, 81.0, 4.2, 89.0, 8.5), ratings.map { it.value })
+        assertEquals(listOf(8.1, 78.0, 92.0, 75.0, 4.2, 89.0, 8.5), ratings.map { it.value })
         assertEquals(listOf("tomatoes", "audience"), ratings.filter { it.isCertified }.map { it.source })
         assertEquals(1, requests.size)
         assertEquals(null, requests.single().second)
@@ -102,7 +102,7 @@ class MdbListRatingsRepositoryTest {
             async { repository.getRatings("movie", "tt$index", credential, providers) }
         }.awaitAll()
 
-        assertTrue(ratings.all { it.size == 8 })
+        assertTrue(ratings.all { it.size == 7 })
         val batches = requests.map { requestIds(requireNotNull(it.second)) }
         assertEquals(listOf(200, 200, 5), batches.map { it.size })
         assertEquals((1..405).map { "tt$it" }, batches.flatten())
@@ -150,7 +150,7 @@ class MdbListRatingsRepositoryTest {
         assertTrue(repository.getRatings("movie", "tt1234567", credential, providers).isEmpty())
         respond = { MEDIA }
 
-        assertEquals(8, repository.getRatings("movie", "tt1234567", credential, providers).size)
+        assertEquals(7, repository.getRatings("movie", "tt1234567", credential, providers).size)
         assertEquals(3, requests.size)
     }
 
@@ -163,7 +163,7 @@ class MdbListRatingsRepositoryTest {
         runCurrent()
         cancelled.cancel()
 
-        assertEquals(8, waiting.await().size)
+        assertEquals(7, waiting.await().size)
         assertTrue(cancelled.isCancelled)
         assertEquals(1, requests.size)
     }
@@ -196,7 +196,7 @@ class MdbListRatingsRepositoryTest {
         val repository = MdbListRatingsRepository(MdbListRatingsClient(harness.api, harness.store), backgroundScope)
         val original = MdbListRatingsCredential.Account(harness.store.scope())
         harness.reply(body = MEDIA)
-        assertEquals(8, repository.getRatings("movie", "tt1234567", original, providers).size)
+        assertEquals(7, repository.getRatings("movie", "tt1234567", original, providers).size)
 
         harness.store.selectProfile(2)
         expectMdbListFailure<CancellationException> {
@@ -219,7 +219,7 @@ class MdbListRatingsRepositoryTest {
         }
         respond = { MEDIA }
 
-        assertEquals(8, repository.getRatings("movie", "tt1234567", credential, providers).size)
+        assertEquals(7, repository.getRatings("movie", "tt1234567", credential, providers).size)
         assertEquals(2, requests.size)
     }
 
@@ -241,7 +241,6 @@ class MdbListRatingsRepositoryTest {
                 {"source":"popcorn","value":89},
                 {"source":"imdb","value":8.1,"score":81},
                 {"source":"tmdb","value":78},
-                {"source":"trakt","value":81},
                 {"source":"tomatoes","value":92},
                 {"source":"metacritic","value":75},
                 {"source":"letterboxd","value":4.2,"score":84},

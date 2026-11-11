@@ -2,7 +2,6 @@ package com.nuvio.app.features.watchprogress
 
 import com.nuvio.app.features.cloud.TorboxCloudLibraryPosterUrl
 import com.nuvio.app.features.details.MetaVideo
-import com.nuvio.app.features.trakt.parseTraktIsoDateTimeToEpochMs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -321,92 +320,6 @@ class WatchProgressRulesTest {
     }
 
     @Test
-    fun `Trakt history is not treated as active resume`() {
-        val history = entry(
-            videoId = "show:1:4",
-            parentMetaId = "show",
-            seasonNumber = 1,
-            episodeNumber = 4,
-            lastPositionMs = 1L,
-            durationMs = 0L,
-            progressPercent = 50f,
-            source = WatchProgressSourceTraktHistory,
-        )
-
-        assertFalse(history.shouldTreatAsInProgressForContinueWatching())
-    }
-
-    @Test
-    fun `Trakt playback does not replace watched history when watched timestamp is newer`() {
-        val watched = entry(
-            videoId = "show:1:4",
-            parentMetaId = "show",
-            seasonNumber = 1,
-            episodeNumber = 4,
-            lastUpdatedEpochMs = 3_000L,
-            isCompleted = true,
-            progressPercent = 100f,
-            source = WatchProgressSourceTraktHistory,
-        )
-        val playback = watched.copy(
-            lastUpdatedEpochMs = 1_000L,
-            isCompleted = false,
-            progressPercent = 25f,
-            source = WatchProgressSourceTraktPlayback,
-        )
-
-        assertFalse(shouldReplaceProgressSnapshotEntry(existing = watched, candidate = playback))
-        assertTrue(shouldReplaceProgressSnapshotEntry(existing = playback, candidate = watched))
-    }
-
-    @Test
-    fun `Trakt playback replaces watched history when playback timestamp is newer`() {
-        val watched = entry(
-            videoId = "show:1:4",
-            parentMetaId = "show",
-            seasonNumber = 1,
-            episodeNumber = 4,
-            lastUpdatedEpochMs = 1_000L,
-            isCompleted = true,
-            progressPercent = 100f,
-            source = WatchProgressSourceTraktHistory,
-        )
-        val playback = watched.copy(
-            lastUpdatedEpochMs = 3_000L,
-            isCompleted = false,
-            progressPercent = 25f,
-            source = WatchProgressSourceTraktPlayback,
-        )
-
-        assertTrue(shouldReplaceProgressSnapshotEntry(existing = watched, candidate = playback))
-        assertFalse(shouldReplaceProgressSnapshotEntry(existing = playback, candidate = watched))
-    }
-
-    @Test
-    fun `Trakt playback uses TV timestamp tolerance against watched history`() {
-        val watched = entry(
-            videoId = "show:1:4",
-            parentMetaId = "show",
-            seasonNumber = 1,
-            episodeNumber = 4,
-            lastUpdatedEpochMs = 2_000L,
-            isCompleted = true,
-            progressPercent = 100f,
-            source = WatchProgressSourceTraktHistory,
-        )
-        val insideTolerance = watched.copy(
-            lastUpdatedEpochMs = 1_001L,
-            isCompleted = false,
-            progressPercent = 25f,
-            source = WatchProgressSourceTraktPlayback,
-        )
-        val outsideTolerance = insideTolerance.copy(lastUpdatedEpochMs = 999L)
-
-        assertTrue(shouldReplaceProgressSnapshotEntry(existing = watched, candidate = insideTolerance))
-        assertFalse(shouldReplaceProgressSnapshotEntry(existing = watched, candidate = outsideTolerance))
-    }
-
-    @Test
     fun `completed progress does not cascade when provider owns watched projection`() {
         val completed = entry(
             videoId = "movie-complete",
@@ -481,12 +394,39 @@ class WatchProgressRulesTest {
     }
 
     @Test
+    fun `decoding stored progress drops rows cached by the retired Trakt integration`() {
+        val local = entry(
+            videoId = "show:1:1",
+            parentMetaId = "show",
+            seasonNumber = 1,
+            episodeNumber = 1,
+            source = WatchProgressSourceLocal,
+        )
+        val retired = entry(
+            videoId = "show:1:2",
+            parentMetaId = "show",
+            seasonNumber = 1,
+            episodeNumber = 2,
+            source = "trakt_playback",
+        )
+
+        val payload = WatchProgressCodec.encodePayload(
+            entries = listOf(local, retired),
+            lastSuccessfulPushEpochMs = 0L,
+            deltaCursorEventId = 0L,
+            deltaInitialized = false,
+        )
+
+        assertEquals(listOf("show:1:1"), WatchProgressCodec.decodeEntries(payload).map { it.videoId })
+    }
+
+    @Test
     fun `parseReleaseDateToEpochMs handles ISO and date-only formats`() {
         val t1 = parseReleaseDateToEpochMs("2026-05-24T15:00:00Z")
         assertEquals(1779634800000L, t1)
 
         val t2 = parseReleaseDateToEpochMs("2026-05-24")
-        assertEquals(parseTraktIsoDateTimeToEpochMs("2026-05-24T00:00:00Z"), t2)
+        assertEquals(1779580800000L, t2)
 
         assertNull(parseReleaseDateToEpochMs(null))
         assertNull(parseReleaseDateToEpochMs("   "))

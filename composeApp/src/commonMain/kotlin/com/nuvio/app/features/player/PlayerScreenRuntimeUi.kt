@@ -1721,6 +1721,18 @@ private fun BoxScope.RenderPlaybackOverlays(
                 showNextEpisodeCard = false
             },
             errorMessage = errorMessage,
+            errorDiagnostics = errorMessage?.let { message ->
+                playbackErrorDiagnostics(
+                    stage = when {
+                        !initialLoadCompleted -> PlaybackDiagnosticStage.PlayerStartup
+                        else -> PlaybackDiagnosticStage.Playback
+                    },
+                    sourceUrl = if (activeTorrentInfoHash != null) p2pResolvedSourceUrl ?: activeSourceUrl else activeSourceUrl,
+                    streamType = activeStreamType,
+                    responseHeaders = activeSourceResponseHeaders,
+                    errorMessage = message,
+                )
+            },
             onDismissError = { requestBack() },
         )
     }

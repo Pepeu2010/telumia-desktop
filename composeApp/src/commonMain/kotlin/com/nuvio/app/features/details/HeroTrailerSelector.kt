@@ -14,12 +14,8 @@ internal fun selectHeroTrailer(trailers: List<MetaTrailer>): MetaTrailer? =
             ),
         )
 
-internal fun MetaTrailer.youtubePlaybackUrl(): String =
-    key.takeIf { it.startsWith("http://") || it.startsWith("https://") }
-        ?: "https://www.youtube.com/watch?v=$key"
-
 private fun MetaTrailer.isPlayableYouTubeTrailerCandidate(): Boolean =
-    key.isNotBlank() && site.equals("YouTube", ignoreCase = true)
+    resolveTrailerPlaybackTarget(this) is MetaTrailerPlaybackTarget.YouTube
 
 private fun MetaTrailer.heroTrailerPriority(): Int {
     val isSeriesTrailer = seasonNumber != null

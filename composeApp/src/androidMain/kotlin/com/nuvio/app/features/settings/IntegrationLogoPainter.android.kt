@@ -15,7 +15,6 @@ import org.jetbrains.compose.resources.painterResource as composePainterResource
 internal actual fun integrationLogoPainter(logo: IntegrationLogo): Painter =
     when (logo) {
         IntegrationLogo.Tmdb -> composePainterResource(Res.drawable.rating_tmdb)
-        IntegrationLogo.Trakt -> painterResource(id = R.drawable.trakt_tv_favicon)
         IntegrationLogo.Simkl -> simklBrandPainter(SimklBrandAsset.Glyph)
         IntegrationLogo.MdbList -> painterResource(id = R.drawable.mdblist_logo)
         IntegrationLogo.IntroDb -> composePainterResource(Res.drawable.introdb_favicon)

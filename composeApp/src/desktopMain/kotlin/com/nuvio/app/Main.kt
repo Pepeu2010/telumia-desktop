@@ -64,6 +64,7 @@ fun main(args: Array<String>) {
     }
     applyDesktopRendererPreference()
     SentryInitializer.start()
+    runCatching { com.nuvio.app.core.storage.LegacyTraktDataCleaner.purge() }
     configureDesktopQuickJsLibrary()
     configureDesktopChrome()
     configureLinuxSwingGlobalsBeforeAwt()
@@ -143,6 +144,9 @@ fun main(args: Array<String>) {
             icon = painterResource(appIconState.selected.transparentPreviewResource),
             init = ::configureMacosWindowBeforePeer,
         ) {
+            LaunchedEffect(window) {
+                if (smokePlayerUrl == null) playTelumiaLaunchSoundAsync { window.isShowing }
+            }
             SideEffect {
                 window.background = NuvioDesktopNativeBackground
                 window.rootPane.background = NuvioDesktopNativeBackground
@@ -300,3 +304,28 @@ private fun handleDesktopLaunchArgs(args: Array<String>) {
 private fun isDesktopAppUrl(value: String): Boolean =
     value.startsWith("nuvio://", ignoreCase = true) ||
         value.startsWith("stremio://", ignoreCase = true)
+
+/** Never blocks startup; unavailable audio devices simply leave the animation silent. */
+private fun playTelumiaLaunchSoundAsync(isVisible: () -> Boolean) {
+    Thread({
+        runCatching {
+            val stream = object {}.javaClass.getResourceAsStream("/audio/telumia_launch.wav") ?: return@runCatching
+            val buffered = java.io.BufferedInputStream(stream)
+            javax.sound.sampled.AudioSystem.getAudioInputStream(buffered).use { audio ->
+                val clip = javax.sound.sampled.AudioSystem.getClip()
+                try {
+                    clip.open(audio)
+                    if (clip.isControlSupported(javax.sound.sampled.FloatControl.Type.MASTER_GAIN)) {
+                        val gain = clip.getControl(javax.sound.sampled.FloatControl.Type.MASTER_GAIN) as javax.sound.sampled.FloatControl
+                        gain.value = (-4f).coerceIn(gain.minimum, gain.maximum)
+                    }
+                    var attempts = 0
+                    while (!isVisible() && attempts++ < 20) Thread.sleep(25)
+                    if (!isVisible()) return@runCatching
+                    clip.start()
+                    Thread.sleep(clip.microsecondLength / 1_000L + 100L)
+                } finally { clip.close() }
+            }
+        }
+    }, "telumia-launch-sound").apply { isDaemon = true; start() }
+}

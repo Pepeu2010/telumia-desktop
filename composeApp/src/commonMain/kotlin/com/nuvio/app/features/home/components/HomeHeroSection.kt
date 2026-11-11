@@ -23,10 +23,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -38,11 +40,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -140,6 +138,7 @@ fun HomeHeroSection(
     listState: LazyListState? = null,
     stretchPx: () -> Float = { 0f },
     onItemClick: ((MetaPreview) -> Unit)? = null,
+    onBackgroundItemChanged: (MetaPreview) -> Unit = {},
 ) {
     if (items.isEmpty()) return
 
@@ -160,6 +159,10 @@ fun HomeHeroSection(
     val heroHovered by heroInteractionSource.collectIsHoveredAsState()
     var heroFocused by remember { mutableStateOf(false) }
     val autoScrollPage = pagerState.settledPage
+
+    LaunchedEffect(autoScrollPage, items) {
+        onBackgroundItemChanged(items[autoScrollPage % items.size])
+    }
 
     LaunchedEffect(pagerState) {
         pagerState.scrollToPage(pagerState.currentPage)
@@ -197,7 +200,7 @@ fun HomeHeroSection(
             )
             .then(
                 if (isDesktop) {
-                    Modifier.graphicsLayer { clip = true }
+                    Modifier
                 } else {
                     Modifier.clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                 },
@@ -235,6 +238,7 @@ fun HomeHeroSection(
                     layout = layout,
                     heroWidthPx = heroWidthPx,
                     heroHeightPx = heroHeightPx,
+                    backdropHeight = (viewportHeight ?: layout.heroHeight).coerceAtLeast(layout.heroHeight),
                     stretchPx = stretchPx,
                     includePagerNeighbors = pagerDragActive,
                     contentHorizontalPadding = maxOf(
@@ -519,26 +523,6 @@ private fun DefaultHomeHeroFrame(
                 )
             }
 
-            if (!layout.isTablet) {
-                Spacer(modifier = Modifier.height(14.dp))
-                Surface(
-                    modifier = Modifier
-                        .clickable(enabled = onItemClick != null) {
-                            onItemClick?.invoke(currentHeroItem(items, pagerState))
-                        },
-                    color = MaterialTheme.colorScheme.onBackground,
-                    contentColor = MaterialTheme.colorScheme.background,
-                    shape = RoundedCornerShape(40.dp),
-                ) {
-                    Text(
-                        text = stringResource(Res.string.home_view_details),
-                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-
             HeroPageIndicatorRow(
                 itemCount = items.size,
                 pagerState = pagerState,
@@ -557,6 +541,7 @@ private fun DesktopHomeHeroFrame(
     layout: HomeHeroLayout,
     heroWidthPx: Float,
     heroHeightPx: Float,
+    backdropHeight: Dp,
     stretchPx: () -> Float,
     includePagerNeighbors: Boolean,
     contentHorizontalPadding: Dp,
@@ -573,65 +558,72 @@ private fun DesktopHomeHeroFrame(
             .fillMaxSize()
             .background(backgroundColor),
     ) {
-        HeroBackgroundLayers(
-            items = items,
-            pagerState = pagerState,
-            listState = listState,
-            layout = layout,
-            heroWidthPx = heroWidthPx,
-            heroHeightPx = heroHeightPx,
-            stretchPx = stretchPx,
-            includePagerNeighbors = includePagerNeighbors,
-            desktopFrame = true,
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(layout.topFadeHeight)
-                .align(Alignment.TopCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            backgroundColor.copy(alpha = opacity.overlayHeavy),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0.00f to backgroundColor.copy(alpha = 0.96f),
-                            0.08f to backgroundColor.copy(alpha = 0.90f),
-                            0.16f to backgroundColor.copy(alpha = 0.76f),
-                            0.26f to backgroundColor.copy(alpha = 0.54f),
-                            0.36f to backgroundColor.copy(alpha = 0.30f),
-                            0.46f to backgroundColor.copy(alpha = 0.12f),
-                            0.54f to Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
+                .wrapContentHeight(Alignment.Top, unbounded = true)
+                .requiredHeight(backdropHeight),
+        ) {
+            HeroBackgroundLayers(
+                items = items,
+                pagerState = pagerState,
+                listState = listState,
+                layout = layout,
+                heroWidthPx = heroWidthPx,
+                heroHeightPx = heroHeightPx,
+                stretchPx = stretchPx,
+                includePagerNeighbors = includePagerNeighbors,
+                desktopFrame = true,
+            )
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(layout.bottomFadeHeight)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            backgroundColor.copy(alpha = 0f),
-                            backgroundColor,
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(layout.topFadeHeight)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                backgroundColor.copy(alpha = opacity.overlayHeavy),
+                                Color.Transparent,
+                            ),
                         ),
                     ),
-                ),
-        )
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colorStops = arrayOf(
+                                0.00f to backgroundColor.copy(alpha = 0.96f),
+                                0.08f to backgroundColor.copy(alpha = 0.90f),
+                                0.16f to backgroundColor.copy(alpha = 0.76f),
+                                0.26f to backgroundColor.copy(alpha = 0.54f),
+                                0.36f to backgroundColor.copy(alpha = 0.30f),
+                                0.46f to backgroundColor.copy(alpha = 0.12f),
+                                0.54f to Color.Transparent,
+                            ),
+                        ),
+                    ),
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(layout.bottomFadeHeight)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                backgroundColor.copy(alpha = 0f),
+                                backgroundColor,
+                            ),
+                        ),
+                    ),
+            )
+        }
 
         Box(
             modifier = Modifier
@@ -683,12 +675,11 @@ private fun DesktopHomeHeroFrame(
                 pagerState = pagerState,
                 coroutineScope = coroutineScope,
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
+                    .align(Alignment.BottomEnd)
                     .padding(
-                        start = contentHorizontalPadding,
                         end = contentHorizontalPadding,
-                        bottom = 28.dp,
-                    ).widthIn(max = 680.dp),
+                        bottom = 38.dp,
+                    ).width(260.dp),
             )
         }
     }
@@ -706,23 +697,43 @@ internal fun DesktopSpotlightPager(
     val activeIndex = pagerState.settledPage % items.size
     val rowState = androidx.compose.foundation.lazy.rememberLazyListState()
     LaunchedEffect(activeIndex) { rowState.scrollToItem(activeIndex) }
-    LazyRow(modifier = modifier, state = rowState, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        itemsIndexed(items, key = { index, _ -> index }) { index, item ->
-            val isActive = index == activeIndex
-            Surface(onClick = {
-                coroutineScope.launch {
-                    pagerState.animateScrollToPage(heroPageForItem(pagerState.currentPage, index, items.size))
-                }
-            }, modifier = Modifier.size(44.dp).semantics {
-                selected = isActive
-                contentDescription = item.name
-            }, shape = RoundedCornerShape(12.dp),
-                color = if (isActive) colors.onBackground else colors.surface.copy(alpha = 0.65f),
-                contentColor = if (isActive) colors.background else colors.onBackground,
-                border = BorderStroke(1.dp, colors.onBackground.copy(alpha = if (isActive) 0.75f else 0.15f))) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text((index + 1).toString().padStart(2, '0'), style = MaterialTheme.typography.labelLarge)
-                }
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = "${(activeIndex + 1).toString().padStart(2, '0')} / ${items.size.toString().padStart(2, '0')}",
+            color = colors.onBackground.copy(alpha = 0.82f),
+            style = MaterialTheme.typography.labelSmall,
+        )
+        LazyRow(
+            modifier = Modifier.weight(1f).height(16.dp),
+            state = rowState,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            itemsIndexed(items, key = { index, _ -> index }) { index, item ->
+                val page = heroPageForItem(pagerState.currentPage, index, items.size)
+                val activeFraction = heroPageVisibility(pagerState, page)
+                Box(
+                    modifier = Modifier
+                        .width(5.dp + 17.dp * activeFraction)
+                        .height(3.dp)
+                        .clip(CircleShape)
+                        .background(colors.onBackground.copy(alpha = 0.3f + 0.65f * activeFraction))
+                        .clickable {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(
+                                    heroPageForItem(pagerState.currentPage, index, items.size),
+                                )
+                            }
+                        }
+                        .semantics {
+                            selected = index == activeIndex
+                            contentDescription = item.name
+                        },
+                )
             }
         }
     }
@@ -783,22 +794,6 @@ private fun heroPageVisibility(
 ): Float = heroPageVisibility(heroPageOffset(pagerState, page))
 
 private fun heroPageVisibility(pageOffset: Float): Float = (1f - abs(pageOffset)).coerceIn(0f, 1f)
-
-private fun currentHeroItem(
-    items: List<MetaPreview>,
-    pagerState: PagerState,
-): MetaPreview {
-    val currentPage = pagerState.currentPage
-    val currentVisiblePages = heroLayerPages(
-        currentPage = currentPage,
-        pageCount = pagerState.pageCount,
-        includeNeighbors = true,
-    )
-    val selectedPage = currentVisiblePages.maxBy { page ->
-        heroPageVisibility(pagerState, page)
-    }
-    return items[selectedPage % items.size]
-}
 
 @Composable
 private fun HeroPageIndicatorDot(
@@ -895,6 +890,7 @@ private fun HeroContentBlock(
                     },
                 alignment = if (layout.isTablet) Alignment.CenterStart else Alignment.Center,
                 contentScale = ContentScale.Fit,
+                colorFilter = ColorFilter.tint(Color.White),
                 onError = { logoLoadError = true },
             )
         } else {
@@ -962,47 +958,53 @@ internal fun DesktopHeroContentBlock(
             addAll(item.genres.filter(String::isNotBlank).take(2))
         }.joinToString("  ·  ")
     }
+    val rating = item.imdbRating?.toFloatOrNull()
+        ?.takeIf { it.isFinite() && it in 0f..10f }
+        ?.let { item.imdbRating }
 
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (compact) 16.dp else 24.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.width(4.dp).height(20.dp).background(colors.primary, RoundedCornerShape(2.dp)))
-            Text(stringResource(Res.string.home_spotlight), style = MaterialTheme.typography.labelLarge,
-                color = colors.onSurfaceVariant, letterSpacing = 2.sp)
-            item.imdbRating?.toFloatOrNull()?.takeIf { it.isFinite() && it in 0f..10f }?.let {
-                Surface(color = colors.primary.copy(alpha = 0.12f), contentColor = colors.onBackground,
-                    shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, colors.primary.copy(alpha = 0.25f))) {
-                    Text("IMDb ${item.imdbRating}", Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        style = MaterialTheme.typography.labelMedium)
-                }
-            }
-        }
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 18.dp)) {
         if (logoUrl != null && !logoLoadError) {
             AsyncImage(model = logoUrl, contentDescription = item.name,
-                modifier = Modifier.fillMaxWidth(0.85f).height(if (compact) 104.dp else 160.dp),
+                modifier = Modifier.fillMaxWidth(0.85f).height(if (compact) 104.dp else 160.dp)
+                    .clickable(enabled = onItemClick != null) { onItemClick?.invoke(item) },
                 contentScale = ContentScale.Fit, alignment = Alignment.CenterStart,
+                colorFilter = ColorFilter.tint(Color.White),
                 onError = { logoLoadError = true })
         } else {
             Text(item.name, style = MaterialTheme.typography.displayLarge.copy(fontSize = titleSize,
                 lineHeight = titleSize * 1.05f, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
-                color = colors.onBackground, maxLines = if (compact) 2 else 3, overflow = TextOverflow.Ellipsis)
+                color = colors.onBackground, maxLines = if (compact) 2 else 3, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.clickable(enabled = onItemClick != null) { onItemClick?.invoke(item) })
         }
-        if (metadata.isNotBlank()) {
-            Text(metadata, style = MaterialTheme.typography.titleSmall, color = colors.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (metadata.isNotBlank() || rating != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
+                if (metadata.isNotBlank()) {
+                    Text(metadata, style = MaterialTheme.typography.titleSmall,
+                        color = colors.onBackground.copy(alpha = 0.82f),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (rating != null) {
+                    Text(
+                        text = "IMDb",
+                        modifier = Modifier.clip(RoundedCornerShape(3.dp))
+                            .background(Color(0xFFF5C518))
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF111111),
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(rating, style = MaterialTheme.typography.titleSmall,
+                        color = colors.onBackground.copy(alpha = 0.9f), fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
         item.description?.takeIf(String::isNotBlank)?.let {
             Text(it, modifier = Modifier.widthIn(max = 720.dp), style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 26.sp),
-                color = colors.onBackground.copy(alpha = 0.8f), maxLines = if (compact) 2 else 3,
+                color = colors.onBackground.copy(alpha = 0.86f), maxLines = 2,
                 overflow = TextOverflow.Ellipsis)
-        }
-        if (onItemClick != null) {
-            Button(onClick = { onItemClick(item) }, modifier = Modifier.height(52.dp),
-                shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.onBackground, contentColor = colors.background)) {
-                Text(stringResource(Res.string.home_view_details), style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.width(20.dp))
-                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(20.dp))
-            }
         }
     }
 }
@@ -1143,7 +1145,9 @@ private fun desktopHeroHeight(
     maxWidthDp: Float,
     viewportHeightDp: Float?,
 ): Dp {
-    val baselineHeight = ((viewportHeightDp ?: (maxWidthDp * 0.56f)) * 0.72f).dp.coerceIn(560.dp, 1280.dp)
+    // Reserve room for the first poster rail inside the window; the backdrop
+    // remains full-height independently of this content measurement.
+    val baselineHeight = ((viewportHeightDp ?: (maxWidthDp * 0.56f)) * 0.53f).dp.coerceIn(360.dp, 1280.dp)
     val viewportHeight = viewportHeightDp ?: return baselineHeight
     val ultrawideProgress = ultrawideViewportProgress(
         widthDp = maxWidthDp,

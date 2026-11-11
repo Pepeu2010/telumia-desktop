@@ -15,6 +15,7 @@ actual fun HeroTrailerPlayerSurface(
     onReady: () -> Unit,
     onEnded: () -> Unit,
     onError: () -> Unit,
+    onUserInteraction: () -> Unit,
 ) {
     WindowsHeroTrailerPlayerSurface(
         sourceUrl = sourceUrl,
@@ -27,5 +28,6 @@ actual fun HeroTrailerPlayerSurface(
         onReady = onReady,
         onEnded = onEnded,
         onError = onError,
+        onUserInteraction = onUserInteraction,
     )
 }

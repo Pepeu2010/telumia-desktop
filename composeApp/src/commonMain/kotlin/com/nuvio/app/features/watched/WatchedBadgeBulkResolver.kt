@@ -8,7 +8,6 @@ import com.nuvio.app.features.tracking.TrackingProviderId
 import com.nuvio.app.features.tracking.TrackingSettingsRepository
 import com.nuvio.app.features.tracking.effectiveWatchProgressSource
 import com.nuvio.app.features.tracking.providerId
-import com.nuvio.app.features.trakt.TraktProgressRepository
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watchprogress.WatchProgressRepository

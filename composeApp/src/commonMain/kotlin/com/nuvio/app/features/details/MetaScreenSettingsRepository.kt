@@ -18,7 +18,6 @@ enum class MetaScreenSectionKey {
     OVERVIEW,
     PRODUCTION,
     CAST,
-    COMMENTS,
     TRAILERS,
     EPISODES,
     DETAILS,
@@ -183,11 +182,6 @@ object MetaScreenSettingsRepository {
             key = MetaScreenSectionKey.CAST,
             titleRes = Res.string.settings_meta_cast,
             descriptionRes = Res.string.meta_section_cast_description,
-        ),
-        MetaScreenSectionDefinition(
-            key = MetaScreenSectionKey.COMMENTS,
-            titleRes = Res.string.settings_meta_comments,
-            descriptionRes = Res.string.meta_section_comments_description,
         ),
         MetaScreenSectionDefinition(
             key = MetaScreenSectionKey.TRAILERS,

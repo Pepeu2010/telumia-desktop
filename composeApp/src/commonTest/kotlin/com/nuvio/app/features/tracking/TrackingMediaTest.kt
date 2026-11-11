@@ -15,7 +15,7 @@ class TrackingMediaTest {
         assertEquals(16498L, parseTrackingExternalIds("mal:16498").mal)
 
         val legacyNumeric = parseTrackingExternalIds("42")
-        assertEquals(42L, legacyNumeric.trakt)
+        assertEquals(false, legacyNumeric.hasAny)
         assertEquals(null, legacyNumeric.simkl)
     }
 

@@ -11,18 +11,18 @@ class ContinueWatchingEnrichmentCacheTest {
 
     @Test
     fun `storage keys are scoped by profile and effective source`() {
-        val traktKey = ContinueWatchingEnrichmentCache.continueWatchingEnrichmentStorageKey(
+        val remoteKey = ContinueWatchingEnrichmentCache.continueWatchingEnrichmentStorageKey(
             profileId = 2,
-            source = WatchProgressSource.TRAKT,
+            source = WatchProgressSource.MDBLIST,
         )
         val nuvioKey = ContinueWatchingEnrichmentCache.continueWatchingEnrichmentStorageKey(
             profileId = 2,
             source = WatchProgressSource.NUVIO_SYNC,
         )
 
-        assertEquals("cw_enrichment_cache_trakt_2", traktKey)
+        assertEquals("cw_enrichment_cache_mdblist_2", remoteKey)
         assertEquals("cw_enrichment_cache_nuvio_sync_2", nuvioKey)
-        assertNotEquals(traktKey, nuvioKey)
+        assertNotEquals(remoteKey, nuvioKey)
         assertEquals("cw_enrichment_cache_2", ContinueWatchingEnrichmentCache.legacyStorageKey(profileId = 2))
     }
 
@@ -33,13 +33,13 @@ class ContinueWatchingEnrichmentCacheTest {
 
         ContinueWatchingEnrichmentCache.invalidate(
             profileId = profileId,
-            source = WatchProgressSource.TRAKT,
+            source = WatchProgressSource.MDBLIST,
         )
 
         assertFalse(
             ContinueWatchingEnrichmentCache.saveSnapshots(
                 profileId = profileId,
-                source = WatchProgressSource.TRAKT,
+                source = WatchProgressSource.MDBLIST,
                 generation = staleGeneration,
                 nextUp = emptyList(),
                 inProgress = emptyList(),
@@ -48,7 +48,7 @@ class ContinueWatchingEnrichmentCacheTest {
         assertTrue(
             ContinueWatchingEnrichmentCache.saveSnapshots(
                 profileId = profileId,
-                source = WatchProgressSource.TRAKT,
+                source = WatchProgressSource.MDBLIST,
                 generation = ContinueWatchingEnrichmentCache.generation.value,
                 nextUp = emptyList(),
                 inProgress = emptyList(),

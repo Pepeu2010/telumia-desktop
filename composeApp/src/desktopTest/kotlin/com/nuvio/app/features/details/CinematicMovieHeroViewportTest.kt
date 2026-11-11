@@ -35,8 +35,7 @@ class CinematicMovieHeroViewportTest {
                 Box(Modifier.fillMaxSize().testTag("cinematic-film-hero")) {
                     DesktopDetailHero(meta=meta, viewportHeight=height.dp, showOverallRatings=false,
                         isMdbListActive=false, playButtonLabel="Assistir", isPrimaryPlayEnabled=true,
-                        isSaved=false, isWatched=false, onHeightChanged={}, heroTrailerSourceUrl=null,
-                        heroTrailerReady=false, heroTrailerMuted=true, onHeroTrailerMuteToggle={},
+                        isSaved=false, isWatched=false, onHeightChanged={},
                         onPlayClick={}, onPlayLongClick=null, onShuffleClick=null, shuffleEnabled=false,
                         onWatchedClick={}, onSaveClick={}, onSaveLongClick=null, onTrailerClick={})
                 }

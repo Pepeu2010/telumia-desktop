@@ -23,9 +23,11 @@ import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.Icon
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +39,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,6 +55,9 @@ import nuvio.composeapp.generated.resources.compose_player_episode_code_full
 import nuvio.composeapp.generated.resources.compose_player_go_back
 import nuvio.composeapp.generated.resources.compose_player_playback_error
 import nuvio.composeapp.generated.resources.compose_player_youre_watching
+import nuvio.composeapp.generated.resources.action_close
+import nuvio.composeapp.generated.resources.collections_copy_json
+import nuvio.composeapp.generated.resources.home_view_details
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.max
@@ -282,8 +289,10 @@ internal fun PauseMetadataOverlay(
 @Composable
 internal fun ErrorModal(
     message: String,
+    diagnostics: PlaybackErrorDiagnostics?,
     onDismiss: () -> Unit,
 ) {
+    var showDiagnostics by remember(message) { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -304,13 +313,16 @@ internal fun ErrorModal(
                 textAlign = TextAlign.Center,
             )
             Text(
-                text = message,
+                text = playbackErrorSummary(message),
                 style = MaterialTheme.nuvioTypeScale.bodyLg.copy(lineHeight = 24.sp),
                 color = Color.White.copy(alpha = 0.72f),
                 textAlign = TextAlign.Center,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
             )
+            TextButton(onClick = { showDiagnostics = true }) {
+                Text(stringResource(Res.string.home_view_details))
+            }
             Surface(
                 modifier = Modifier
                     .padding(top = 4.dp)
@@ -331,4 +343,41 @@ internal fun ErrorModal(
             }
         }
     }
+
+    if (showDiagnostics && diagnostics != null) {
+        PlaybackErrorDetailsDialog(
+            diagnostics = diagnostics,
+            onDismiss = { showDiagnostics = false },
+        )
+    }
+}
+
+@Composable
+internal fun PlaybackErrorDetailsDialog(
+    diagnostics: PlaybackErrorDiagnostics,
+    onDismiss: () -> Unit,
+) {
+    val clipboardManager = LocalClipboardManager.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(playbackDiagnosticTitle()) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(playbackDiagnosticStageLabel(diagnostics.stage.value))
+                Text(playbackDiagnosticSourceTypeLabel(diagnostics.sourceType))
+                Text(playbackDiagnosticFormatMimeLabel(diagnostics.formatOrMime))
+                Text(playbackDiagnosticErrorCodeLabel(diagnostics.errorCode))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { clipboardManager.setText(AnnotatedString(diagnostics.toSafeJson())) }) {
+                Text(stringResource(Res.string.collections_copy_json))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.action_close))
+            }
+        },
+    )
 }

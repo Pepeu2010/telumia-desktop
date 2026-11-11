@@ -13,7 +13,23 @@ data class SceneInfoEntry(
     val kind: TimedMetadataKind,
     val title: String,
     val detail: String? = null,
+    val startMs: Long? = null,
+    val chapterRelation: SceneInfoChapterRelation? = null,
 )
+
+enum class SceneInfoChapterRelation { PREVIOUS, CURRENT, NEXT }
+
+data class SceneInfoChapterContext(
+    val previous: SceneInfoEntry? = null,
+    val current: SceneInfoEntry? = null,
+    val next: SceneInfoEntry? = null,
+) {
+    fun asEntries(): List<SceneInfoEntry> = listOfNotNull(
+        previous?.copy(chapterRelation = SceneInfoChapterRelation.PREVIOUS),
+        current?.copy(chapterRelation = SceneInfoChapterRelation.CURRENT),
+        next?.copy(chapterRelation = SceneInfoChapterRelation.NEXT),
+    )
+}
 
 /**
  * Projects facts active at [positionMs]. The timeline enforces edition identity, provider trust,
@@ -45,9 +61,49 @@ fun TimedMetadataTimeline.sceneInfoAt(
             id = "${event.provenance.providerId}:${event.id}",
             kind = body.kind,
             title = body.title,
+            startMs = event.startMs,
         )
         is TimedMetadataBody.Segment, is TimedMetadataBody.Bookmark -> null
     }
+}
+
+/** Projects the chapters around the playback instant without manufacturing chapter titles or boundaries. */
+fun TimedMetadataTimeline.sceneInfoChapterContextAt(
+    positionMs: Long,
+    minimumConfidence: Double = 0.8,
+): SceneInfoChapterContext {
+    if (positionMs < 0) return SceneInfoChapterContext()
+    val chapters = trustedSceneEvents(minimumConfidence).mapNotNull { event ->
+        val body = event.body as? TimedMetadataBody.Chapter ?: return@mapNotNull null
+        SceneInfoEntry(
+            id = "${event.provenance.providerId}:${event.id}",
+            kind = body.kind,
+            title = body.title,
+            startMs = event.startMs,
+        ) to event
+    }
+    if (chapters.isEmpty()) return SceneInfoChapterContext()
+
+    val currentIndex = chapters.indexOfLast { (_, event) ->
+        event.startMs <= positionMs && (event.endMs == null || positionMs < event.endMs)
+    }
+    val previousIndex: Int
+    val nextIndex: Int
+    val current: SceneInfoEntry?
+    if (currentIndex >= 0) {
+        previousIndex = currentIndex - 1
+        nextIndex = currentIndex + 1
+        current = chapters[currentIndex].first
+    } else {
+        previousIndex = chapters.indexOfLast { (_, event) -> event.startMs <= positionMs }
+        nextIndex = chapters.indexOfFirst { (_, event) -> event.startMs > positionMs }
+        current = null
+    }
+    return SceneInfoChapterContext(
+        previous = chapters.getOrNull(previousIndex)?.first,
+        current = current,
+        next = chapters.getOrNull(nextIndex)?.first,
+    )
 }
 
 /** Loads scene facts through the registered-provider policy before projecting a playback instant. */

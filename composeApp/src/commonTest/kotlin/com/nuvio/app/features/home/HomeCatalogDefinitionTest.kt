@@ -1,5 +1,6 @@
 package com.nuvio.app.features.home
 
+import com.nuvio.app.features.addons.AddonCatalog
 import com.nuvio.app.features.addons.AddonManifest
 import com.nuvio.app.features.addons.AddonResource
 import com.nuvio.app.features.addons.ManagedAddon
@@ -63,5 +64,33 @@ class HomeCatalogDefinitionTest {
         assertNotEquals(pendingSignature, failedSignature)
         assertNotEquals(pendingSignature, loadedSignature)
         assertNotEquals(failedSignature, loadedSignature)
+    }
+
+    @Test
+    fun `home includes movie and series catalogs but excludes live tv catalogs`() {
+        val addonUrl = "https://example.test/manifest.json"
+        val addon = ManagedAddon(
+            manifestUrl = addonUrl,
+            manifest = AddonManifest(
+                id = "mixed-catalogs",
+                name = "Mixed catalogs",
+                description = "",
+                version = "1.0.0",
+                resources = listOf(AddonResource(name = "meta", types = listOf("movie", "series", "channel", "tv"))),
+                types = listOf("movie", "series", "channel", "tv"),
+                catalogs = listOf(
+                    AddonCatalog(type = "movie", id = "popular-movies", name = "Popular movies"),
+                    AddonCatalog(type = "series", id = "popular-series", name = "Popular series"),
+                    AddonCatalog(type = "channel", id = "live-channels", name = "Live channels"),
+                    AddonCatalog(type = "TV", id = "live-tv", name = "Live TV"),
+                ),
+                transportUrl = addonUrl,
+            ),
+        )
+
+        assertEquals(
+            listOf("movie", "series"),
+            buildHomeCatalogDefinitions(listOf(addon)).map(HomeCatalogDefinition::type),
+        )
     }
 }

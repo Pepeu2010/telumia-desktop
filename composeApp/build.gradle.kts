@@ -113,21 +113,6 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
             )
         }
 
-        outDir.resolve("com/nuvio/app/features/trakt").apply {
-            mkdirs()
-            resolve("TraktConfig.kt").writeText(
-                """
-                |package com.nuvio.app.features.trakt
-                |
-                |object TraktConfig {
-                |    const val CLIENT_ID = "${props.getProperty("TRAKT_CLIENT_ID", "")}" 
-                |    const val CLIENT_SECRET = "${props.getProperty("TRAKT_CLIENT_SECRET", "")}" 
-                |    const val REDIRECT_URI = "${props.getProperty("TRAKT_REDIRECT_URI", "nuvio://auth/trakt")}" 
-                |}
-                """.trimMargin()
-            )
-        }
-
         outDir.resolve("com/nuvio/app/features/simkl").apply {
             mkdirs()
             resolve("SimklConfig.kt").writeText(

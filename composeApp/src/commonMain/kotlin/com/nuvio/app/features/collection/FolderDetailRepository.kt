@@ -16,7 +16,6 @@ import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.filterReleasedItems
 import com.nuvio.app.features.home.stableKey
-import com.nuvio.app.features.trakt.TraktPublicListSourceResolver
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,8 +29,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.collections_folder_addon_not_found
-import nuvio.composeapp.generated.resources.collections_folder_trakt_movie_list
-import nuvio.composeapp.generated.resources.collections_folder_trakt_series_list
 import nuvio.composeapp.generated.resources.collections_tab_all
 import org.jetbrains.compose.resources.getString
 
@@ -162,30 +159,6 @@ object FolderDetailRepository {
                             isLoading = true,
                         ),
                     )
-                } else if (source.isTrakt) {
-                    val mediaType = TmdbCollectionMediaType.fromString(source.mediaType)
-                    val type = if (mediaType == TmdbCollectionMediaType.TV) "series" else "movie"
-                    val typeLabel = runBlocking {
-                        getString(
-                            if (mediaType == TmdbCollectionMediaType.TV) {
-                                Res.string.collections_folder_trakt_series_list
-                            } else {
-                                Res.string.collections_folder_trakt_movie_list
-                            },
-                        )
-                    }
-                    add(
-                        FolderTab(
-                            label = source.title?.takeIf { it.isNotBlank() } ?: "Trakt",
-                            typeLabel = typeLabel,
-                            source = source,
-                            sourceKey = source.catalogRouteKey(),
-                            type = type,
-                            catalogId = traktCatalogId(source),
-                            supportsPagination = true,
-                            isLoading = true,
-                        ),
-                    )
                 } else {
                     val catalogSource = source.addonCatalogSource() ?: return@forEachIndexed
                     val resolvedCatalog = addons.findCollectionCatalog(catalogSource)
@@ -227,7 +200,7 @@ object FolderDetailRepository {
             val tabIndex = if (showAll) sourceIndex + 1 else sourceIndex
             val catalogSource = source.addonCatalogSource()
             val resolvedCatalog = catalogSource?.let { addons.findCollectionCatalog(it) }
-            if (!source.isTmdb && !source.isTrakt && resolvedCatalog == null) {
+            if (!source.isTmdb && resolvedCatalog == null) {
                 updateTab(tabIndex) {
                     it.copy(
                         isLoading = false,
@@ -297,7 +270,6 @@ object FolderDetailRepository {
         val currentSource = currentTab.source
         if (
             currentSource?.isTmdb != true &&
-            currentSource?.isTrakt != true &&
             currentTab.manifestUrl == null
         ) return
 
@@ -325,11 +297,6 @@ object FolderDetailRepository {
                 val source = currentTab.source
                 when {
                     source?.isTmdb == true -> TmdbCollectionSourceResolver.resolve(
-                        source = source,
-                        page = if (reset) 1 else requestedSkip,
-                    )
-
-                    source?.isTrakt == true -> TraktPublicListSourceResolver.resolve(
                         source = source,
                         page = if (reset) 1 else requestedSkip,
                     )
@@ -434,7 +401,7 @@ object FolderDetailRepository {
         val collectionId = activeCollectionId ?: return emptyList()
 
         return current.tabs.filter { !it.isAllTab && it.items.isNotEmpty() }.mapNotNull { tab ->
-            val directSource = tab.source?.let { it.isTmdb || it.isTrakt } == true
+            val directSource = tab.source?.let { it.isTmdb } == true
             val target = if (directSource) {
                 val sourceKey = tab.sourceKey ?: return@mapNotNull null
                 CatalogTarget.CollectionSource(
@@ -487,13 +454,3 @@ private fun tmdbCatalogId(source: CollectionSource): String =
         append("_")
         append(source.mediaType?.lowercase().orEmpty())
     }
-
-private fun traktCatalogId(source: CollectionSource): String =
-    listOf(
-        "trakt",
-        "list",
-        source.traktListId?.toString().orEmpty(),
-        source.mediaType?.lowercase().orEmpty(),
-        TraktListSort.normalize(source.sortBy),
-        TraktSortHow.normalize(source.sortHow),
-    ).joinToString("_")

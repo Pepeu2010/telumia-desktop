@@ -30,14 +30,20 @@ internal fun HomePosterHoverTrailer(
     soundEnabled: Boolean,
     startPositionSeconds: Int,
     onReady: () -> Unit = {},
+    onEnded: () -> Unit = {},
     onError: () -> Unit = {},
+    onUserInteraction: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val motion = LocalUiMotion.current
     val latestOnReady = rememberUpdatedState(onReady)
-    var trailerReady by remember(playbackSource?.videoUrl, playbackSource?.audioUrl) { mutableStateOf(false) }
-    var trailerFinished by remember(playbackSource?.videoUrl, playbackSource?.audioUrl) { mutableStateOf(false) }
-    var playerMounted by remember(playbackSource?.videoUrl, playbackSource?.audioUrl) {
+    val latestOnEnded = rememberUpdatedState(onEnded)
+    val latestOnError = rememberUpdatedState(onError)
+    var activeSource by remember(playbackSource) { mutableStateOf(playbackSource) }
+    var fallbackAttempted by remember(playbackSource) { mutableStateOf(false) }
+    var trailerReady by remember(playbackSource) { mutableStateOf(false) }
+    var trailerFinished by remember(playbackSource) { mutableStateOf(false) }
+    var playerMounted by remember(playbackSource) {
         mutableStateOf(playbackSource != null)
     }
     val trailerAlpha by animateFloatAsState(
@@ -53,7 +59,7 @@ internal fun HomePosterHoverTrailer(
         }
     }
 
-    playbackSource?.takeIf { playerMounted }?.let { source ->
+    activeSource?.takeIf { playerMounted }?.let { source ->
         HeroTrailerPlayerSurface(
             sourceUrl = source.videoUrl,
             sourceAudioUrl = source.audioUrl,
@@ -63,20 +69,33 @@ internal fun HomePosterHoverTrailer(
             fillFrame = true,
             modifier = modifier.graphicsLayer { alpha = trailerAlpha },
             onReady = {
-                if (!trailerFinished) {
+                if (activeSource == source && !trailerFinished) {
                     trailerReady = true
                     latestOnReady.value()
                 }
             },
             onEnded = {
-                trailerReady = false
-                trailerFinished = true
+                if (activeSource == source) {
+                    trailerReady = false
+                    trailerFinished = true
+                    latestOnEnded.value()
+                }
             },
             onError = {
-                trailerReady = false
-                trailerFinished = true
-                onError()
+                if (activeSource == source) {
+                    trailerReady = false
+                    val fallback = playbackSource?.fallbackVideoUrl
+                        ?.takeIf { !fallbackAttempted && it.isNotBlank() && it != source.videoUrl }
+                    if (fallback != null) {
+                        fallbackAttempted = true
+                        activeSource = TrailerPlaybackSource(videoUrl = fallback)
+                    } else {
+                        trailerFinished = true
+                        latestOnError.value()
+                    }
+                }
             },
+            onUserInteraction = onUserInteraction,
         )
     }
 }

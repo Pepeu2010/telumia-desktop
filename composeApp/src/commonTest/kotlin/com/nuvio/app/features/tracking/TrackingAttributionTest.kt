@@ -10,8 +10,8 @@ class TrackingAttributionTest {
         val items = sequenceOf(
             attributedItem(
                 contentId = "tt123",
-                providerId = "trakt",
-                sourceUrl = "https://trakt.tv/movies/123",
+                providerId = "mdblist",
+                sourceUrl = "https://mdblist.com/movie/123",
             ),
             attributedItem(
                 contentId = "TT123",

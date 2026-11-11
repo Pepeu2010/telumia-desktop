@@ -100,7 +100,7 @@ class MdbListLibraryDecoderTest {
     @Test
     fun `projection merges aliases across lists while preserving per-list order and movie show identity`() {
         val movie = MdbListLibraryItem(MdbListItemType.MOVIE, MdbListMedia(MdbListIds(tmdb = 1), "Movie"), rank = 4)
-        val aliased = movie.copy(media = movie.media.copy(ids = MdbListIds("tt1", 1, tvdb = 3, trakt = 4, mdblist = "a1")), rank = 8)
+        val aliased = movie.copy(media = movie.media.copy(ids = MdbListIds("tt1", 1, tvdb = 3, mdblist = "a1")), rank = 8)
         val show = movie.copy(type = MdbListItemType.SHOW, media = movie.media.copy(title = "Show"))
         val projection = MdbListLibraryProjection(MdbListLibrarySnapshot(itemsByList = mapOf(
             MDBLIST_WATCHLIST_KEY to listOf(movie, show), MDBLIST_TEST_LIST_KEY to listOf(aliased)
@@ -110,7 +110,7 @@ class MdbListLibraryDecoderTest {
         assertEquals("tt1", entry.id)
         assertEquals("a1", entry.trackingProviderItemId)
         assertEquals(mapOf(MDBLIST_WATCHLIST_KEY to 4, MDBLIST_TEST_LIST_KEY to 8), entry.listRanks)
-        for (alias in listOf("tt1", "imdb:tt1", "tmdb:1", "tvdb:3", "trakt:4", "mdblist:a1")) {
+        for (alias in listOf("tt1", "imdb:tt1", "tmdb:1", "tvdb:3", "mdblist:a1")) {
             assertEquals(setOf(MDBLIST_WATCHLIST_KEY, MDBLIST_TEST_LIST_KEY), projection.membership(alias, "movie"))
             assertEquals(entry, projection.find(alias, "movie"))
             assertEquals(null, projection.find(alias, "episode"))

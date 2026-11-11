@@ -20,7 +20,7 @@ class LibraryRepositoryTest {
         assertEquals("Movie", "movie".toLibraryDisplayTitle())
         assertEquals("Anime Series", "anime-series".toLibraryDisplayTitle())
         assertEquals("Tv", "tv".toLibraryDisplayTitle())
-        assertEquals("Other", "".toLibraryDisplayTitle())
+        assertEquals("Outro", "".toLibraryDisplayTitle())
     }
 
     @Test
@@ -48,7 +48,7 @@ class LibraryRepositoryTest {
     }
 
     @Test
-    fun `metadata mappings keep imdb ids for Trakt-compatible sync`() {
+    fun `metadata mappings keep imdb ids for provider-compatible sync`() {
         val previewItem = MetaPreview(
             id = "tt1234567",
             type = "movie",
@@ -71,31 +71,31 @@ class LibraryRepositoryTest {
     }
 
     @Test
-    fun `library tabs include local Nuvio library before Trakt tabs`() {
-        val traktTab = TrackingLibraryTab(
-            key = "trakt:watchlist",
+    fun `library tabs include local Nuvio library before provider tabs`() {
+        val providerTab = TrackingLibraryTab(
+            key = "mdblist:watchlist",
             title = "Watchlist",
-            providerId = TrackingProviderId.TRAKT,
+            providerId = TrackingProviderId.MDBLIST,
             kind = TrackingLibraryTabKind.WATCHLIST,
         )
 
-        val tabs = libraryTabsWithLocal(listOf(traktTab))
+        val tabs = libraryTabsWithLocal(listOf(providerTab))
 
-        assertEquals(listOf("local", "trakt:watchlist"), tabs.map { it.key })
-        assertEquals("Nuvio Library", tabs.first().title)
+        assertEquals(listOf("local", "mdblist:watchlist"), tabs.map { it.key })
+        assertEquals("Biblioteca Telumia", tabs.first().title)
     }
 
     @Test
-    fun `library membership always includes local state before Trakt membership`() {
+    fun `library membership always includes local state before provider membership`() {
         val membership = libraryMembershipWithLocal(
             inLocal = true,
-            providerMembership = mapOf("trakt:watchlist" to false),
+            providerMembership = mapOf("mdblist:watchlist" to false),
         )
 
         assertEquals(
             mapOf(
                 "local" to true,
-                "trakt:watchlist" to false,
+                "mdblist:watchlist" to false,
             ),
             membership,
         )

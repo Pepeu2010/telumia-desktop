@@ -56,7 +56,7 @@ class AppUrlBridgeTest {
 
     @Test
     fun `does not treat reserved auth link as addon install`() {
-        assertNull(parseAppDeepLink("nuvio://auth/trakt?code=abc"))
+        assertNull(parseAppDeepLink("nuvio://auth/provider?code=abc"))
     }
 
     @Test
