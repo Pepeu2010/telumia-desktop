@@ -2455,6 +2455,17 @@
     <string name="live_tv_no_results">No channels match your search</string>
     <string name="live_tv_retry">Refresh channels</string>
     <string name="live_tv_search">Search channels or addons</string>
+    <string name="live_tv_filter_all">All categories</string>
+    <string name="live_tv_filter_all_sources">All add-ons</string>
+    <string name="live_tv_filter_news">News</string>
+    <string name="live_tv_filter_entertainment">Entertainment</string>
+    <string name="live_tv_filter_sports">Sports</string>
+    <string name="live_tv_filter_kids">Kids</string>
+    <string name="live_tv_filter_movies">Movies</string>
+    <string name="live_tv_filter_music">Music</string>
+    <string name="live_tv_filter_documentary">Documentary</string>
+    <string name="live_tv_filter_other">Other groups</string>
+    <string name="live_tv_filter_uncategorized">Uncategorized</string>
     <string name="live_tv_section_title">Your channels</string>
     <string name="live_tv_subtitle">Live channels from the TV addons already installed in your account.</string>
     <string name="live_tv_title">Your TV, all in one place</string>

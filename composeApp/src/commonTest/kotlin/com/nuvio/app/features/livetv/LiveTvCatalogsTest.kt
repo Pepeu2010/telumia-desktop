@@ -66,9 +66,24 @@ class LiveTvCatalogsTest {
             ),
         )
 
-        assertEquals(listOf("tv:br:news", "channel:sport:1"), channels.map { it.key })
+        assertEquals(listOf(
+            "${tvRequest.manifestUrl}|tv:br:news",
+            "${channelRequest.manifestUrl}|channel:sport:1",
+        ), channels.map { it.key })
         assertEquals(listOf("Frostview TV"), channels.first().sourceNames)
         assertEquals("channel", channels.last().streamType)
+    }
+
+    @Test
+    fun sameChannelIdFromDifferentAddonsRemainsSelectableSeparately() {
+        val first = request("tv", "First", "all")
+        val second = request("tv", "Second", "all")
+        val channels = projectLiveTvChannels(listOf(
+            LiveTvCatalogResponse(first, listOf(MetaPreview("id:1", "tv", "News", genres = listOf("News")))),
+            LiveTvCatalogResponse(second, listOf(MetaPreview("id:1", "tv", "News", genres = listOf("Sports")))),
+        ))
+        assertEquals(2, channels.size)
+        assertEquals(listOf(LiveTvChannelCategory.NEWS, LiveTvChannelCategory.SPORTS), channels.map { it.category })
     }
 
     private fun request(type: String, addon: String, catalogId: String) = LiveTvCatalogRequest(

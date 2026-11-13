@@ -1843,6 +1843,17 @@
     <string name="live_tv_no_results">Nenhum canal corresponde à pesquisa</string>
     <string name="live_tv_retry">Atualizar canais</string>
     <string name="live_tv_search">Pesquisar canais ou addons</string>
+    <string name="live_tv_filter_all">Todas as categorias</string>
+    <string name="live_tv_filter_all_sources">Todos os addons</string>
+    <string name="live_tv_filter_news">Jornalismo</string>
+    <string name="live_tv_filter_entertainment">Entretenimento</string>
+    <string name="live_tv_filter_sports">Desporto</string>
+    <string name="live_tv_filter_kids">Infantil</string>
+    <string name="live_tv_filter_movies">Filmes</string>
+    <string name="live_tv_filter_music">Música</string>
+    <string name="live_tv_filter_documentary">Documentários</string>
+    <string name="live_tv_filter_other">Outros grupos</string>
+    <string name="live_tv_filter_uncategorized">Sem categoria</string>
     <string name="live_tv_section_title">Os seus canais</string>
     <string name="live_tv_subtitle">Canais em direto dos addons de TV que já instalou na sua conta.</string>
     <string name="live_tv_title">A sua TV, num só lugar</string>

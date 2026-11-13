@@ -45,6 +45,7 @@ import com.nuvio.app.features.player.desktop.NativePlayerController
 import com.nuvio.app.features.player.desktop.NativePlayerHost
 import com.nuvio.app.features.player.desktop.desktopFullscreenChanges
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -80,6 +81,7 @@ actual fun PlatformPlayerSurface(
     ) {
         NativePlayerSurface(
             sourceUrl = sourceUrl,
+            sourceAudioUrl = sourceAudioUrl,
             sourceAvailable = sourceAvailable,
             sourceHeaders = sourceHeaders,
             modifier = modifier,
@@ -112,6 +114,7 @@ actual fun PlatformPlayerSurface(
 @Composable
 private fun NativePlayerSurface(
     sourceUrl: String,
+    sourceAudioUrl: String?,
     sourceAvailable: Boolean,
     sourceHeaders: Map<String, String>,
     modifier: Modifier,
@@ -141,6 +144,9 @@ private fun NativePlayerSurface(
     val latestOnPlayerControlsScrubFinished = rememberUpdatedState(onPlayerControlsScrubFinished)
     val latestOnInitialPositionHandled = rememberUpdatedState(onInitialPositionHandled)
     val latestOnError = rememberUpdatedState(onError)
+    val externalAudioReady = remember(controller, sourceUrl, sourceAudioUrl) {
+        mutableStateOf(sourceAudioUrl.isNullOrBlank())
+    }
     val bookmarkJobs = rememberCoroutineScope()
     val bookmarkScopes = remember { MutableStateFlow<SceneBookmarkScope?>(null) }
     val bookmarkDialogOpen = remember { mutableStateOf(false) }
@@ -256,7 +262,7 @@ private fun NativePlayerSurface(
         )
     }
 
-    DisposableEffect(controller, sourceAvailable, sourceUrl, playbackHeaders) {
+    DisposableEffect(controller, sourceAvailable, sourceUrl, sourceAudioUrl, playbackHeaders) {
         onDispose { controller.dispose() }
     }
 
@@ -277,6 +283,7 @@ private fun NativePlayerSurface(
         controller,
         sourceAvailable,
         sourceUrl,
+        sourceAudioUrl,
         playbackHeaders,
         decoderPriority,
         nvidiaRtxSuperResolutionEnabled,
@@ -291,7 +298,7 @@ private fun NativePlayerSurface(
         controller.attach(
             sourceUrl = sourceUrl,
             sourceHeaders = playbackHeaders,
-            playWhenReady = playWhenReady,
+            playWhenReady = playWhenReady && sourceAudioUrl.isNullOrBlank(),
             initialPositionMs = initialPositionMs,
             decoderPriority = decoderPriority,
             nvidiaRtxSuperResolutionEnabled = nvidiaRtxSuperResolutionEnabled,
@@ -303,9 +310,35 @@ private fun NativePlayerSurface(
         onControllerReady(controller)
     }
 
-    LaunchedEffect(controller, sourceAvailable, playWhenReady) {
+    LaunchedEffect(controller, sourceAvailable, sourceUrl, sourceAudioUrl, hostFirstFullSizePaintComplete.value) {
+        if (!sourceAvailable || !hostFirstFullSizePaintComplete.value || sourceAudioUrl.isNullOrBlank()) return@LaunchedEffect
+        val loaded = withTimeoutOrNull(12_000L) {
+            while (true) {
+                val snapshot = controller.snapshot()
+                if (!snapshot.isLoading && snapshot.durationMs > 0L) break
+                delay(100L)
+            }
+            true
+        } == true
+        if (!loaded) {
+            latestOnError.value("External audio source did not load")
+            return@LaunchedEffect
+        }
+        val existingIds = controller.getAudioTracks().map { it.id }.toSet()
+        val selected = controller.addExternalAudioAsync(sourceAudioUrl) && withTimeoutOrNull(12_000L) {
+            while (true) {
+                if (controller.getAudioTracks().any { it.id !in existingIds && it.isSelected }) break
+                delay(100L)
+            }
+            true
+        } == true
+        if (selected) externalAudioReady.value = true
+        else latestOnError.value("External audio source unavailable")
+    }
+
+    LaunchedEffect(controller, sourceAvailable, playWhenReady, externalAudioReady.value) {
         if (!sourceAvailable) return@LaunchedEffect
-        if (playWhenReady) {
+        if (playWhenReady && externalAudioReady.value) {
             controller.play()
         } else {
             controller.pause()

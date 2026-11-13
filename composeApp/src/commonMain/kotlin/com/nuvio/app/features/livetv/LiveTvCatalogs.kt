@@ -20,6 +20,8 @@ internal data class LiveTvChannelItem(
     val meta: MetaPreview,
     val streamType: String,
     val sourceNames: List<String>,
+    val sourceKey: String,
+    val category: LiveTvChannelCategory,
 )
 
 internal fun installedLiveTvCatalogs(addons: List<ManagedAddon>): List<LiveTvCatalogRequest> =
@@ -43,16 +45,18 @@ internal fun installedLiveTvCatalogs(addons: List<ManagedAddon>): List<LiveTvCat
 internal fun projectLiveTvChannels(responses: List<LiveTvCatalogResponse>): List<LiveTvChannelItem> {
     val grouped = linkedMapOf<String, Pair<MetaPreview, LinkedHashSet<String>>>()
     val streamTypes = linkedMapOf<String, String>()
+    val sources = linkedMapOf<String, String>()
 
     responses.forEach { response ->
         val streamType = response.request.catalog.type.trim().lowercase()
         response.items.forEach { meta ->
             if (meta.id.isBlank() || meta.name.isBlank()) return@forEach
-            val key = "$streamType:${meta.id}"
+            val key = "${response.request.manifestUrl}|$streamType:${meta.id}"
             val entry = grouped[key]
             if (entry == null) {
                 grouped[key] = meta to linkedSetOf(response.request.addonName)
                 streamTypes[key] = streamType
+                sources[key] = response.request.manifestUrl
             } else {
                 entry.second += response.request.addonName
             }
@@ -65,6 +69,8 @@ internal fun projectLiveTvChannels(responses: List<LiveTvCatalogResponse>): List
             meta = item.first,
             streamType = streamTypes.getValue(key),
             sourceNames = item.second.toList(),
+            sourceKey = sources.getValue(key),
+            category = LiveTvChannelCategory.fromGenres(item.first.genres),
         )
     }
 }

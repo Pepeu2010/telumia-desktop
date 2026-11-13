@@ -1,6 +1,5 @@
 package com.nuvio.app
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -28,6 +27,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items as rowItems
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -73,6 +75,7 @@ import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.livetv.LiveTvCatalogResponse
 import com.nuvio.app.features.livetv.LiveTvChannelItem
 import com.nuvio.app.features.livetv.LiveTvChannel
+import com.nuvio.app.features.livetv.LiveTvChannelCategory
 import com.nuvio.app.features.livetv.PlatformLiveTvGuide
 import com.nuvio.app.features.livetv.installedLiveTvCatalogs
 import com.nuvio.app.features.livetv.projectLiveTvChannels
@@ -95,6 +98,17 @@ import nuvio.composeapp.generated.resources.live_tv_loading
 import nuvio.composeapp.generated.resources.live_tv_manage_addons
 import nuvio.composeapp.generated.resources.live_tv_no_results
 import nuvio.composeapp.generated.resources.live_tv_search
+import nuvio.composeapp.generated.resources.live_tv_filter_all
+import nuvio.composeapp.generated.resources.live_tv_filter_all_sources
+import nuvio.composeapp.generated.resources.live_tv_filter_news
+import nuvio.composeapp.generated.resources.live_tv_filter_entertainment
+import nuvio.composeapp.generated.resources.live_tv_filter_sports
+import nuvio.composeapp.generated.resources.live_tv_filter_kids
+import nuvio.composeapp.generated.resources.live_tv_filter_movies
+import nuvio.composeapp.generated.resources.live_tv_filter_music
+import nuvio.composeapp.generated.resources.live_tv_filter_documentary
+import nuvio.composeapp.generated.resources.live_tv_filter_other
+import nuvio.composeapp.generated.resources.live_tv_filter_uncategorized
 import nuvio.composeapp.generated.resources.live_tv_section_title
 import nuvio.composeapp.generated.resources.live_tv_subtitle
 import nuvio.composeapp.generated.resources.live_tv_title
@@ -102,8 +116,21 @@ import nuvio.composeapp.generated.resources.live_tv_watch
 import nuvio.composeapp.generated.resources.compose_nav_tv
 import nuvio.composeapp.generated.resources.live_tv_retry
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.StringResource
 
 private const val LIVE_TV_PARALLEL_CATALOG_LIMIT = 4
+
+private val LiveTvChannelCategory.labelRes: StringResource get() = when (this) {
+    LiveTvChannelCategory.NEWS -> Res.string.live_tv_filter_news
+    LiveTvChannelCategory.ENTERTAINMENT -> Res.string.live_tv_filter_entertainment
+    LiveTvChannelCategory.SPORTS -> Res.string.live_tv_filter_sports
+    LiveTvChannelCategory.KIDS -> Res.string.live_tv_filter_kids
+    LiveTvChannelCategory.MOVIES -> Res.string.live_tv_filter_movies
+    LiveTvChannelCategory.MUSIC -> Res.string.live_tv_filter_music
+    LiveTvChannelCategory.DOCUMENTARY -> Res.string.live_tv_filter_documentary
+    LiveTvChannelCategory.OTHER -> Res.string.live_tv_filter_other
+    LiveTvChannelCategory.UNCATEGORIZED -> Res.string.live_tv_filter_uncategorized
+}
 
 private data class LiveTvFetchOutcome(
     val response: LiveTvCatalogResponse? = null,
@@ -125,6 +152,8 @@ internal fun LiveTvScreen(
     var failedCatalogCount by remember { mutableIntStateOf(0) }
     var refreshVersion by remember { mutableIntStateOf(0) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<LiveTvChannelCategory?>(null) }
+    var selectedSource by remember { mutableStateOf<String?>(null) }
     val liveTvCatalogRequests = remember(addonState.addons) {
         installedLiveTvCatalogs(addonState.addons)
     }
@@ -180,13 +209,16 @@ internal fun LiveTvScreen(
     }
 
     val normalizedQuery = searchQuery.trim()
-    val visibleChannels = remember(channels, normalizedQuery) {
-        if (normalizedQuery.isBlank()) channels else channels.filter { channel ->
-            channel.meta.name.contains(normalizedQuery, ignoreCase = true) ||
-                channel.sourceNames.any { it.contains(normalizedQuery, ignoreCase = true) }
+    val visibleChannels = remember(channels, normalizedQuery, selectedCategory, selectedSource) {
+        channels.filter { channel ->
+            (normalizedQuery.isBlank() || channel.meta.name.contains(normalizedQuery, ignoreCase = true) ||
+                channel.sourceNames.any { it.contains(normalizedQuery, ignoreCase = true) }) &&
+                (selectedCategory == null || channel.category == selectedCategory) &&
+                (selectedSource == null || channel.sourceKey == selectedSource)
         }
     }
-    val sourceCount = remember(channels) { channels.flatMap { it.sourceNames }.distinct().size }
+    val sources = remember(channels) { channels.distinctBy(LiveTvChannelItem::sourceKey).map { it.sourceKey to it.sourceNames.first() } }
+    val sourceCount = remember(channels) { channels.map(LiveTvChannelItem::sourceKey).distinct().size }
     val topPadding = maxOf(topChromePadding ?: 0.dp, 24.dp)
 
     LazyVerticalGrid(
@@ -249,6 +281,21 @@ internal fun LiveTvScreen(
                         }
                     }
                 }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item { FilterChip(selected = selectedCategory == null, onClick = { selectedCategory = null },
+                        label = { Text(stringResource(Res.string.live_tv_filter_all)) }) }
+                    rowItems(LiveTvChannelCategory.values(), key = { it.name }) { category ->
+                        FilterChip(selected = selectedCategory == category, onClick = { selectedCategory = category },
+                            label = { Text(stringResource(category.labelRes)) })
+                    }
+                }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item { FilterChip(selected = selectedSource == null, onClick = { selectedSource = null },
+                        label = { Text(stringResource(Res.string.live_tv_filter_all_sources)) }) }
+                    rowItems(sources, key = { it.first }) { (key, label) ->
+                        FilterChip(selected = selectedSource == key, onClick = { selectedSource = key }, label = { Text(label) })
+                    }
+                }
             }
         }
 
@@ -302,7 +349,7 @@ private fun LiveTvSearchField(
         modifier = modifier,
         singleLine = true,
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-        placeholder = { Text(stringResource(Res.string.live_tv_search)) },
+        label = { Text(stringResource(Res.string.live_tv_search)) },
         shape = RoundedCornerShape(18.dp),
     )
 }
@@ -328,23 +375,15 @@ private fun LiveTvHero(channelCount: Int, sourceCount: Int, onRefresh: () -> Uni
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(208.dp)
-            .clip(RoundedCornerShape(30.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(colors.surface, colors.surfaceVariant, colors.primary.copy(alpha = 0.16f)),
-                ),
-            ),
+            .height(156.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Brush.horizontalGradient(listOf(
+                colors.surfaceVariant,
+                colors.primary.copy(alpha = 0.16f),
+            ))),
     ) {
-        Box(
-            Modifier
-                .align(Alignment.CenterEnd)
-                .size(280.dp)
-                .alpha(0.22f)
-                .background(Brush.radialGradient(listOf(colors.primary, Color.Transparent)), CircleShape),
-        )
         Row(
-            modifier = Modifier.fillMaxSize().padding(start = 32.dp, end = 26.dp, top = 26.dp, bottom = 26.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -359,38 +398,30 @@ private fun LiveTvHero(channelCount: Int, sourceCount: Int, onRefresh: () -> Uni
                 Text(
                     text = stringResource(Res.string.live_tv_title),
                     style = MaterialTheme.typography.headlineLarge,
-                    color = Color.White,
+                    color = colors.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = stringResource(Res.string.live_tv_subtitle),
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.72f),
+                    color = colors.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = stringResource(Res.string.live_tv_addons_count, sourceCount, channelCount),
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color.White.copy(alpha = 0.84f),
+                    color = colors.onSurface,
                 )
             }
-            Box(contentAlignment = Alignment.Center) {
+            IconButton(onClick = onRefresh) {
                 Icon(
-                    imageVector = Icons.Filled.Tv,
-                    contentDescription = null,
-                    modifier = Modifier.size(124.dp).alpha(0.18f),
-                    tint = Color.White,
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = stringResource(Res.string.live_tv_retry),
+                    modifier = Modifier.size(28.dp),
+                    tint = colors.onSurface,
                 )
-                IconButton(onClick = onRefresh) {
-                    Icon(
-                        imageVector = Icons.Filled.Refresh,
-                        contentDescription = stringResource(Res.string.live_tv_retry),
-                        modifier = Modifier.size(28.dp),
-                        tint = Color.White,
-                    )
-                }
             }
         }
     }
@@ -422,8 +453,7 @@ private fun LiveTvChannelCard(channel: LiveTvChannelItem, onClick: () -> Unit) {
             .height(218.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .hoverable(interaction)
-            .onFocusChanged { focused = it.isFocused }
-            .animateContentSize(),
+            .onFocusChanged { focused = it.isFocused },
         shape = shape,
         color = colors.surfaceVariant,
         border = BorderStroke(
