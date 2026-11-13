@@ -191,8 +191,6 @@ jobs:
         run: |
           required_values=(
             LOCAL_PROPERTIES_BASE64
-            SENTRY_AUTH_TOKEN
-            SENTRY_DESKTOP_DSN
           )
           if [[ "${MACOS_NOTARIZATION_ENABLED}" == "true" ]]; then
             required_values+=(
@@ -223,8 +221,6 @@ jobs:
           required_properties=(
             NUVIO_SUPABASE_URL
             NUVIO_SUPABASE_ANON_KEY
-            TRAKT_CLIENT_ID
-            TRAKT_CLIENT_SECRET
           )
           for property_name in "${required_properties[@]}"; do
             if ! grep -Eq "^${property_name}=.+" local.properties; then
@@ -296,7 +292,7 @@ jobs:
         run: |
           ./gradlew \
             :composeApp:notarizeReleaseDmgWithKeychain \
-            :desktopSentry:sentryUploadSourceBundleJava \
+            ${SENTRY_AUTH_TOKEN:+:desktopSentry:sentryUploadSourceBundleJava} \
             "-Pnuvio.macos.arch=${MACOS_ARCH}" \
             -Pcompose.desktop.packaging.checkJdkVendor=false \
             --no-configuration-cache \
@@ -312,7 +308,7 @@ jobs:
         run: |
           ./gradlew \
             :composeApp:packageReleaseDmg \
-            :desktopSentry:sentryUploadSourceBundleJava \
+            ${SENTRY_AUTH_TOKEN:+:desktopSentry:sentryUploadSourceBundleJava} \
             "-Pnuvio.macos.arch=${MACOS_ARCH}" \
             -Pcompose.desktop.packaging.checkJdkVendor=false \
             --no-configuration-cache \
@@ -511,8 +507,6 @@ jobs:
           missing=()
           required_values=(
             LOCAL_PROPERTIES_BASE64
-            SENTRY_AUTH_TOKEN
-            SENTRY_DESKTOP_DSN
           )
           for value_name in "${required_values[@]}"; do
             if [[ -z "${!value_name}" ]]; then
@@ -530,8 +524,6 @@ jobs:
           required_properties=(
             NUVIO_SUPABASE_URL
             NUVIO_SUPABASE_ANON_KEY
-            TRAKT_CLIENT_ID
-            TRAKT_CLIENT_SECRET
           )
           for property_name in "${required_properties[@]}"; do
             if ! grep -Eq "^${property_name}=.+" local.properties; then
@@ -578,9 +570,10 @@ jobs:
       - name: Build MSI
         shell: pwsh
         run: |
+          $sentryTasks = if ($env:SENTRY_AUTH_TOKEN) { @(':desktopSentry:sentryUploadSourceBundleJava') } else { @() }
           & .\gradlew.bat `
             :composeApp:packageReleaseMsi `
-            :desktopSentry:sentryUploadSourceBundleJava `
+            @sentryTasks `
             "-Pnuvio.webview2.dir=$env:WEBVIEW2_ROOT" `
             "-Pcompose.desktop.packaging.checkJdkVendor=false" `
             --no-configuration-cache `
@@ -733,7 +726,7 @@ jobs:
           set -euo pipefail
           ./gradlew \
             :composeApp:createReleaseDistributable \
-            :desktopSentry:sentryUploadSourceBundleJava \
+            ${SENTRY_AUTH_TOKEN:+:desktopSentry:sentryUploadSourceBundleJava} \
             -Pcompose.desktop.packaging.checkJdkVendor=false \
             --no-configuration-cache \
             --no-daemon \
@@ -867,7 +860,7 @@ jobs:
           set -euo pipefail
           ./gradlew \
             :composeApp:packageReleaseDeb \
-            :desktopSentry:sentryUploadSourceBundleJava \
+            ${SENTRY_AUTH_TOKEN:+:desktopSentry:sentryUploadSourceBundleJava} \
             -Pcompose.desktop.packaging.checkJdkVendor=false \
             --no-configuration-cache \
             --no-daemon \
@@ -950,7 +943,7 @@ jobs:
           set -euo pipefail
           ./gradlew \
             :composeApp:packageReleaseRpm \
-            :desktopSentry:sentryUploadSourceBundleJava \
+            ${SENTRY_AUTH_TOKEN:+:desktopSentry:sentryUploadSourceBundleJava} \
             -Pcompose.desktop.packaging.checkJdkVendor=false \
             --no-configuration-cache \
             --no-daemon \
@@ -1062,7 +1055,7 @@ jobs:
 
           ./gradlew \
             :composeApp:packageReleaseAppImage \
-            :desktopSentry:sentryUploadSourceBundleJava \
+            ${SENTRY_AUTH_TOKEN:+:desktopSentry:sentryUploadSourceBundleJava} \
             -Pcompose.desktop.packaging.checkJdkVendor=false \
             --no-configuration-cache \
             --no-daemon \
